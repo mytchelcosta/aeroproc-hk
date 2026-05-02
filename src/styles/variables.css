@@ -1,0 +1,41 @@
+:root {
+    --bg-primary: #0a0e14;
+    --bg-secondary: #11161d;
+    --bg-tertiary: #1a2029;
+    --border: #262d38;
+    --border-bright: #3b4553;
+    --text-primary: #eaf0f7;
+    --text-secondary: #96a1b0;
+    --text-muted: #626d7c;
+
+    /* Aviation-inspired color coding — procedures */
+    --color-sid: #3b9eff;
+    --color-star: #ffb547;
+    --color-iac: #4ddb8d;
+
+    /* Airspace area color coding */
+    --color-ctr: #ff6b6b;
+    --color-fis: #c084fc;
+    --color-tma: #fb923c;
+    --color-atz: #facc15;
+
+    /* UI state colors */
+    --color-danger: #ff4d4d;
+    --color-success: #4ddb8d;
+    
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+
+    --sidebar-width: 340px;
+
+    /* Phase 28: Global Scaling — these two variables drive calc() sizing in main.css.
+       Slider range is 0.5–2.0. Updated in real-time by the Settings panel in main.js.
+       Default 1.0 = no change from the original hard-coded pixel sizes. */
+    --map-label-scale:  1.0;
+    --map-symbol-scale: 1.0;
+
+    /* Phase 29: UI Scale — drives font-sizes in the sidebar and toolbar panels.
+       Separate from map-label-scale so users can size the interface independently
+       from the map annotation layer. Range 0.7–1.5. Default 1.0 = no change. */
+    --ui-scale: 1.0;
+}

@@ -1,0 +1,8 @@
+name = "aeroproc-weather-proxy"
+main = "src/index.js"
+compatibility_date = "2024-05-01"
+
+# Production environment
+[env.production]
+name = "aeroproc-weather-proxy"
+# Secret CHECKWX_API_KEY will be added via wrangler secret put

@@ -1,0 +1,5209 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.hidden {
+    display: none !important;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-primary);
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+}
+
+#root {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    position: relative; /* Positioning context for absolute children */
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100%;
+    background: linear-gradient(180deg, var(--bg-primary) 0%, #0c1119 100%);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: visible; /* allows toggle button to stay visible if we shift it */
+}
+
+.sidebar.collapsed {
+    width: 0;
+    border-right: none;
+}
+
+.sidebar.collapsed .sidebar-header,
+.sidebar.collapsed .sidebar-content {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar-header {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--bg-secondary), var(--bg-primary));
+    min-width: var(--sidebar-width); /* keeps content from squishing during animation */
+}
+
+.sidebar-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#btn-sidebar-toggle {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 10px;
+    z-index: 1100;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed #btn-sidebar-toggle {
+    left: calc(100% + 10px);
+}
+
+.sidebar.collapsed #btn-sidebar-toggle svg {
+    transform: rotate(180deg);
+}
+
+#btn-sidebar-toggle svg {
+    transition: transform 0.3s ease;
+}
+
+.sidebar-header span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    display: block;
+}
+
+.sidebar-content {
+    padding: 0;
+    /* Phase 29: --ui-scale drives all sidebar content text */
+    font-size: calc(13px * var(--ui-scale));
+    color: var(--text-secondary);
+    line-height: 1.5;
+    flex: 1;
+    overflow-y: auto; /* scroll if content is taller than the sidebar */
+    /* Phase 30: bottom buffer so the last item is never hidden behind the screen edge */
+    padding-bottom: 5rem;
+}
+
+/* Phase 30: Thin, visible scrollbar for the sidebar list — signals there is more content below. */
+.sidebar-content::-webkit-scrollbar {
+    width: 4px;
+}
+.sidebar-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+}
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.32);
+}
+
+#map {
+    flex: 1;
+    height: 100%;
+    background: #0b1017;
+}
+
+/* Item 5b fix: Leaflet gives ALL DivIcon elements a white background by default.
+   This causes white rectangles to appear behind floating labels (measurement text,
+   fix labels, procedure waypoint labels). Override to fully transparent here so
+   each component only shows what it explicitly styles itself to show. */
+.leaflet-div-icon {
+    background: transparent !important;
+    border:     none !important;
+}
+
+/* Phase 8.5.2 fix: Clicking a procedure polyline in Viewer mode triggers a browser
+   focus state on the underlying SVG <path> element, which Leaflet marks with the
+   .leaflet-interactive class. The browser then draws a white focus rectangle around
+   the path. Removing the outline here eliminates that visual artefact entirely
+   without affecting keyboard accessibility of any actual UI controls. */
+.leaflet-interactive:focus {
+    outline: none;
+}
+
+/* Make Leaflet tiles look dark if we don't use a dark tile provider */
+/* .leaflet-layer { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); } */
+
+
+/* ================================================================
+   LAYERS PANEL — "Layers" section inside the sidebar
+   ================================================================ */
+
+/* The small uppercase heading that labels each section, e.g. "LAYERS" */
+.section-label {
+    font-family: 'JetBrains Mono', monospace;
+    /* Phase 29 */
+    font-size: calc(10px * var(--ui-scale));
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 16px 16px 8px;
+}
+
+/* Wrapper for a single layer row — provides hover highlight */
+.layer-row {
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.layer-row:hover {
+    background: var(--bg-tertiary);
+}
+
+/* The <label> wrapping the entire row so clicking anywhere toggles the checkbox */
+.layer-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 5px;
+    user-select: none; /* prevent text highlight when clicking rapidly */
+    width: 100%;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Custom Checkbox Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* Hide the default browser checkbox so we can style our own */
+.layer-toggle-label input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border-bright);
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+/* When checked: fill with blue and change border color */
+.layer-toggle-label input[type="checkbox"]:checked {
+    background: var(--color-sid);
+    border-color: var(--color-sid);
+}
+
+/* Draw the white checkmark tick using a CSS pseudo-element */
+.layer-toggle-label input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 0px;
+    width: 5px;
+    height: 9px;
+    border: 2px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Layer Color Dot Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* A small colored circle acting as a visual legend for the layer */
+.layer-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Layer Name Ã¢â€â‚¬Ã¢â€â‚¬ */
+.layer-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    flex: 1; /* pushes the count badge to the far right */
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Layer Count Badge Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* Small pill showing the number of items in the layer, e.g. "428" */
+.layer-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    padding: 2px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+
+/* ================================================================
+   LOADING STATE — shown while data is being fetched
+   ================================================================ */
+
+.loading-state {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 16px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+/* The animated pulsing dot next to "Loading waypoints..." */
+.loading-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-sid);
+    flex-shrink: 0;
+    animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1;   transform: scale(1);   }
+    50%       { opacity: 0.3; transform: scale(0.7); }
+}
+
+
+/* ================================================================
+   WAYPOINT TOOLTIP — hover tooltip shown when over a fix (normal mode)
+   ================================================================ */
+
+/* Override Leaflet's default tooltip styles for our fix-tooltip class */
+.fix-tooltip {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-bright) !important;
+    border-radius: 4px !important;
+    color: var(--text-primary) !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 11px !important;
+    padding: 3px 8px !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Remove Leaflet's default tooltip arrow/pointer */
+.fix-tooltip::before {
+    display: none !important;
+}
+
+
+/* ================================================================
+   FIX LABEL — permanent label shown in Builder/snap mode
+   ================================================================ */
+
+/* The permanent label that replaces the hover tooltip when snap mode is active.
+   Leaflet sets its own opacity:0.9; we want 0.18 as the faded default.
+   Individual JS code overrides this via element.style.opacity when filtering. */
+.fix-label {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--text-secondary) !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    /* Phase 28: drives from --map-label-scale; default 1.0 keeps 10px base size */
+    font-size: calc(10px * var(--map-label-scale)) !important;
+    font-weight: 600 !important;
+    padding: 1px 3px !important;
+    white-space: nowrap !important;
+    letter-spacing: 0.04em !important;
+    /* Text shadow makes the label readable over any tile colour */
+    text-shadow: 0 0 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7) !important;
+    pointer-events: none !important; /* labels must not block marker clicks */
+    opacity: 0.18 !important;        /* faded by default; JS overrides per-marker */
+}
+.fix-label::before { display: none !important; }
+
+
+/* ================================================================
+   WAYPOINT SEARCH BAR — in the Drawing Panel for route procedures
+   ================================================================ */
+
+/* Wrapper positions the search icon inside the input */
+.waypoint-search-wrapper {
+    position: relative;
+    padding: 8px 16px 4px;
+}
+
+.waypoint-search-input {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    padding: 8px 32px 8px 10px; /* right padding for the search icon */
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+.waypoint-search-input:focus {
+    border-color: var(--color-sid);
+    box-shadow: 0 0 0 2px rgba(59, 158, 255, 0.12);
+}
+.waypoint-search-input::placeholder { color: var(--text-muted); }
+
+/* Small magnifying glass icon overlaid on the right of the input */
+.search-icon {
+    position: absolute;
+    right: 26px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    opacity: 0.3;
+    pointer-events: none;
+    line-height: 1;
+}
+
+
+/* ================================================================
+   SIDEBAR DIVIDER — thin separator between Layers and Builder
+   ================================================================ */
+
+.sidebar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0;
+}
+
+
+/* ================================================================
+   BUILDER SECTION — the container for all builder panel views
+   ================================================================ */
+
+.builder-section {
+    padding: 0 0 12px;
+}
+
+/* Title bar used in Metadata Form and Export Result views */
+.builder-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+/* Title bar when actively drawing — shows type badge + name */
+.builder-section-title.building {
+    padding: 8px 16px;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+}
+
+.building-type-badge {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-bright);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--color-sid);
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+}
+
+.building-name {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The "Ã¢â€ Â" back button in the form title bar */
+.back-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.15s;
+}
+.back-btn:hover { color: var(--text-primary); }
+
+
+/* ================================================================
+   NEW PROCEDURE BUTTON — the large call-to-action in main menu
+   ================================================================ */
+
+.new-procedure-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: calc(100% - 32px);
+    margin: 4px 16px 0;
+    padding: 11px 14px;
+    background: var(--bg-tertiary);
+    border: 1px dashed var(--border-bright);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.new-procedure-btn:hover {
+    background: #1e2a38;
+    border-color: var(--color-sid);
+    color: var(--text-primary);
+}
+
+.new-btn-plus {
+    font-size: 18px;
+    line-height: 1;
+    color: var(--color-sid);
+    font-weight: 300;
+}
+
+
+/* ================================================================
+   FORM ELEMENTS — used in the Metadata Form view
+   ================================================================ */
+
+.form-field {
+    padding: 0 16px 12px;
+}
+
+.form-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 5px;
+}
+
+.form-input,
+.form-select {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px 10px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+.form-input:focus,
+.form-select:focus   { border-color: var(--color-sid); }
+.form-select         { cursor: pointer; }
+.form-select optgroup { color: var(--text-muted); font-style: normal; }
+.form-select option  { background: var(--bg-secondary); color: var(--text-primary); }
+
+/* Error state — highlighted when a required field is empty */
+.input-error {
+    border-color: var(--color-danger) !important;
+    animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0);    }
+    25%       { transform: translateX(-4px); }
+    75%       { transform: translateX(4px);  }
+}
+
+
+/* ================================================================
+   COLOR SWATCHES — color preset picker in the Metadata Form
+   ================================================================ */
+
+.color-preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.12s, border-color 0.12s;
+    padding: 0;
+}
+.color-swatch:hover  { transform: scale(1.15); }
+.color-swatch.active { border-color: #fff; transform: scale(1.15); }
+
+/* The "+" custom color label — wraps a hidden <input type="color"> */
+.color-custom-label {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px dashed var(--border-bright);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    flex-shrink: 0;
+    transition: border-color 0.12s;
+}
+.color-custom-label:hover  { border-color: var(--text-secondary); }
+.color-custom-label.active { border-color: #fff; }
+.color-custom-label input[type="color"] { display: none; }
+
+.custom-plus {
+    font-size: 16px;
+    color: var(--text-muted);
+    line-height: 1;
+    font-weight: 300;
+}
+
+
+/* ================================================================
+   BUILDER ACTION BUTTONS — primary, secondary, danger variants
+   ================================================================ */
+
+.builder-action-btn {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 6px 16px 0;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: opacity 0.15s, transform 0.1s;
+}
+.builder-action-btn:active { transform: scale(0.98); }
+
+.builder-action-btn.primary {
+    background: var(--color-sid);
+    color: #fff;
+}
+.builder-action-btn.primary:hover { opacity: 0.88; }
+
+.builder-action-btn.secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+.builder-action-btn.secondary:hover { border-color: var(--border-bright); color: var(--text-primary); }
+
+.builder-action-btn.danger {
+    background: transparent;
+    color: var(--color-danger);
+    border: 1px solid rgba(255, 77, 77, 0.35);
+}
+.builder-action-btn.danger:hover {
+    background: rgba(255, 77, 77, 0.08);
+    border-color: var(--color-danger);
+}
+
+
+/* ================================================================
+   DRAWING PANEL — mode hint, manual input, sequence list
+   ================================================================ */
+
+/* The help text shown at the top of the drawing panel */
+.drawing-mode-hint {
+    margin: 0 16px 10px;
+    padding: 8px 10px;
+    background: rgba(59, 158, 255, 0.08);
+    border-left: 2px solid var(--color-sid);
+    border-radius: 0 4px 4px 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Manual coordinate input section */
+.manual-point-section {
+    padding: 0 16px 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+
+.manual-point-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 6px;
+}
+
+/* Row containing the two coordinate inputs and the "+" button */
+.coord-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.coord-input {
+    flex: 1;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+    min-width: 0; /* allow flex shrinking */
+    transition: border-color 0.15s;
+}
+.coord-input:focus { border-color: var(--color-sid); }
+
+/* The "+" button that submits the manual point */
+.manual-add-btn {
+    width: 28px;
+    height: 28px;
+    background: var(--color-sid);
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 300;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: opacity 0.15s;
+}
+.manual-add-btn:hover { opacity: 0.82; }
+
+
+/* ================================================================
+   SEQUENCE LIST — the ordered list of points in the drawing panel
+   ================================================================ */
+
+/* Header row above the list: "SEQUENCE" label + count badge */
+.sequence-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px 4px;
+}
+.sequence-header .section-label { padding: 12px 0 4px; }
+
+/* Empty state message when no points have been added yet */
+.sequence-empty {
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.sequence-list {
+    padding: 0 8px;
+}
+
+/* A single point row in the sequence */
+.seq-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 7px 8px;
+    border-radius: 5px;
+    transition: background 0.1s;
+}
+.seq-item:hover { background: var(--bg-tertiary); }
+
+/* The index number (1, 2, 3 ...) */
+.seq-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 16px;
+    flex-shrink: 0;
+    padding-top: 2px;
+    text-align: right;
+}
+
+/* Ã¢—â€  for snapped fixes, Ã¢—â€¡ for custom / free-drawn points */
+.seq-type-icon {
+    font-size: 9px;
+    color: var(--color-sid);
+    flex-shrink: 0;
+    padding-top: 3px;
+}
+
+.seq-info {
+    flex: 1;
+    min-width: 0;
+}
+
+/* The waypoint identifier or "Custom Point" label */
+.seq-ident {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Level and speed restrictions shown below the identifier */
+.seq-restrictions {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    line-height: 1.4;
+}
+.seq-restrictions.empty { color: var(--text-muted); font-style: italic; }
+
+/* ================================================================
+   MASTER LOCK — builder lock toggle in the main menu
+   ================================================================ */
+
+/* Header row that holds the "BUILDER" label and the lock button */
+.builder-main-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 16px;
+}
+
+/* The lock toggle button — compact, sits in the header row */
+.builder-lock-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+    transition: border-color 0.15s, color 0.15s;
+}
+.builder-lock-btn:hover { border-color: var(--border-bright); color: var(--text-secondary); }
+.builder-lock-btn.locked { color: var(--color-star); border-color: rgba(255,181,71,0.4); }
+
+.lock-label { font-size: 10px; }
+
+/* Small hint text shown when the builder is locked */
+.lock-hint {
+    margin: 8px 16px 0;
+    padding: 7px 10px;
+    background: rgba(255, 181, 71, 0.06);
+    border-left: 2px solid rgba(255, 181, 71, 0.5);
+    border-radius: 0 4px 4px 0;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* Disabled state for the New Procedure button when locked */
+.new-procedure-btn.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* The "Ãƒ—" remove button */
+.seq-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 15px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+    border-radius: 3px;
+    transition: color 0.12s, background 0.12s;
+}
+.seq-remove:hover { color: var(--color-danger); background: rgba(255,77,77,0.1); }
+
+/* Compact action button cluster at the right of each sequence item (Up/Down/Edit/Remove) */
+.seq-actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+/* The individual small buttons inside .seq-actions */
+.seq-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 3px 4px;
+    line-height: 1;
+    border-radius: 3px;
+    transition: color 0.12s, background 0.12s;
+}
+.seq-btn:hover  { color: var(--text-secondary); background: var(--bg-tertiary); }
+.seq-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+/* Red tint for the remove button only */
+.seq-btn.seq-remove:hover { color: var(--color-danger); background: rgba(255,77,77,0.1); }
+
+/* Blue tint for the edit button */
+.seq-btn.seq-edit:hover { color: var(--color-sid); background: rgba(59,158,255,0.1); }
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Measurement toggle row Ã¢â€â‚¬Ã¢â€â‚¬ */
+.measurement-toggle-row {
+    padding: 6px 16px 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+}
+
+.measurement-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+}
+.measurement-toggle-label:hover { color: var(--text-secondary); }
+
+.toggle-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--border-bright);
+    border-radius: 2px;
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+}
+.toggle-checkbox:checked {
+    background: var(--color-sid);
+    border-color: var(--color-sid);
+}
+.toggle-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: -1px;
+    width: 4px;
+    height: 7px;
+    border: 1.5px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+}
+
+/* Action buttons at the bottom of the drawing panel */
+.builder-actions {
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+}
+
+
+/* ================================================================
+   EXPORT RESULT — shows the finished JSON after saving
+   ================================================================ */
+
+.export-hint {
+    padding: 0 16px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* The scrollable code block containing the JSON output */
+.export-json {
+    margin: 0 16px 8px;
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--color-iac);
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+
+/* ================================================================
+   MODAL — the restriction prompt that appears after each point
+   ================================================================ */
+
+/* Full-screen dark overlay — hidden by default, shown with .is-visible */
+.modal-overlay {
+    position: fixed;
+    inset: 0;               /* shorthand for top/right/bottom/left: 0 */
+    background: rgba(5, 8, 14, 0.75);
+    backdrop-filter: blur(3px);
+    display: none;          /* hidden until .is-visible is added */
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;          /* above everything else on the page */
+    padding: 20px;
+}
+.modal-overlay.is-visible { display: flex; }
+
+/* The white-card-style dialog box in the center of the screen */
+.modal-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: var(--shadow-md), 0 0 0 1px rgba(59,158,255,0.1);
+    animation: modal-in 0.18s ease;
+}
+
+@keyframes modal-in {
+    from { opacity: 0; transform: scale(0.96) translateY(6px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+/* Header area: small tag + bold point name */
+.modal-header {
+    margin-bottom: 20px;
+}
+
+.modal-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--color-sid);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.modal-point-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+}
+
+.modal-fields { display: flex; flex-direction: column; gap: 14px; margin-bottom: 10px; }
+
+.modal-field-group { display: flex; flex-direction: column; gap: 5px; }
+
+.modal-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* A side-by-side row that holds a condition dropdown and a value text input */
+.modal-pair-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+/* The condition dropdown (At / Above / Below / At Least / Less Than) */
+.modal-select {
+    flex: 0 0 130px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 9px 10px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+    /* Custom dropdown arrow using a unicode char as background */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23626d7c' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+}
+.modal-select:focus { border-color: var(--color-sid); }
+.modal-select option { background: var(--bg-secondary); color: var(--text-primary); }
+
+/* The value text input sits next to the condition dropdown */
+.modal-value-input {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Disabled state — fades out the value input when "No restriction" is selected */
+.modal-value-input:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    user-select: none;
+}
+
+.modal-input {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 9px 12px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color 0.15s, opacity 0.15s;
+}
+.modal-input:focus { border-color: var(--color-sid); }
+.modal-input::placeholder { color: var(--text-muted); }
+
+.modal-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 6px 0 16px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+}
+
+/* Row of Skip + Confirm buttons */
+.modal-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+}
+.modal-btn:hover { opacity: 0.85; }
+
+.modal-btn-skip {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.modal-btn-confirm {
+    background: var(--color-sid);
+    color: #fff;
+}
+
+
+/* ================================================================
+   TAB BAR — top-level View / Builder navigation tabs
+   ================================================================ */
+
+/* The row of tab buttons at the very top of the sidebar content area */
+.tab-bar {
+    display: flex;
+    gap: 2px;
+    padding: 8px 8px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-primary);
+    flex-shrink: 0; /* never compress — always full height */
+}
+
+/* A single tab button */
+.tab {
+    flex: 1;
+    padding: 7px 10px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 5px 5px 0 0;
+    /* Phase 29: drives from --ui-scale */
+    font-size: calc(11px * var(--ui-scale));
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+    margin-bottom: -1px; /* sit on top of the tab-bar border */
+}
+
+.tab:hover {
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+}
+
+/* The currently selected tab — underlined in SID blue */
+.tab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--color-sid);
+    background: var(--bg-tertiary);
+}
+
+
+/* ================================================================
+   VIEW PLACEHOLDER — shown in the View tab when no procedures exist
+   ================================================================ */
+
+/* Centered column layout for the empty-state message */
+.view-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 20px;
+    text-align: center;
+    gap: 10px;
+}
+
+/* Large faded icon (the Ã¢Å“Ë† airplane character) */
+.view-placeholder-icon {
+    font-size: 36px;
+    opacity: 0.2;
+    line-height: 1;
+}
+
+/* Small uppercase title: "No Procedures" */
+.view-placeholder-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* Descriptive helper text below the title */
+.view-placeholder-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    max-width: 190px;
+}
+
+
+/* ================================================================
+   SEGMENT MEASUREMENT LABELS — floating distance/heading text
+   ================================================================ */
+
+/* The Leaflet DivIcon wrapper for segment measurement labels.
+   Zero dimensions prevent Leaflet from adding any layout padding.
+   'pointer-events:none' ensures the floating text never blocks map clicks. */
+.seg-measurement-label {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: none !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateX(-50%) translateY(-50%);
+    white-space: nowrap;
+}
+
+/* The actual text inside the label — floating, semi-transparent, readable. */
+.seg-measurement-label span {
+    font-family: 'JetBrains Mono', monospace;
+    /* Phase 28: drives from --map-label-scale; default 1.0 keeps 10px base */
+    font-size: calc(10px * var(--map-label-scale));
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.80);
+    letter-spacing: 0.05em;
+    /* Multi-layer text shadow for readability over any tile colour */
+    text-shadow:
+        0 0 3px rgba(0, 0, 0, 1),
+        0 0 6px rgba(0, 0, 0, 0.9),
+        0 0 12px rgba(0, 0, 0, 0.6);
+}
+
+
+/* ================================================================
+   PERMANENT FIX LABELS — inner content for in-sequence & search results
+   These classes are used by MapLayers.filterWaypoints() to build the
+   innerHTML of each permanent tooltip element.
+   ================================================================ */
+
+/* The identifier line inside a permanent fix label (the waypoint name itself) */
+.fix-label-ident {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.3;
+}
+
+/* The restriction line shown below the ident for in-sequence fixes.
+   Uses a slightly warmer color so it's visually distinct from the ident. */
+.fix-label-restriction {
+    font-size: 9px;
+    font-weight: 500;
+    color: rgba(255, 215, 150, 0.9);
+    letter-spacing: 0.04em;
+    margin-top: 1px;
+    line-height: 1.3;
+}
+
+/* The portion of a search-matched label that corresponds to the typed characters.
+   Glows brightly so it stands out from the surrounding (non-matching) letters.
+   Visually distinct from the solid-fill style used by in-sequence fixes. */
+.fix-label-highlight {
+    color: #ffffff;
+    text-shadow:
+        0 0 4px #3b9eff,
+        0 0 10px #3b9eff,
+        0 0 18px rgba(59, 158, 255, 0.7);
+}
+
+
+/* ================================================================
+   PROCEDURE HOVER TOOLTIP — shown when hovering over a drawn polyline
+   ================================================================ */
+
+.proc-hover-tooltip {
+    background: rgba(12, 18, 28, 0.88) !important;
+    border: 1px solid rgba(59, 158, 255, 0.35) !important;
+    border-radius: 5px !important;
+    color: var(--text-primary) !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.05em !important;
+    padding: 5px 10px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+    white-space: nowrap !important;
+}
+.proc-hover-tooltip::before { display: none !important; }
+
+
+/* ================================================================
+   SEQUENCE WARNING BANNER — duplicate fix alert in the drawing panel
+   ================================================================ */
+
+/* A compact amber warning strip that slides in above the sequence list */
+.seq-warning-banner {
+    margin: 0 8px 6px;
+    padding: 7px 10px;
+    background: rgba(255, 181, 71, 0.10);
+    border: 1px solid rgba(255, 181, 71, 0.40);
+    border-radius: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--color-star);
+    letter-spacing: 0.03em;
+    animation: warning-in 0.2s ease;
+}
+
+@keyframes warning-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0);    }
+}
+
+
+/* ================================================================
+   VIEW TAB — saved procedure list
+   ================================================================ */
+
+/* Section wrapper — provides padding and breathing room */
+.view-section {
+    padding: 0 0 12px;
+}
+
+/* Header row: "PROCEDURES" label + count badge + measurement toggle */
+.view-section-header {
+    display:     flex;
+    align-items: center;
+    gap:         6px;
+    padding:     12px 16px 4px;
+}
+.view-section-header .section-label { flex: 1; }
+
+/* Phase 13: Leg Measurements toggle button in Viewer header */
+.viewer-meas-btn {
+    padding:       3px 8px;
+    border:        1px solid var(--border-bright);
+    border-radius: 4px;
+    background:    transparent;
+    color:         var(--text-muted);
+    font-size:     10px;
+    font-family:   'JetBrains Mono', monospace;
+    cursor:        pointer;
+    transition:    background 0.15s, color 0.15s, border-color 0.15s;
+    white-space:   nowrap;
+}
+.viewer-meas-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.viewer-meas-btn.active {
+    background:    rgba(59, 158, 255, 0.15);
+    border-color:  var(--color-accent);
+    color:         var(--color-accent);
+}
+
+/* Phase 13: Sort dropdown row just below the section header */
+.viewer-sort-row {
+    display:     flex;
+    align-items: center;
+    gap:         8px;
+    padding:     4px 16px 8px;
+}
+.viewer-sort-label {
+    font-size:  10px;
+    color:      var(--text-muted);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.viewer-sort-select {
+    flex:          1;
+    background:    var(--bg-tertiary);
+    border:        1px solid var(--border);
+    border-radius: 4px;
+    color:         var(--text-secondary);
+    font-size:     11px;
+    padding:       3px 6px;
+    cursor:        pointer;
+    outline:       none;
+}
+.viewer-sort-select:focus { border-color: var(--color-accent); }
+
+/* Phase 13: Group header (e.g. "SBGR" or "SID") */
+.viewer-group { margin-bottom: 4px; }
+
+.viewer-group-header {
+    display:       flex;
+    align-items:   center;
+    gap:           6px;
+    padding:       5px 10px;
+    background:    var(--bg-tertiary);
+    border:        1px solid var(--border);
+    border-radius: 5px;
+    cursor:        pointer;
+    user-select:   none;
+    transition:    background 0.12s;
+}
+.viewer-group-header:hover { background: rgba(59, 158, 255, 0.07); }
+
+.viewer-group-chevron {
+    font-size:  10px;
+    color:      var(--text-muted);
+    width:      10px;
+    text-align: center;
+}
+.viewer-group-name {
+    flex:        1;
+    /* Phase 29 */
+    font-size:   calc(11px * var(--ui-scale));
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color:       var(--text-primary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.viewer-group-count {
+    /* Phase 29 */
+    font-size:  calc(10px * var(--ui-scale));
+    color:      var(--text-muted);
+    background: var(--bg-secondary);
+    border:     1px solid var(--border);
+    border-radius: 10px;
+    padding:    1px 6px;
+}
+
+/* Body of a group — indented slightly */
+.viewer-group-body { padding-left: 8px; margin-top: 2px; }
+
+/* Sub-group header (e.g. type label within an aerodrome group) */
+.viewer-subgroup { margin-bottom: 2px; }
+.viewer-subgroup-header {
+    font-size:  9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color:      var(--text-muted);
+    padding:    4px 6px 2px;
+}
+.viewer-subgroup-body { padding-left: 4px; }
+
+/* Vertical stack of saved procedure rows */
+.saved-proc-list {
+    display:        flex;
+    flex-direction: column;
+    padding:        0 8px;
+    gap:            2px;
+}
+
+/* A single saved-procedure row */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Phase 12: Accordion procedure item Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* The outer wrapper for each procedure card in the saved list.              */
+/* Contains: header row, common-route preview, and optional transition list. */
+.saved-proc-item {
+    display:       flex;
+    flex-direction: column;
+    padding:       6px 8px;
+    border-radius: 6px;
+    transition:    background 0.1s;
+    cursor:        default;
+}
+.saved-proc-item:hover { background: var(--bg-tertiary); }
+
+/* The top row inside an accordion card: badge + name + action buttons. */
+.saved-proc-header {
+    display:     flex;
+    align-items: center;
+    gap:         8px;
+}
+
+/* "Common: FIX Ã¢â€ â€™ FIX Ã¢â€ â€™ Ã¢â‚¬Â¦" route preview line under the header */
+.proc-common-preview {
+    /* Phase 29 */
+    font-size:    calc(10px * var(--ui-scale));
+    color:        var(--text-tertiary);
+    padding:      2px 0 2px 4px;
+    font-family:  'JetBrains Mono', monospace;
+    overflow:     hidden;
+    text-overflow: ellipsis;
+    white-space:  nowrap;
+}
+
+/* Container for the transition sub-items inside an accordion card */
+.proc-transitions-list {
+    display:       flex;
+    flex-direction: column;
+    gap:           2px;
+    padding:       3px 0 2px 4px;
+}
+
+/* Single transition branch row inside the accordion */
+.proc-transition-item {
+    display:       flex;
+    align-items:   center;
+    gap:           5px;
+    background:    rgba(255, 255, 255, 0.03);
+    border:        1px solid var(--border-color);
+    border-radius: 3px;
+    padding:       3px 6px;
+    /* Phase 29 */
+    font-size:     calc(10px * var(--ui-scale));
+}
+
+/* Ã¢â€ â€™ or Ã¢â€ Â direction arrow icon */
+.proc-transition-icon {
+    color:       #ffb547;
+    font-size:   11px;
+    flex-shrink: 0;
+}
+
+/* Body of the transition row: name + key fix */
+.proc-transition-body {
+    flex:        1;
+    min-width:   0;
+    display:     flex;
+    align-items: center;
+    gap:         5px;
+    overflow:    hidden;
+}
+
+/* Branch name inside accordion sub-item */
+.proc-transition-name {
+    font-weight: 500;
+    color:       var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+}
+
+/* Key fix ("via REDE") in muted colour */
+.proc-transition-fix {
+    font-size:  9px;
+    color:      var(--text-tertiary);
+    white-space: nowrap;
+}
+
+/* Point count */
+.proc-transition-pts {
+    font-size:   9px;
+    color:       var(--text-muted);
+    flex-shrink: 0;
+}
+/* Ã¢â€â‚¬Ã¢â€â‚¬ End Phase 12 accordion styles Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+
+/* The type badge — a small pill showing "SID", "STAR", etc. */
+.saved-proc-badge {
+    font-family: 'JetBrains Mono', monospace;
+    /* Phase 29 */
+    font-size: calc(9px * var(--ui-scale));
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 5px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+/* Info column — fills remaining space */
+.saved-proc-info {
+    flex: 1;
+    min-width: 0;
+}
+
+/* The procedure name in monospace */
+.saved-proc-name {
+    font-family: 'JetBrains Mono', monospace;
+    /* Phase 29 */
+    font-size: calc(12px * var(--ui-scale));
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Button cluster on the right side of each row */
+.saved-proc-actions {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+/* Base style for eye and delete buttons */
+.proc-action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 5px;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--text-muted);
+    transition: color 0.12s, background 0.12s;
+}
+.proc-action-btn:hover { background: var(--bg-secondary); color: var(--text-secondary); }
+
+/* The eye/toggle button — dims when the procedure is hidden */
+.proc-visibility-btn.proc-hidden { opacity: 0.35; }
+
+/* The edit button — blue on hover */
+.proc-edit-btn:hover { color: var(--color-sid) !important; background: rgba(59,158,255,0.1) !important; }
+
+/* The delete button — red on hover */
+.proc-delete-btn:hover { color: var(--color-danger) !important; background: rgba(255,77,77,0.1) !important; }
+
+/* Small sub-label line under the procedure name (airport Ã‚Â· runway) */
+.saved-proc-sub {
+    font-family: 'JetBrains Mono', monospace;
+    /* Phase 29 */
+    font-size: calc(9px * var(--ui-scale));
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* ================================================================
+   VIEW TAB SEARCH BAR
+   ================================================================ */
+
+.view-search-wrapper {
+    position: relative;
+    padding: 8px 8px 4px;
+}
+
+.view-search-input {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    padding: 7px 30px 7px 10px;
+    color: var(--text-primary);
+    /* Phase 29 */
+    font-size: calc(12px * var(--ui-scale));
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+.view-search-input:focus { border-color: var(--color-sid); }
+.view-search-input::placeholder { color: var(--text-muted); }
+
+
+/* ================================================================
+   BUILDER SAVED SECTION — header + list inside #builder-saved-list
+   ================================================================ */
+
+.builder-saved-section {
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+    padding-top: 0;
+}
+
+.builder-saved-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px 4px;
+}
+
+
+/* ================================================================
+   PROCEDURE FIX LABELS — Viewer mode permanent waypoint name labels
+   These are DivIcon markers added by renderSavedProcedure() so every
+   waypoint on a displayed procedure shows its name at all times.
+   They live inside the procedure's LayerGroup so Hide/Delete removes
+   them from the map at the same time as the polyline.
+   ================================================================ */
+
+.proc-fix-label {
+    /* Strip all default Leaflet DivIcon box styling */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    /* Lift the label above and slightly to the right of the waypoint's lat/lon anchor.
+       translateY(-100%) = move up by the label's own height (self-adaptive).
+       translateX(6px)   = small right offset so the text doesn't sit on the line. */
+    transform: translate(6px, -100%);
+    /* Readable text style matching the rest of the map overlay text */
+    font-family: 'JetBrains Mono', monospace !important;
+    color: var(--text-primary) !important;
+    text-shadow:
+        0 0 4px rgba(0, 0, 0, 0.95),
+        0 0 8px rgba(0, 0, 0, 0.8) !important;
+    white-space: nowrap !important;
+    /* Never block map clicks */
+    pointer-events: none !important;
+}
+
+
+/* ================================================================
+   AIRPORT ICONS — airplane DivIcon markers for the 15 SP airports
+   ================================================================ */
+
+/* The DivIcon wrapper — transparent, no border.
+   overflow:visible is critical: because we use iconSize:[0,0], Leaflet creates
+   a zero-size box at the anchor point.  The inner content overflows this box,
+   and the CSS transform below re-centres it over the anchor. */
+.airport-icon {
+    background: transparent !important;
+    border:     none !important;
+    box-shadow: none !important;
+    overflow:   visible !important;
+}
+
+/* Inner container: vertically stacks the plane glyph and ICAO label.
+   translate(-50%, -50%) shifts the mid-point of this element (plane + label
+   combined) to sit directly over the anchor lat/lon, so both glyph and label
+   are perfectly centred on the airport's map position.
+   opacity: 0.3 keeps Tier-1 airports visible but subordinate to procedure lines
+   so they do not clutter the map. Hover restores full opacity for interaction. */
+.airport-icon-inner {
+    display:        flex;
+    flex-direction: column;
+    align-items:    center;
+    gap:            1px;
+    cursor:         pointer;
+    white-space:    nowrap;
+    /* Phase 29: scale() appended so Symbol Size slider affects airport icons */
+    transform:      translate(-50%, -50%) scale(var(--map-symbol-scale));
+    opacity:        0.3;
+    transition:     opacity 0.15s;
+}
+
+/* The airplane glyph — white with a dark text-shadow for contrast */
+.airport-symbol {
+    font-size:   16px;
+    color:       rgba(255, 255, 255, 0.85);
+    line-height: 1;
+    text-shadow:
+        0 0 4px rgba(0, 0, 0, 0.95),
+        0 0 8px rgba(0, 0, 0, 0.8);
+    transition: color 0.15s, opacity 0.15s;
+}
+
+/* ICAO code label below the plane glyph — small, dim, monospace */
+.airport-label {
+    font-family:     'JetBrains Mono', monospace;
+    /* Phase 28: drives from --map-label-scale; default 1.0 keeps 8px base */
+    font-size:       calc(8px * var(--map-label-scale));
+    font-weight:     700;
+    letter-spacing:  0.06em;
+    color:           rgba(180, 210, 255, 0.65);
+    text-shadow:
+        0 0 3px rgba(0, 0, 0, 1),
+        0 0 6px rgba(0, 0, 0, 0.9);
+    white-space:     nowrap;
+}
+
+/* Restore full opacity on hover so the icon is clearly legible when the user interacts with it. */
+.airport-icon-inner:hover {
+    opacity: 1;
+}
+.airport-icon-inner:hover .airport-symbol { color: rgba(255, 255, 255, 1); }
+.airport-icon-inner:hover .airport-label  { color: rgba(200, 230, 255, 0.9); }
+
+
+/* ================================================================
+   Regional Airport icons (Tier 2) — smaller, muted amber airplane.
+   OFF by default; the user enables via the layer control.
+   Same zero-size anchor trick as major airports — overflow:visible
+   allows the inner content to extend past the zero-size Leaflet box.
+   ================================================================ */
+
+.airport-icon-regional {
+    background: transparent !important;
+    border:     none        !important;
+    box-shadow: none        !important;
+    overflow:   visible     !important;
+}
+
+/* Stacks a small amber plane glyph above a tiny ICAO label, centred on the anchor.
+   opacity: 0.3 keeps Tier-2 airports dim so they do not crowd the map.
+   Hover restores full opacity for interaction. */
+.airport-icon-inner-regional {
+    display:        flex;
+    flex-direction: column;
+    align-items:    center;
+    gap:            1px;
+    cursor:         pointer;
+    white-space:    nowrap;
+    /* Phase 29: scale() appended so Symbol Size slider affects regional airport icons */
+    transform:      translate(-50%, -50%) scale(var(--map-symbol-scale));
+    opacity:        0.3;
+    transition:     opacity 0.15s;
+}
+
+/* Smaller, muted amber plane — visually subordinate to Tier 1 major airports. */
+.airport-symbol-regional {
+    font-size:   11px;
+    color:       rgba(190, 155, 70, 0.60);
+    line-height: 1;
+    text-shadow:
+        0 0 4px rgba(0, 0, 0, 0.95),
+        0 0 8px rgba(0, 0, 0, 0.80);
+    transition:  color 0.15s;
+}
+
+/* Dimmer, smaller ICAO label for regional airports. */
+.airport-label-regional {
+    font-family:    'JetBrains Mono', monospace;
+    /* Phase 28: drives from --map-label-scale; default 1.0 keeps 7px base */
+    font-size:      calc(7px * var(--map-label-scale));
+    font-weight:    600;
+    letter-spacing: 0.04em;
+    color:          rgba(165, 130, 60, 0.45);
+    text-shadow:
+        0 0 3px rgba(0, 0, 0, 1),
+        0 0 6px rgba(0, 0, 0, 0.90);
+    white-space:    nowrap;
+}
+
+/* Restore full opacity on hover so the icon is clearly legible. */
+.airport-icon-inner-regional:hover {
+    opacity: 1;
+}
+.airport-icon-inner-regional:hover .airport-symbol-regional { color: rgba(230, 185, 80, 0.90); }
+.airport-icon-inner-regional:hover .airport-label-regional  { color: rgba(205, 160, 70, 0.80); }
+
+
+/* ================================================================
+   Heliport icons (Tier 3) — small green circle with 'H' inside.
+   OFF by default; the user enables via the layer control.
+   The circle is centred on the anchor via translate(-50%,-50%).
+   ================================================================ */
+
+.heliport-icon {
+    background: transparent !important;
+    border:     none        !important;
+    box-shadow: none        !important;
+    overflow:   visible     !important;
+}
+
+/* Green ring with an 'H' centred inside — matches standard heliport chart symbol. */
+.heliport-icon-inner {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    width:           13px;
+    height:          13px;
+    background:      rgba(0, 200, 100, 0.14);
+    border:          1.5px solid rgba(0, 200, 100, 0.60);
+    border-radius:   50%;
+    transform:       translate(-50%, -50%);
+    cursor:          pointer;
+    transition:      background 0.15s, border-color 0.15s;
+}
+
+/* The 'H' letter — bold, green, with a dark shadow for map contrast. */
+.heliport-symbol {
+    font-size:   7px;
+    font-weight: 800;
+    color:       rgba(0, 215, 110, 0.80);
+    line-height: 1;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.90);
+}
+
+/* Brighter ring and letter on hover. */
+.heliport-icon-inner:hover {
+    background:   rgba(0, 200, 100, 0.26);
+    border-color: rgba(0, 200, 100, 0.90);
+}
+.heliport-icon-inner:hover .heliport-symbol { color: rgba(0, 235, 120, 1); }
+
+
+/* ================================================================
+   CONTEXT MENU — right-click menu on in-sequence fixes (Builder)
+   ================================================================ */
+
+/* The floating menu container — positioned by JS at the cursor location */
+.map-context-menu {
+    position:   fixed;
+    background: var(--bg-secondary);
+    border:     1px solid var(--border-bright);
+    border-radius: 6px;
+    padding:    4px 0;
+    z-index:    9000;
+    min-width:  170px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.65),
+                0 0 0 1px rgba(59, 158, 255, 0.08);
+    font-family: 'Inter', sans-serif;
+    font-size:  12px;
+    animation:  ctx-menu-in 0.1s ease;
+}
+
+@keyframes ctx-menu-in {
+    from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+/* A single menu item row */
+.map-context-menu-item {
+    padding:    8px 14px;
+    cursor:     pointer;
+    color:      var(--text-secondary);
+    transition: background 0.1s, color 0.1s;
+    user-select: none;
+}
+.map-context-menu-item:hover {
+    background: var(--bg-tertiary);
+    color:      var(--text-primary);
+}
+
+/* Danger (Remove) variant — red tint on hover */
+.map-context-menu-item.danger:hover {
+    background: rgba(255, 77, 77, 0.1);
+    color:      var(--color-danger);
+}
+
+/* Transition (Add Branch) variant — blue accent on hover */
+.map-context-menu-item.transition-add:hover {
+    background: rgba(59, 158, 255, 0.1);
+    color:      var(--color-accent);
+}
+
+/* Thin horizontal divider between menu sections */
+.map-context-menu-separator {
+    height:     1px;
+    background: var(--border);
+    margin:     3px 0;
+}
+
+
+/* ================================================================
+   DROP CUSTOM POINT TOGGLE — toggle button in the Drawing Panel
+   ================================================================ */
+
+/* Wrapper row that adds padding and a bottom border (separates from hints below) */
+.drop-point-section {
+    padding:       0 16px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* The toggle button itself — styled like a secondary action with a color indicator */
+.drop-point-btn {
+    display:        flex;
+    align-items:    center;
+    gap:            8px;
+    width:          100%;
+    padding:        8px 10px;
+    background:     var(--bg-tertiary);
+    border:         1px solid var(--border-bright);
+    border-radius:  5px;
+    color:          var(--text-secondary);
+    font-size:      12px;
+    font-family:    'JetBrains Mono', monospace;
+    letter-spacing: 0.03em;
+    cursor:         pointer;
+    transition:     border-color 0.15s, color 0.15s, background 0.15s;
+}
+.drop-point-btn:hover {
+    border-color: var(--color-iac);
+    color:        var(--color-iac);
+}
+
+/* Active (toggled-on) state — filled background to make it obvious the mode is on */
+.drop-point-btn.active {
+    background:   rgba(77, 219, 141, 0.1);
+    border-color: var(--color-iac);
+    color:        var(--color-iac);
+}
+
+/* Small colored dot acting as a visual status indicator inside the button */
+.drop-point-dot {
+    width:        8px;
+    height:       8px;
+    border-radius: 50%;
+    background:   currentColor;
+    flex-shrink:  0;
+    opacity:      0.7;
+    transition:   opacity 0.15s;
+}
+.drop-point-btn.active .drop-point-dot { opacity: 1; }
+
+
+/* ================================================================
+   PHASE 8.2 — HOLDING PATTERN MODAL STYLES
+   Styles for the new "Holding Point" section added to the restriction
+   modal. The section is compact by default; the bearing/side fields
+   expand only when the checkbox is checked.
+   ================================================================ */
+
+/* Wrapper for the holding section — a subtle top border separates it from
+   the speed restriction above, making the modal feel visually organised. */
+.modal-holding-group {
+    margin-top:  10px;
+    padding-top: 10px;
+    border-top:  1px solid rgba(255,255,255,0.07);
+}
+
+/* Row that contains the "Holding Point" label + checkbox together. */
+.modal-holding-checkbox-label {
+    display:     flex;
+    align-items: center;
+    gap:         8px;
+    cursor:      pointer;
+    font-size:   12px;
+    color:       var(--text-primary);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+/* Style the checkbox so it sits on the dark background cleanly. */
+.modal-holding-chk {
+    width:  14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: var(--color-iac);  /* matches the "green" IAC / add-point color */
+}
+
+/* Container for the bearing + side-of-turn fields.
+   display is toggled by JS between 'none' and 'block'. */
+.modal-holding-fields {
+    margin-top: 8px;
+}
+
+/* Each input row inside the holding fields section. */
+.modal-holding-row {
+    display:         flex;
+    align-items:     center;
+    gap:             8px;
+    margin-bottom:   6px;
+}
+
+/* Small label (e.g. "Inbound Bearing") sitting to the left of each input. */
+.modal-sublabel {
+    font-size:   11px;
+    color:       var(--text-muted);
+    white-space: nowrap;
+    min-width:   100px;
+}
+
+/* Number input for the bearing — sized to match the select beside it. */
+.modal-holding-input {
+    flex:            1;
+    height:          30px;
+    padding:         0 8px;
+    background:      var(--bg-tertiary);
+    border:          1px solid var(--border);
+    border-radius:   4px;
+    color:           var(--text-primary);
+    font-family:     'JetBrains Mono', monospace;
+    font-size:       12px;
+}
+.modal-holding-input::placeholder {
+    color:   var(--text-muted);
+    opacity: 0.6;
+}
+.modal-holding-input:focus {
+    outline:      none;
+    border-color: var(--color-iac);
+}
+
+/* The LEFT/RIGHT select uses the same size as other modal selects. */
+.modal-holding-select {
+    flex: 1;
+}
+
+
+/* ================================================================
+   PHASE 8.2 — HOLDING BADGE MAP MARKERS
+   The "H" badge appears on the map next to each holding-designated
+   waypoint. It uses a DivIcon with iconSize [0,0] + CSS transform
+   so it is anchored precisely at the waypoint's lat/lon.
+   ================================================================ */
+
+/* Outer wrapper — zero-size anchor point, no Leaflet default background. */
+.holding-badge-marker {
+    background: transparent !important;
+    border:     none        !important;
+}
+
+/* The visible badge content: an "H" glyph + bearing/side text. */
+.holding-badge-inner {
+    display:          flex;
+    flex-direction:   column;
+    align-items:      center;
+    transform:        translate(8px, -42px);  /* offset right and above the fix circle */
+    pointer-events:   none;
+}
+
+/* Large "H" character — the primary visual indicator. */
+.holding-badge-h {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    14px;
+    font-weight:  800;
+    line-height:  1;
+    /* color is injected inline by updateHoldingMarkers() to match procedure color */
+    text-shadow:  0 0 8px currentColor;
+}
+
+/* Small text showing bearingÃ‚Â° SIDE below the H. */
+.holding-badge-info {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    9px;
+    font-weight:  600;
+    color:        rgba(255, 255, 255, 0.80);
+    text-shadow:  0 1px 3px rgba(0,0,0,0.8);
+    letter-spacing: 0.03em;
+    white-space:  nowrap;
+    margin-top:   2px;
+}
+
+/* Holding info line inside fix labels (builder sequence + saved procedure labels).
+   Shown below the ident and restriction lines, styled in amber to match ATC
+   chart conventions for holding pattern annotations. */
+.fix-label-holding {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    9px;
+    font-weight:  700;
+    color:        #ffb547;    /* STAR amber — standard holding annotation color */
+    text-shadow:  0 0 6px rgba(255,181,71,0.6);
+    margin-top:   2px;
+    white-space:  nowrap;
+}
+
+
+/* ================================================================
+   PHASE 8.4 — DRAGGABLE CUSTOM POINT MARKERS
+   Custom coordinate points (dropped by free-draw or the "Drop Custom
+   Point" toggle) are shown as draggable diamond markers in the
+   procedure's color. The cursor changes to a grab hand to signal
+   that they can be moved.
+   ================================================================ */
+
+/* Outer DivIcon wrapper — zero-size, transparent background. */
+.draggable-custom-marker {
+    background: transparent !important;
+    border:     none        !important;
+    cursor:     grab;
+}
+
+/* The visible diamond element centered on the lat/lon via transform. */
+.draggable-custom-marker-inner {
+    display:          flex;
+    align-items:      center;
+    justify-content:  center;
+    width:            18px;
+    height:           18px;
+    transform:        translate(-50%, -50%);
+    border-radius:    3px;
+    border:           2px solid;   /* color injected inline to match the procedure */
+    background:       rgba(0, 0, 0, 0.55);
+    backdrop-filter:  blur(2px);
+    box-shadow:       0 0 8px rgba(0,0,0,0.6), 0 0 4px currentColor;
+    transition:       transform 0.08s;
+    pointer-events:   auto;
+    cursor:           grab;
+}
+
+.draggable-custom-marker-inner:hover {
+    transform: translate(-50%, -50%) scale(1.25);
+}
+
+.draggable-custom-marker-inner:active {
+    cursor:    grabbing;
+    transform: translate(-50%, -50%) scale(1.15);
+}
+
+/* The diamond glyph inside the marker. */
+.draggable-diamond {
+    font-size:   11px;
+    line-height: 1;
+    /* color injected inline to match the procedure */
+    pointer-events: none;
+    user-select:    none;
+}
+
+
+/* ================================================================
+   PHASE 8.5.6 — MAGNETIC COMPASS ROSE OVERLAY
+   A fixed SVG overlay in the bottom-right corner of the map that
+   permanently displays the relationship between True North (TN, the
+   map tile orientation) and Magnetic North (MN, ~22°W declination
+   for São Paulo TMA). Never intercepts map clicks.
+   ================================================================ */
+
+/* The container is positioned over the map (absolute, not a Leaflet layer).
+   z-index 800 keeps it below modals (9999) and context menus (9000) but above
+   the standard Leaflet tile layers. pointer-events:none lets all clicks through
+   so the rose never interferes with map interaction. */
+.compass-rose {
+    position:       absolute;
+    bottom:         36px;         /* sit just above Leaflet's attribution strip */
+    right:          12px;
+    z-index:        800;
+    pointer-events: none;
+    /* Multi-layer shadow makes the disc readable over any tile colour */
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.70))
+            drop-shadow(0 0 4px rgba(0, 0, 0, 0.90));
+    /* Gentle fade-in so the rose doesn't flash on first load */
+    animation: rose-fade-in 0.6s ease 0.3s both;
+}
+
+@keyframes rose-fade-in {
+    from { opacity: 0; transform: scale(0.88); }
+    to   { opacity: 1; transform: scale(1);    }
+}
+
+
+/* ================================================================
+   PHASE 9.5 — FLOATING MAP TOOLBAR
+   A fixed-position column of icon buttons on the right edge of the
+   map, sitting just below Leaflet's built-in zoom controls. Each
+   button shows a detailed CSS-only tooltip that slides in to the
+   LEFT on hover (so it never clips off the screen edge).
+   ================================================================ */
+
+/* The toolbar container — fixed over the map, right edge. */
+.map-toolbar {
+    position:       fixed;
+    right:          10px;
+    top:            130px;      /* below Leaflet's zoom control block (~76px + gap) */
+    z-index:        800;
+    display:        flex;
+    flex-direction: column;
+    gap:            5px;
+    
+    /* Phase 38 Fix: Toolbar must allow overflow to show tooltips and sub-panels.
+       Scrolling is handled by the inner .map-toolbar-scroll-wrapper. */
+    overflow:       visible;
+}
+
+/* Inner wrapper that handles scrolling for the tool buttons. */
+.map-toolbar-scroll-wrapper {
+    display:        flex;
+    flex-direction: column;
+    align-items:    flex-end;
+    gap:            5px;
+    width:          300px;         /* Wide enough to hold tooltips (215px) + buttons (36px) */
+    padding-left:   240px;         /* Provides space for tooltips to "live" inside the scroll container */
+    margin-left:    -240px;        /* Offsets the padding to keep buttons on the right edge */
+    
+    /* Reserve space for the scrollbar to prevent buttons from jumping */
+    padding-right:  12px; 
+    scrollbar-gutter: stable;
+    
+    overflow-x:     visible;
+    overflow-y:     hidden;        /* Default state */
+    
+    pointer-events: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* Phase 38 Fix: Invisible hit-zone that allows scrolling over the button column.
+   This ensures scrolling works in the gaps between buttons, not just on the buttons themselves. */
+.map-toolbar-scroll-wrapper::after {
+    content:        "";
+    position:       absolute;
+    top:            0;
+    right:          -10px;         /* Match the toolbar's right offset to cover the edge */
+    width:          60px;          /* Width of the interactive hit-zone (button + padding) */
+    height:         100%;
+    pointer-events: auto;
+    z-index:        -1;            /* Sit behind the buttons but within the scroll container */
+}
+
+.map-toolbar-scroll-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+/* Restore interaction for buttons and separators */
+.map-toolbar-scroll-wrapper > * {
+    pointer-events: auto;
+}
+
+/* Mobile/Small screen scrollability logic moved to the inner wrapper */
+@media (max-height: 850px) {
+    .map-toolbar-scroll-wrapper {
+        max-height:     calc(100vh - 150px);
+        overflow-y:     auto;
+        padding-bottom: 20px;
+    }
+
+    .map-toolbar-scroll-wrapper:hover {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    }
+
+    .map-toolbar-scroll-wrapper:hover::-webkit-scrollbar {
+        display: block;
+        width: 3px;
+    }
+
+    .map-toolbar-scroll-wrapper::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .map-toolbar-scroll-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 3px;
+    }
+}
+
+/* Phase 24: Toolbar Category Separators 
+   Thin horizontal lines that visually separate tool groups.
+   Uses a gradient to fade out at the edges for a premium look. */
+.toolbar-separator {
+    height: 1px;
+    width: 24px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    margin: 12px auto 8px;
+    flex-shrink: 0;
+}
+
+/* Subtle category labels for visual grouping
+   Tiny, bold, uppercase labels (e.g., DRAW, DATA) that sit above each group.
+   Styled in bright white with 80% opacity for clear readability. */
+.toolbar-category-label {
+    font-family: 'JetBrains Mono', monospace;
+    /* Phase 29 */
+    font-size: calc(8px * var(--ui-scale));
+    font-weight: 700;
+    color: #ffffff;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 2px 0 3px;
+    user-select: none;
+    opacity: 1; 
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
+/* A single square icon button. */
+.map-tool-btn {
+    position:       relative;   /* establishes context for the tooltip */
+    width:          36px;
+    height:         36px;
+    background:     rgba(10, 18, 28, 0.82);
+    border:         1px solid rgba(255, 255, 255, 0.12);
+    border-radius:  6px;
+    color:          var(--text-muted);
+    cursor:         pointer;
+    display:        flex;
+    align-items:    center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+    padding:        0;
+    transition:     border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
+    flex-shrink:    0;
+}
+
+.map-tool-btn:hover {
+    border-color: #00d4ff;
+    color:        #00d4ff;
+    background:   rgba(0, 212, 255, 0.08);
+}
+
+/* Active state — panel is currently open (Cyan). */
+.map-tool-btn.active {
+    background:   rgba(0, 212, 255, 0.12);
+    border-color: #00d4ff;
+    color:        #00d4ff;
+    box-shadow:   0 0 0 2px rgba(0, 212, 255, 0.22),
+                  inset 0 0 10px rgba(0, 212, 255, 0.10);
+}
+
+/* Mode active state — tool is currently armed and map clicks are being captured (Violet).
+   Takes precedence over the panel-open state to signal operational mode. */
+.map-tool-btn.mode-active {
+    background:   rgba(199, 125, 255, 0.15) !important;
+    border-color: #c77dff !important;
+    color:        #c77dff !important;
+    box-shadow:   0 0 0 2px rgba(199, 125, 255, 0.25),
+                  inset 0 0 10px rgba(199, 125, 255, 0.12) !important;
+}
+
+/* Tooltip panel — hidden by default, slides in to the left on hover. */
+.map-tool-tooltip {
+    position:       absolute;
+    right:          calc(100% + 10px);  /* positions the panel LEFT of the button */
+    top:            50%;
+    /* Two transforms combined: vertical centre + subtle horizontal slide-in.
+       The X component transitions from +4px (hidden) to 0 (visible). */
+    transform:      translateY(-50%) translateX(4px);
+    background:     rgba(7, 14, 24, 0.98);
+    border:         1px solid rgba(255, 255, 255, 0.14);
+    border-radius:  7px;
+    padding:        10px 13px;
+    width:          215px;
+    box-shadow:     0 4px 20px rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    opacity:        0;
+    pointer-events: none;
+    transition:     opacity 0.15s, transform 0.15s;
+    white-space:    nowrap;
+}
+
+/* Show the tooltip when the button is hovered. */
+.map-tool-btn:hover .map-tool-tooltip {
+    opacity:   1;
+    transform: translateY(-50%) translateX(0);
+}
+
+/* Tooltip title — bold, slightly brighter. */
+.tooltip-title {
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      11px;
+    font-weight:    700;
+    color:          var(--text-primary);
+    letter-spacing: 0.04em;
+    margin-bottom:  5px;
+}
+
+/* Tooltip description body — wraps naturally. */
+.tooltip-body {
+    font-size:     11px;
+    color:         var(--text-secondary);
+    line-height:   1.5;
+    white-space:   normal;
+    margin-bottom: 8px;
+}
+
+/* Keyboard shortcut list container. */
+.tooltip-shortcuts {
+    display:        flex;
+    flex-direction: column;
+    gap:            4px;
+    border-top:     1px solid rgba(255, 255, 255, 0.08);
+    padding-top:    7px;
+}
+
+/* A single key + description row. */
+.tooltip-shortcut-row {
+    display:     flex;
+    align-items: center;
+    gap:         7px;
+    font-size:   11px;
+    color:       var(--text-muted);
+}
+
+/* The <kbd> key badge. */
+kbd {
+    display:         inline-flex;
+    align-items:     center;
+    justify-content: center;
+    min-width:       20px;
+    height:          18px;
+    padding:         0 5px;
+    background:      rgba(255, 255, 255, 0.08);
+    border:          1px solid rgba(255, 255, 255, 0.18);
+    border-radius:   3px;
+    font-family:     'JetBrains Mono', monospace;
+    font-size:       10px;
+    font-weight:     700;
+    color:           var(--text-primary);
+    letter-spacing:  0.05em;
+    flex-shrink:     0;
+}
+
+
+/* ================================================================
+   PHASE 9 — MEASURING VECTOR LIVE TELEMETRY LABEL
+   A fixed-position DOM element that follows the cursor while the
+   user is drawing a vector (between click 1 and click 2). Shows
+   live distance (NM) and magnetic bearing. Positioned by JS via
+   element.style.left / .top on every mousemove event.
+   ================================================================ */
+
+.mv-telemetry-label {
+    position:     fixed;
+    z-index:      9500;        /* above everything except modals */
+    pointer-events: none;      /* must never intercept map clicks */
+    display:      flex;
+    align-items:  center;
+    gap:          4px;
+    padding:      5px 10px;
+    background:   rgba(5, 14, 24, 0.82);
+    border:       1px solid rgba(255, 152, 0, 0.45);
+    border-radius: 5px;
+    backdrop-filter: blur(4px);
+    box-shadow:   0 2px 12px rgba(0, 0, 0, 0.65),
+                  0 0 0 1px rgba(255, 152, 0, 0.12);
+    white-space:  nowrap;
+}
+
+/* Distance value — larger, brighter. */
+.mv-tel-dist {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    12px;
+    font-weight:  700;
+    color:        #ff9800;
+    letter-spacing: 0.04em;
+}
+
+/* Separator dot between distance and bearing. */
+.mv-tel-sep {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    11px;
+    color:        rgba(255, 152, 0, 0.45);
+}
+
+/* Bearing value — same style as distance for visual consistency. */
+.mv-tel-brg {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    12px;
+    font-weight:  700;
+    color:        #ff9800;
+    letter-spacing: 0.04em;
+}
+
+/* ETA value — shown in green when the vector endpoint is snapped to a live aircraft.
+   Color chosen to be immediately distinct from the orange dist/bearing values. */
+.mv-tel-snap {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    12px;
+    font-weight:  700;
+    color:        #22c55e;
+    letter-spacing: 0.04em;
+}
+
+
+/* ================================================================
+   PHASE 9 — MEASURING VECTOR PERMANENT MIDPOINT LABEL
+   The Leaflet DivIcon marker placed at the midpoint of each
+   finalized vector. Shows the fixed distance + bearing text.
+   Uses the same floating-text technique as .seg-measurement-label
+   but with the cyan MV color palette.
+   ================================================================ */
+
+/* Wrapper — zero size, no Leaflet background, pointer-events pass through. */
+/* Wrapper — zero-size Leaflet anchor, no background, interactive for right-click. */
+.mv-measurement-label {
+    background:     none !important;
+    border:         none !important;
+    box-shadow:     none !important;
+    pointer-events: auto !important;
+    white-space:    nowrap;
+    cursor:         pointer;
+}
+
+/* Inner container: stacks the three label lines vertically with a left accent bar. */
+.mv-lbl-inner {
+    display:         flex;
+    flex-direction:  column;
+    gap:             1px;
+    padding:         3px 8px 3px 6px;
+    background:      rgba(30, 15, 0, 0.65);
+    border-radius:   4px;
+    border-left:     2px solid rgba(255, 152, 0, 0.65);
+}
+
+.mv-measurement-label:hover .mv-lbl-inner {
+    background:  rgba(50, 30, 0, 0.80);
+    box-shadow:  0 0 8px rgba(255, 152, 0, 0.25);
+}
+
+/* Shared monospace base for all three lines. */
+.mv-lbl-inner span {
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      calc(9px * var(--map-label-scale, 1));
+    letter-spacing: 0.03em;
+    text-shadow:
+        0 0 4px rgba(0, 0, 0, 1),
+        0 0 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Line 1: Distance — brightest and slightly larger. */
+.mv-lbl-dist {                           
+    font-size:   calc(10px * var(--map-label-scale, 1)) !important;
+    font-weight: 700;
+    color:       rgba(255, 152, 0, 0.95);
+}            
+                     
+/* Line 2: Bearing — dimmer amber. */      
+.mv-lbl-brg {
+    font-weight: 600;
+    color:       rgba(255, 200, 100, 0.82);                                
+}            
+                     
+/* Line 3: ETA — green to visually separate timing from geometry values. */
+.mv-lbl-eta {
+    font-weight: 600;
+    color:       rgba(74, 222, 128, 0.90);
+}
+
+/* PHASE 33 — AIRCRAFT LABEL 4TH LINE (TRACK) */
+.ac-trk {
+    color: #60a5fa !important;  /* soft blue for track */
+}
+
+
+
+
+/* ================================================================
+   PHASE 9 — MEASURING VECTOR RIGHT-CLICK CONTEXT MENU
+   A small floating DOM popup that appears when the user right-clicks
+   a finalized measuring vector line or its midpoint label. Provides
+   "Delete Vector" and "Clear All Vectors" options.
+   Separate from the waypoint context menu in MapLayers so the two
+   systems have no coupling.
+   ================================================================ */
+
+/* The floating menu container — positioned by JS at the cursor. */
+.mv-context-menu {
+    position:      fixed;
+    background:    var(--bg-secondary);
+    border:        1px solid rgba(255, 152, 0, 0.35);
+    border-radius: 6px;
+    padding:       4px 0;
+    z-index:       9000;
+    min-width:     180px;
+    box-shadow:    0 4px 20px rgba(0, 0, 0, 0.65),
+                   0 0 0 1px rgba(255, 152, 0, 0.08);
+    font-family:   'Inter', sans-serif;
+    /* Phase 29 */
+    font-size:     calc(12px * var(--ui-scale));
+    animation:     mv-ctx-in 0.1s ease;
+}
+
+@keyframes mv-ctx-in {
+    from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+/* A single menu item row. */
+.mv-ctx-item {
+    padding:     8px 14px;
+    cursor:      pointer;
+    color:       var(--text-secondary);
+    transition:  background 0.1s, color 0.1s;
+    user-select: none;
+}
+
+.mv-ctx-item:hover {
+    background: var(--bg-tertiary);
+    color:      var(--text-primary);
+}
+
+/* "Clear All Vectors" variant — red tint on hover to signal a destructive action. */
+.mv-ctx-item.danger:hover {
+    background: rgba(255, 77, 77, 0.1);
+    color:      var(--color-danger);
+}
+
+/* Thin horizontal divider between menu sections. */
+.mv-ctx-separator {
+    height:     1px;
+    background: var(--border);
+    margin:     3px 0;
+}
+
+
+/* Ephemeral Draw shape context menu — same structure as .mv-context-menu
+   but with a violet border to match the draw tool's color palette. */
+.ed-context-menu {
+    border-color: rgba(199, 125, 255, 0.40) !important;
+    box-shadow:   0 4px 20px rgba(0, 0, 0, 0.65),
+                  0 0 0 1px rgba(199, 125, 255, 0.10) !important;
+}
+
+
+/* ================================================================
+   PHASE 9.6 — NAVAID MARKERS
+   DivIcon wrapper for VOR (blue hexagon) and NDB (magenta circle)
+   markers rendered by MapLayers.renderNavaids(). The SVG handles
+   all visible appearance; the wrapper just strips Leaflet defaults.
+   ================================================================ */
+
+/* Outer DivIcon wrapper — zero size, no Leaflet default styling. */
+.navaid-icon {
+    background: transparent !important;
+    border:     none        !important;
+    box-shadow: none        !important;
+    overflow:   visible     !important;
+}
+
+/* Phase 29: Symbol Size slider scales navaid SVGs.
+   !important overrides the inline style="transform:translate(-50%,-50%)" on each SVG. */
+.navaid-icon svg {
+    transform: scale(var(--map-symbol-scale)) !important;
+}
+
+/* ── Navaid Inner Wrapper & Label (Merged Hitbox) ── */
+.navaid-icon-inner {
+    position: absolute;
+    top: 0; left: 0;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    pointer-events: auto; /* allow the whole div to trigger hover/clicks */
+}
+
+/* Permanent ident labels for NAVAID markers inside the divIcon. */
+.navaid-label-inline {
+    background:     transparent;
+    border:         none;
+    box-shadow:     none;
+    padding:        1px 3px;
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      9px;
+    font-weight:    700;
+    letter-spacing: 0.06em;
+    white-space:    nowrap;
+    text-shadow:
+        0 0 3px rgba(0, 0, 0, 1),
+        0 0 6px rgba(0, 0, 0, 0.9);
+    margin-bottom:  2px;
+    transition:     color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.navaid-label-inline--vor { color: #46a0ff; }
+.navaid-label-inline--ndb { color: #ff5abe; }
+
+/* ── Navaid Hover Effects ── */
+.navaid-icon-inner:hover .navaid-label-inline--vor {
+    color: #9bd0ff;
+    text-shadow: 0 0 8px rgba(155, 208, 255, 0.5);
+}
+.navaid-icon-inner:hover .navaid-label-inline--ndb {
+    color: #ffb1df;
+    text-shadow: 0 0 8px rgba(255, 177, 223, 0.5);
+}
+.navaid-icon-inner:hover svg circle[fill="#46a0ff"],
+.navaid-icon-inner:hover svg circle[fill="#ff5abe"] {
+    fill: #ffffff; /* Make the centre dot glow white on hover */
+}
+.navaid-icon-inner:hover svg polygon {
+    stroke: #9bd0ff !important;
+}
+.navaid-icon-inner:hover svg circle[stroke="#ff5abe"] {
+    stroke: #ffb1df !important;
+}
+
+/* ================================================================
+   FIX MARKER HOVER
+   ================================================================ */
+.fix-marker-svg {
+    transition: stroke 0.2s ease, fill 0.2s ease, fill-opacity 0.2s ease, stroke-width 0.2s ease;
+}
+.fix-marker-svg:hover {
+    stroke: #ffffff !important;
+    fill: #ffffff !important;
+    fill-opacity: 1 !important;
+    stroke-width: 2px !important;
+}
+
+
+/* ================================================================
+   PHASE 9.6 — LEAFLET LAYER CONTROL (DARK THEME)
+   Override Leaflet's default white layer control box so it matches
+   the dark aviation aesthetic of the rest of the application.
+   ================================================================ */
+
+/* The toggle icon that shows/hides the layer list. */
+.leaflet-control-layers-toggle {
+    background-color: rgba(10, 18, 28, 0.82) !important;
+    border:           1px solid rgba(255, 255, 255, 0.12) !important;
+    backdrop-filter:  blur(6px);
+    border-radius:    6px !important;
+    width:            36px !important;
+    height:           36px !important;
+    /* Leaflet uses a background-image (layers icon) for this element.
+       We tint it to match our colour scheme using the invert filter. */
+    filter: invert(0.75) sepia(0.1);
+}
+.leaflet-control-layers-toggle:hover {
+    border-color: rgba(255, 255, 255, 0.28) !important;
+}
+
+/* The expanded panel that appears when the icon is clicked. */
+.leaflet-control-layers-expanded {
+    background:     rgba(10, 18, 28, 0.88) !important;
+    border:         1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius:  6px !important;
+    backdrop-filter: blur(8px) !important;
+    box-shadow:     0 4px 20px rgba(0, 0, 0, 0.6) !important;
+    padding:        8px 12px !important;
+    color:          var(--text-secondary) !important;
+    font-family:    'JetBrains Mono', monospace !important;
+    font-size:      11px !important;
+}
+
+/* Each overlay label row. */
+.leaflet-control-layers-overlays label {
+    display:     flex;
+    align-items: center;
+    gap:         7px;
+    cursor:      pointer;
+    padding:     3px 0;
+    color:       var(--text-secondary) !important;
+    transition:  color 0.12s;
+}
+.leaflet-control-layers-overlays label:hover {
+    color: var(--text-primary) !important;
+}
+
+/* Style the checkbox using the accent color so it glows cyan when checked. */
+.leaflet-control-layers-selector {
+    accent-color: #46a0ff;
+    width:        13px;
+    height:       13px;
+    cursor:       pointer;
+}
+
+
+/* ================================================================
+   PHASE 9.7 — DATA CURRENCY WARNING SYSTEM
+   Styles for the data status badge in the sidebar header and the
+   full-screen startup modal that shows staleness status for each
+   data source. Traffic-light colour coding: green/amber/red.
+   ================================================================ */
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Sidebar header layout Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* Wraps the AeroProc title and the data status badge on the same line. */
+.sidebar-header-title-row {
+    display:     flex;
+    align-items: center;
+    gap:         6px;
+    margin-bottom: 4px;
+}
+
+/* Override the original h2 margin-bottom since .sidebar-header-title-row
+   now handles spacing between the title row and the subtitle span. */
+.sidebar-header-title-row h2 {
+    margin-bottom: 0;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Data status badge button Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* A small circular button sitting inline with the app title.
+   Color changes to reflect the worst data freshness status. */
+.data-status-badge {
+    display:         inline-flex;
+    align-items:     center;
+    justify-content: center;
+    width:           20px;
+    height:          20px;
+    border-radius:   50%;
+    border:          1px solid rgba(255,255,255,0.18);
+    background:      rgba(255,255,255,0.07);
+    cursor:          pointer;
+    font-size:       11px;
+    line-height:     1;
+    padding:         0;
+    flex-shrink:     0;
+    transition:      background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.data-status-badge:hover {
+    background: rgba(255,255,255,0.14);
+}
+
+/* Ã°Å¸Å¸Â¢ All sources current */
+.data-status-ok {
+    color:        #4ddb8d;
+    border-color: rgba(77, 219, 141, 0.45);
+}
+.data-status-ok:hover {
+    box-shadow: 0 0 8px rgba(77, 219, 141, 0.4);
+}
+
+/* Ã°Å¸Å¸Â¡ Any source outdated */
+.data-status-outdated {
+    color:        #ffb547;
+    border-color: rgba(255, 181, 71, 0.5);
+}
+.data-status-outdated:hover {
+    box-shadow: 0 0 8px rgba(255, 181, 71, 0.45);
+}
+
+/* Ã°Å¸â€Â´ Any source stale (AIRAC-critical) */
+.data-status-stale {
+    color:        #ff5a5a;
+    border-color: rgba(255, 90, 90, 0.55);
+    /* Pulsing glow to draw attention to a critical data issue */
+    animation:    badge-pulse 2.2s ease-in-out infinite;
+}
+@keyframes badge-pulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(255, 90, 90, 0.35); }
+    50%       { box-shadow: 0 0 10px rgba(255, 90, 90, 0.70); }
+}
+
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Data Status Modal overlay Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* Full-screen darkened backdrop with blur. Hidden via .ds-hidden. */
+.ds-modal-overlay {
+    position:        fixed;
+    inset:           0;
+    background:      rgba(3, 8, 16, 0.78);
+    backdrop-filter: blur(4px);
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    z-index:         9999;
+    padding:         20px;
+    animation:       ds-fade-in 0.18s ease;
+}
+
+@keyframes ds-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Hidden state — toggled by JS to show/hide the modal. */
+.ds-modal-overlay.ds-hidden {
+    display: none;
+}
+
+/* The centered dialog card */
+.ds-modal-box {
+    position:     relative;
+    background:   var(--bg-secondary);
+    border:       1px solid var(--border-bright);
+    border-radius: 10px;
+    width:        100%;
+    max-width:    640px;
+    max-height:   80vh;
+    display:      flex;
+    flex-direction: column;
+    box-shadow:   0 8px 40px rgba(0,0,0,0.7),
+                  0 0 0 1px rgba(59,158,255,0.08);
+    overflow:     hidden;
+    animation:    ds-modal-in 0.2s ease;
+}
+
+@keyframes ds-modal-in {
+    from { opacity: 0; transform: scale(0.95) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+/* Ãƒ— close button — top-right corner */
+.ds-close-btn {
+    position:   absolute;
+    top:        10px;
+    right:      12px;
+    background: none;
+    border:     none;
+    color:      var(--text-muted);
+    font-size:  20px;
+    line-height: 1;
+    cursor:     pointer;
+    padding:    0;
+    transition: color 0.15s;
+    z-index:    1;
+}
+.ds-close-btn:hover { color: var(--text-primary); }
+
+/* Colored header bar — changes color based on worst status */
+.ds-modal-header {
+    display:     flex;
+    align-items: center;
+    gap:         10px;
+    padding:     16px 20px 14px;
+    flex-shrink: 0;
+}
+
+.ds-header-ok       { background: rgba(77, 219, 141, 0.10); border-bottom: 1px solid rgba(77, 219, 141, 0.20); }
+.ds-header-outdated { background: rgba(255, 181, 71, 0.10);  border-bottom: 1px solid rgba(255, 181, 71, 0.25); }
+.ds-header-stale    { background: rgba(255, 90, 90, 0.12);   border-bottom: 1px solid rgba(255, 90, 90, 0.30); }
+
+.ds-modal-icon {
+    font-size:  22px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.ds-header-ok       .ds-modal-icon { color: #4ddb8d; }
+.ds-header-outdated .ds-modal-icon { color: #ffb547; }
+.ds-header-stale    .ds-modal-icon { color: #ff5a5a; }
+
+.ds-modal-title {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    14px;
+    font-weight:  700;
+    color:        var(--text-primary);
+    letter-spacing: 0.02em;
+}
+
+/* Warning disclaimer banner — always visible, always prominent */
+.ds-disclaimer-banner {
+    background:   rgba(255, 181, 71, 0.07);
+    border-bottom: 1px solid rgba(255, 181, 71, 0.18);
+    padding:      10px 20px;
+    font-size:    11px;
+    color:        var(--text-secondary);
+    line-height:  1.6;
+    flex-shrink:  0;
+}
+.ds-disclaimer-banner strong { color: #ffb547; }
+
+/* Scrollable area containing the status table */
+.ds-table-wrapper {
+    flex:       1;
+    overflow-y: auto;
+    padding:    12px 16px;
+}
+
+/* The status table itself */
+.ds-table {
+    width:           100%;
+    border-collapse: collapse;
+    font-family:     'JetBrains Mono', monospace;
+    font-size:       11px;
+}
+
+.ds-table th {
+    text-align:     left;
+    color:          var(--text-muted);
+    font-size:      10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding:        5px 8px;
+    border-bottom:  1px solid var(--border);
+}
+
+.ds-table td {
+    padding:       6px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: middle;
+}
+
+/* Row highlight for problem rows */
+.ds-row-stale    { background: rgba(255, 90, 90, 0.05); }
+.ds-row-outdated { background: rgba(255, 181, 71, 0.04); }
+.ds-row-ok       { background: transparent; }
+
+/* Source name column — slightly brighter */
+.ds-col-name {
+    color:       var(--text-primary);
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+/* Age column — monospaced number */
+.ds-col-age {
+    color:       var(--text-secondary);
+    white-space: nowrap;
+    min-width:   60px;
+}
+
+/* Downloaded date column */
+.ds-col-date {
+    color:       var(--text-muted);
+    white-space: nowrap;
+}
+
+/* Status badge column */
+.ds-col-status { white-space: nowrap; }
+
+/* Traffic-light pill badges */
+.ds-badge {
+    display:      inline-block;
+    padding:      2px 8px;
+    border-radius: 4px;
+    font-size:    9px;
+    font-weight:  700;
+    letter-spacing: 0.08em;
+    font-family:  'JetBrains Mono', monospace;
+}
+.ds-badge-ok {
+    background: rgba(77, 219, 141, 0.15);
+    color:      #4ddb8d;
+    border:     1px solid rgba(77, 219, 141, 0.30);
+}
+.ds-badge-outdated {
+    background: rgba(255, 181, 71, 0.15);
+    color:      #ffb547;
+    border:     1px solid rgba(255, 181, 71, 0.35);
+}
+.ds-badge-stale {
+    background: rgba(255, 90, 90, 0.15);
+    color:      #ff5a5a;
+    border:     1px solid rgba(255, 90, 90, 0.35);
+}
+
+/* Modal footer: "don't show again" checkbox + dismiss button */
+.ds-modal-footer {
+    display:      flex;
+    align-items:  center;
+    justify-content: space-between;
+    padding:      12px 20px;
+    border-top:   1px solid var(--border);
+    flex-shrink:  0;
+    gap:          12px;
+}
+
+.ds-no-show-label {
+    display:     flex;
+    align-items: center;
+    gap:         7px;
+    font-size:   11px;
+    color:       var(--text-muted);
+    cursor:      pointer;
+    user-select: none;
+}
+
+#ds-no-show-cb {
+    accent-color: var(--color-sid);
+    cursor:       pointer;
+}
+
+.ds-dismiss-btn {
+    padding:      8px 20px;
+    background:   var(--color-sid);
+    color:        #fff;
+    border:       none;
+    border-radius: 5px;
+    font-size:    12px;
+    font-weight:  600;
+    font-family:  'Inter', sans-serif;
+    cursor:       pointer;
+    transition:   opacity 0.15s;
+    flex-shrink:  0;
+}
+.ds-dismiss-btn:hover { opacity: 0.85; }
+
+
+/* ================================================================
+   PHASE 9.8 — GLOBAL VIEWER SEARCH BAR
+   The search bar at the top of View Mode that highlights matching
+   aerodromes, RNAV fixes, and NAVAIDs across the entire map.
+   Sits above the saved procedures list and is always visible when
+   the user is in View mode.
+   ================================================================ */
+
+/* Outer wrapper — matches the sidebar section padding and adds a
+   subtle bottom border to visually separate it from the procedures list. */
+.global-search-section {
+    padding:       10px 12px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink:   0;
+}
+
+/* Row containing the magnifying glass icon, text input, and clear button. */
+.global-search-row {
+    display:     flex;
+    align-items: center;
+    gap:         0;
+    background:  var(--bg-tertiary);
+    border:      1px solid var(--border);
+    border-radius: 6px;
+    padding:     0 8px;
+    transition:  border-color 0.15s, box-shadow 0.15s;
+}
+
+.global-search-row:focus-within {
+    border-color: var(--color-sid);
+    box-shadow:   0 0 0 2px rgba(59, 158, 255, 0.15);
+}
+
+/* Non-interactive magnifying glass icon on the left */
+.global-search-icon {
+    font-size:      13px;
+    color:          var(--text-muted);
+    flex-shrink:    0;
+    pointer-events: none;
+    user-select:    none;
+    padding-right:  6px;
+}
+
+/* The text input — no visible border since the row handles it */
+.global-search-input {
+    flex:        1;
+    background:  transparent;
+    border:      none;
+    outline:     none;
+    padding:     8px 0;
+    font-size:   12px;
+    font-family: 'Inter', sans-serif;
+    color:       var(--text-primary);
+    min-width:   0;
+    /* Phase 29 */
+    font-size:   calc(12px * var(--ui-scale));
+}
+.global-search-input::placeholder {
+    color:     var(--text-muted);
+    /* Phase 29 */
+    font-size: calc(11px * var(--ui-scale));
+}
+
+/* The Ã¢Å“â€¢ clear button — hidden until text is typed */
+.global-search-clear {
+    display:         none;   /* JS sets to 'flex' when input has content */
+    align-items:     center;
+    justify-content: center;
+    background:      none;
+    border:          none;
+    color:           var(--text-muted);
+    font-size:       12px;
+    cursor:          pointer;
+    padding:         0 2px;
+    flex-shrink:     0;
+    transition:      color 0.12s;
+}
+.global-search-clear:hover { color: var(--text-primary); }
+
+/* Row below the search input: result count + colour-coded legend */
+.global-search-meta {
+    display:     flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top:  5px;
+    min-height:  14px;
+}
+
+/* Count badge e.g. "12 results" — hidden when count is 0 */
+.global-search-count {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    9px;
+    font-weight:  700;
+    color:        var(--color-sid);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background:   rgba(59, 158, 255, 0.1);
+    border:       1px solid rgba(59, 158, 255, 0.25);
+    border-radius: 4px;
+    padding:      1px 6px;
+}
+
+/* The layer colour legend: three coloured dots with labels */
+.global-search-legend {
+    display:     flex;
+    align-items: center;
+    gap:         4px;
+    /* Phase 29 */
+    font-size:   calc(9px * var(--ui-scale));
+    color:       var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.03em;
+}
+
+/* Small filled circle dot for each layer type */
+.gsl-dot {
+    display:       inline-block;
+    /* Phase 29: dot size scales with ui-scale */
+    width:         calc(6px * var(--ui-scale));
+    height:        calc(6px * var(--ui-scale));
+    border-radius: 50%;
+    margin-left:   4px;
+    flex-shrink:   0;
+}
+
+
+/* ================================================================
+   PHASE 9.8 — GLOBAL SEARCH HIGHLIGHT MARKERS
+   Pulsing ring DivIcon markers placed at search result locations.
+   The ring color is injected inline per result (blue/violet/amber).
+   The animation draws attention without being so fast it's distracting.
+   ================================================================ */
+
+/* Outer DivIcon wrapper — zero size, no Leaflet default background. */
+.global-search-highlight {
+    background: transparent !important;
+    border:     none        !important;
+    overflow:   visible     !important;
+}
+
+/* The visible pulsing ring, centred on the lat/lon via transform.
+   Color properties (border-color, box-shadow, background) are injected
+   inline by renderGlobalSearchHighlights() to give each layer type its
+   distinct hue while reusing this single animation. */
+.gsh-ring {
+    width:         18px;
+    height:        18px;
+    border-radius: 50%;
+    border:        2px solid;      /* color set inline */
+    transform:     translate(-50%, -50%);
+    animation:     gsh-pulse 1.6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes gsh-pulse {
+    0%   { transform: translate(-50%, -50%) scale(1.0); opacity: 1.0; }
+    50%  { transform: translate(-50%, -50%) scale(1.7); opacity: 0.35; }
+    100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1.0; }
+}
+
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Phase 10: Transition / Branching UI Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+
+/* Wrapper for the entire transition control area inside the drawing panel.
+   Separated by a faint top border so it reads as a distinct section. */
+.transition-section {
+    border-top:  1px solid var(--border-color);
+    margin-top:  10px;
+    padding-top: 4px;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Transition active indicator (shown while drawing a branch) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+
+.transition-active-indicator {
+    background:    rgba(255, 183, 71, 0.08);
+    border:        1px solid rgba(255, 183, 71, 0.3);
+    border-radius: 6px;
+    padding:       10px 12px;
+    margin:        6px 0;
+}
+
+/* Row that holds the branch icon + the info text */
+.transition-active-row {
+    display:     flex;
+    align-items: flex-start;
+    gap:         10px;
+}
+
+/* The Ã¢â€˜â€š branch glyph */
+.transition-active-icon {
+    font-size:   18px;
+    color:       #ffb547;
+    line-height: 1.1;
+    flex-shrink: 0;
+}
+
+.transition-active-info {
+    flex: 1;
+    min-width: 0;
+}
+
+/* "Transition: T1" — the branch name in bold */
+.transition-active-label {
+    font-size:   12px;
+    color:       var(--text-primary);
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* "Ends at: IF" — convergence fix indicator in muted amber */
+.transition-active-convergence {
+    font-size:   11px;
+    color:       #ffb54799;
+    margin-top:  3px;
+    line-height: 1.3;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Saved transitions list (shown in normal mode when branches exist) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+
+.transition-list-header {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    padding:         6px 0 2px;
+}
+
+.transition-list {
+    display:        flex;
+    flex-direction: column;
+    gap:            3px;
+    margin-bottom:  8px;
+}
+
+/* Single row in the saved-transitions list */
+.transition-item {
+    display:         flex;
+    align-items:     center;
+    gap:             6px;
+    background:      rgba(255, 255, 255, 0.04);
+    border:          1px solid var(--border-color);
+    border-radius:   4px;
+    padding:         4px 8px;
+    font-size:       11px;
+}
+
+/* Branch glyph inside the row */
+.transition-item-icon {
+    color:      #ffb547;
+    font-size:  13px;
+    flex-shrink: 0;
+}
+
+/* Branch name ("T1", "1A", etc.) */
+.transition-item-name {
+    font-weight: 500;
+    color:       var(--text-primary);
+    flex:        1;
+}
+
+/* Body wrapper inside transition-item (holds name + key fix side-by-side) */
+.transition-item-body {
+    display:     flex;
+    align-items: center;
+    gap:         5px;
+    flex:        1;
+    min-width:   0;
+    overflow:    hidden;
+}
+
+/* "via REDE" key fix label inside transition row */
+.transition-item-fix {
+    font-size:  9px;
+    color:      var(--text-tertiary);
+    white-space: nowrap;
+}
+
+/* Point count ("3 pts") in muted color */
+.transition-item-pts {
+    font-size: 10px;
+    color:     var(--text-tertiary);
+}
+
+/* Ã¢â€ â‚¬Ã¢â€ â‚¬ "Add Transition" controls section Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬ */
+
+
+/* Phase 12: instruction hint to right-click a fix for a new transition */
+.transition-help {
+    display:     flex;
+    align-items: flex-start;
+    gap:         6px;
+    background:  rgba(255, 183, 71, 0.05);
+    border:      1px solid rgba(255, 183, 71, 0.15);
+    border-radius: 5px;
+    padding:     8px 10px;
+    font-size:   11px;
+    color:       var(--text-muted);
+    line-height: 1.4;
+}
+.transition-help-icon {
+    color:       #ffb54780;
+    font-size:   14px;
+    flex-shrink: 0;
+    line-height: 1.2;
+}
+.transition-help-text { flex: 1; }
+
+
+/* ================================================================
+   PHASE 10.5 — TOOLBAR SUB-PANELS
+   Floating panels that slide out to the LEFT of the toolbar when a
+   panel button is clicked. Each panel is positioned via a 'top' value
+   set dynamically by main.js so it aligns exactly with its button.
+   Only one panel can be open at a time (enforced by main.js toggle logic).
+   ================================================================ */
+
+/* Container for a sub-panel.
+   Lives as a direct child of .map-toolbar (which is position:fixed),
+   so 'position:absolute' here is relative to the toolbar itself.
+   'right: calc(100% + 8px)' pushes the panel 8px to the LEFT of the toolbar. */
+.toolbar-subpanel {
+    position:       absolute;
+    right:          calc(100% + 8px);
+    min-width:      195px;
+    /* CSS fallback height — overridden dynamically by _toggleToolbarPanel() in main.js
+       which computes the exact available viewport space after accounting for the panel's
+       top offset. This fallback only applies to panels not opened through that function. */
+    max-height:     calc(100vh - 220px);
+    overflow-y:     auto;
+    background:     rgba(7, 14, 24, 0.98);
+    border:         1px solid rgba(255, 255, 255, 0.14);
+    border-radius:  7px;
+    /* Bottom padding gives the last item breathing room inside the scrollable area. */
+    padding:        12px 14px 2rem;
+    box-shadow:     0 4px 20px rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    z-index:        9999;        /* Ensure it's above Leaflet attribution and other controls */
+    pointer-events: auto;
+    white-space:    nowrap;
+}
+
+/* Phase 30: Custom Scrollbar for sub-panels — thin but visible enough to signal overflow. */
+.toolbar-subpanel::-webkit-scrollbar {
+    width: 4px;
+}
+.toolbar-subpanel::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+}
+.toolbar-subpanel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+}
+.toolbar-subpanel::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.42);
+}
+
+/* Hide panels by default. main.js removes this class to show a panel. */
+.toolbar-subpanel.hidden {
+    display: none;
+}
+
+/* Panel heading — uppercase monospace label above the controls. */
+.subpanel-title {
+    font-family:    'JetBrains Mono', monospace;
+    /* Phase 29 */
+    font-size:      calc(10px * var(--ui-scale));
+    font-weight:    700;
+    color:          var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom:  9px;
+    padding-bottom: 7px;
+    border-bottom:  1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Small section label inside a panel (e.g., "Base Tile") */
+.subpanel-section-label {
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      10px;
+    font-weight:    600;
+    color:          var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom:  6px;
+}
+
+/* A checkbox row — label wrapping a checkbox + text span. */
+.panel-check-row {
+    display:        flex;
+    align-items:    center;
+    gap:            8px;
+    padding:        4px 0;
+    /* Phase 29 */
+    font-size:      calc(12px * var(--ui-scale));
+    color:          var(--text-secondary);
+    cursor:         pointer;
+    user-select:    none;
+    transition:     color 0.1s;
+}
+
+.panel-check-row:hover {
+    color: var(--text-primary);
+}
+
+.panel-check-row input[type="checkbox"] {
+    width:        14px;
+    height:       14px;
+    cursor:       pointer;
+    accent-color: #00d4ff;
+    flex-shrink:  0;
+}
+
+/* A radio button row — same layout as the checkbox row. */
+.panel-radio-row {
+    display:        flex;
+    align-items:    center;
+    gap:            8px;
+    padding:        4px 0;
+    font-size:      12px;
+    color:          var(--text-secondary);
+    cursor:         pointer;
+    user-select:    none;
+    transition:     color 0.1s;
+}
+
+.panel-radio-row:hover {
+    color: var(--text-primary);
+}
+
+.panel-radio-row input[type="radio"] {
+    width:        14px;
+    height:       14px;
+    cursor:       pointer;
+    accent-color: #00d4ff;
+    flex-shrink:  0;
+}
+
+/* Muted hint text at the bottom of a sub-panel. */
+.subpanel-hint {
+    font-size:   10px;
+    color:       var(--text-muted);
+    margin-top:  9px;
+    line-height: 1.5;
+    white-space: normal;
+    width:       170px;
+}
+
+/* When a panel button is in 'open' state, suppress the hover tooltip
+   so the sub-panel and the hover tooltip don't compete for screen space. */
+.map-panel-btn.active .map-tool-tooltip {
+    display: none !important;
+}
+
+
+/* ================================================================
+   PHASE 10.5 — AIRSPACE POLYGON TOOLTIP
+   Overrides the default Leaflet tooltip styling to match the app's
+   dark glassmorphism theme. Used by renderAirspaces() in MapLayers.js.
+   ================================================================ */
+
+.airspace-tooltip.leaflet-tooltip {
+    background:    rgba(7, 14, 24, 0.92) !important;
+    border:        1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 5px !important;
+    color:         var(--text-primary) !important;
+    font-family:   'Inter', sans-serif !important;
+    font-size:     11px !important;
+    padding:       5px 9px !important;
+    box-shadow:    0 2px 10px rgba(0, 0, 0, 0.55) !important;
+    white-space:   nowrap;
+}
+
+/* Remove the default Leaflet tooltip arrow/caret that Leaflet draws via ::before. */
+.airspace-tooltip.leaflet-tooltip::before {
+    display: none !important;
+}
+
+
+/* ================================================================
+   PHASE 10.5 (REVISED) — AIRSPACE SUB-PANEL: COLLAPSIBLE SECTIONS
+   Styles for the TMA collapsible header (uses <details>/<summary>),
+   nested sector checkboxes, and section separators in the Airspaces panel.
+   ================================================================ */
+
+/* The <details> element wrapping the TMA collapsible section. */
+.subpanel-collapsible {
+    margin-top: 4px;
+}
+
+/* The clickable <summary> row that collapses / expands the TMA list. */
+.subpanel-collapsible-header {
+    display:        flex;
+    align-items:    center;
+    gap:            5px;
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      10px;
+    font-weight:    600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color:          var(--text-muted);
+    padding:        3px 0 5px;
+    border-bottom:  1px solid rgba(255, 255, 255, 0.08);
+    cursor:         pointer;
+    user-select:    none;
+    list-style:     none;
+}
+
+/* Remove the default triangle from <summary> in WebKit and Firefox. */
+.subpanel-collapsible-header::-webkit-details-marker { display: none; }
+
+/* Inject a custom right-facing arrow that rotates when expanded. */
+.subpanel-collapsible-header::before {
+    content:     'B6';
+    font-size:   8px;
+    transition:  transform 0.15s;
+    flex-shrink: 0;
+}
+
+details[open] > .subpanel-collapsible-header::before {
+    transform: rotate(90deg);
+}
+
+/* Indent the individual TMA sector checkboxes under the collapsible. */
+.subpanel-nested {
+    padding-left: 12px;
+    border-left:  1px solid rgba(255, 255, 255, 0.07);
+    margin-top:   2px;
+}
+
+/* Section separator label — same as .subpanel-section-label but with top margin. */
+.subpanel-section-separator {
+    margin-top: 10px;
+}
+
+/* Group toggle row — slightly bolder than a normal checkbox row so the user can
+   tell at a glance that this controls an entire group (CTRs, FIZs, ATZs). */
+.panel-group-toggle {
+    font-weight:  600;
+    color:        var(--text-primary);
+    margin-top:   4px;
+}
+
+.panel-group-toggle:hover {
+    color: #93c5fd;
+}
+
+
+/* ================================================================
+   PHASE 10.5 (REVISED) — AIRSPACE CLICK POPUP
+   Overrides the default Leaflet popup styling to match the app's
+   dark glassmorphism theme. Used instead of sticky tooltips so the
+   airspace name only appears on click, not on hover/cursor-follow.
+   ================================================================ */
+
+.airspace-popup .leaflet-popup-content-wrapper {
+    background:    rgba(7, 14, 24, 0.98) !important;
+    border:        1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 6px !important;
+    color:         var(--text-primary) !important;
+    font-family:   'Inter', sans-serif !important;
+    font-size:     11px !important;
+    padding:       0 !important;
+    box-shadow:    0 2px 12px rgba(0, 0, 0, 0.65) !important;
+}
+
+.airspace-popup .leaflet-popup-content {
+    margin: 8px 12px !important;
+}
+
+/* Hide the default Leaflet popup tip/arrow. */
+.airspace-popup .leaflet-popup-tip-container {
+    display: none !important;
+}
+
+/* Hide the default close button — click-anywhere-on-map closes the popup naturally. */
+.airspace-popup .leaflet-popup-close-button {
+    display: none !important;
+}
+
+/* Style for the outer-boundary TMA polygon — a solid, slightly bolder line
+   that gives the user a single clean view of the full TMA perimeter. */
+.leaflet-interactive.tma-outer {
+    cursor: pointer;
+}
+
+/* ================================================================
+   LEAFLET OVERRIDES — styling native Leaflet controls
+   ================================================================ */
+
+/* Style the attribution bar (bottom right) to be dark and subtle */
+.leaflet-control-attribution {
+    background: rgba(0, 0, 0, 0.4) !important;
+    color: var(--text-muted) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 10px !important;
+    border: none !important;
+    backdrop-filter: blur(2px);
+}
+
+.leaflet-control-attribution a {
+    color: var(--text-secondary) !important;
+    text-decoration: none;
+}
+
+.leaflet-control-attribution a:hover {
+    text-decoration: underline;
+}
+
+
+/* ================================================================
+   LIVE TRAFFIC — ADS-B aircraft overlay styles
+   ================================================================ */
+
+/* The outer div wrapping the SVG aircraft icon.
+   Transform rotation is applied inline by JS to match the track.
+   cursor: pointer is inherited from Leaflet's .leaflet-marker-icon. */
+.ac-marker {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    transform-origin: center center;
+    transition:      transform 0.4s ease;   /* smooth heading updates */
+    filter:          drop-shadow(0 0 3px rgba(0, 0, 0, 0.7));
+}
+
+/* Scale up slightly on hover for easy identification */
+.ac-marker:hover {
+    filter:   drop-shadow(0 0 5px rgba(255, 255, 255, 0.4));
+    z-index:  9999 !important;
+}
+
+/* Leaflet tooltip wrapper for the callsign label.
+   Phase 16: completely transparent — no background, no border, no shadow.
+   Text legibility is handled entirely by text-shadow outlines below. */
+.ac-tooltip.leaflet-tooltip {
+    background:   transparent !important;
+    border:       none        !important;
+    border-radius: 0         !important;
+    padding:      0          !important;
+    box-shadow:   none       !important;
+    backdrop-filter: none;
+    pointer-events: none;
+}
+
+/* Remove the Leaflet tooltip arrow */
+.ac-tooltip.leaflet-tooltip::before { display: none !important; }
+
+/* Inner content layout — no padding box, text floats freely over the map */
+.ac-tooltip-inner {
+    padding:    2px 6px;
+    min-width:  unset;
+}
+
+/* Callsign line — bright monospace with a 1 px black outline so it reads
+   over any tile colour without a solid background behind it. */
+.ac-callsign {
+    font-family: 'JetBrains Mono', monospace;
+    font-size:   11px;
+    font-weight: 700;
+    color:       var(--text-primary);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    text-shadow:
+        -1px -1px 0 rgba(0,0,0,0.9),
+         1px -1px 0 rgba(0,0,0,0.9),
+        -1px  1px 0 rgba(0,0,0,0.9),
+         1px  1px 0 rgba(0,0,0,0.9),
+         0 0 6px rgba(0,0,0,0.7);
+}
+
+/* Detail lines (altitude, speed, track) — slightly dimmer with same outline. */
+.ac-detail {
+    font-family: 'JetBrains Mono', monospace;
+    font-size:   9px;
+    color:       rgba(200, 210, 220, 0.9);
+    white-space: nowrap;
+    line-height: 1.5;
+    text-shadow:
+        -1px -1px 0 rgba(0,0,0,0.9),
+         1px -1px 0 rgba(0,0,0,0.9),
+        -1px  1px 0 rgba(0,0,0,0.9),
+         1px  1px 0 rgba(0,0,0,0.9),
+         0 0 4px rgba(0,0,0,0.7);
+}
+
+/* Dim arrow separator between origin and destination ICAO codes */
+.ac-route-arrow {
+    color:   rgba(150, 161, 176, 0.6);
+    padding: 0 2px;
+}
+
+/* ICAO aircraft type badge inline in detail line */
+.ac-type {
+    background:    rgba(59, 158, 255, 0.2);
+    border:        1px solid rgba(59, 158, 255, 0.3);
+    border-radius: 2px;
+    padding:       0 3px;
+    font-size:     8px;
+    color:         var(--color-accent);
+    margin-right:  3px;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Status bar in the Live Traffic sub-panel Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+.traffic-status-bar {
+    display:     flex;
+    align-items: center;
+    gap:         6px;
+    padding:     8px 0 4px;
+    margin-top:  4px;
+    border-top:  1px solid var(--border);
+}
+
+.traffic-status-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size:   10px;
+    color:       var(--text-muted);
+}
+
+/* Animated pulsing dot: state classes applied by LiveTraffic.js */
+.traffic-dot {
+    width:         8px;
+    height:        8px;
+    border-radius: 50%;
+    flex-shrink:   0;
+}
+.traffic-dot--off { background: var(--text-muted); }
+.traffic-dot--err { background: #ff4d4d; }
+.traffic-dot--ok  {
+    background: #22c55e;
+    animation:  traffic-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes traffic-pulse {
+    0%, 100% { opacity: 1;   transform: scale(1);    }
+    50%       { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Direction colour legend Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+.traffic-legend {
+    display:        flex;
+    flex-direction: column;
+    gap:            3px;
+    padding-bottom: 4px;
+}
+.traffic-legend-row {
+    display:     flex;
+    align-items: center;
+    gap:         7px;
+    font-size:   10px;
+    color:       var(--text-secondary);
+}
+.traffic-legend-dot {
+    width:         8px;
+    height:        8px;
+    border-radius: 50%;
+    flex-shrink:   0;
+    border:        1px solid rgba(255,255,255,0.15);
+}
+
+
+/* ================================================================
+   PHASE 19 — NOTATION TOOL
+   Styles for session-only free-text notes placed on the map.
+   Notes are Leaflet DivIcon markers; text is a contenteditable span.
+   ================================================================ */
+
+/* Override Leaflet's default white-box divIcon so the note has no
+   background or border — only the text itself is visible on the map. */
+.notation-marker {
+    background:     none !important;
+    border:         none !important;
+    box-shadow:     none !important;
+    overflow:       visible;
+    pointer-events: auto;
+}
+
+/* Outer wrapper div inside the DivIcon. Acts as the drag target for the
+   Leaflet marker and provides a small invisible padding region around the
+   text so right-clicks near (but not on) a character still hit the note. */
+.notation-wrap {
+    display:        inline-block;
+    cursor:         grab;
+    padding:        2px 4px;
+    user-select:    none;   /* prevent accidental text selection during drag */
+}
+
+.notation-wrap:active {
+    cursor: grabbing;
+}
+
+/* The contenteditable span that the user types into.
+   Text-shadow provides a dark outline that keeps the text legible over
+   any map tile color — important for white notes over light backgrounds. */
+/* Committed note text: non-selectable to allow dragging, grab cursor for feedback. */
+.notation-text {
+    display:       inline-block;
+    padding:       2px 6px;
+    border:        1px solid transparent;
+    border-radius: 4px;
+    white-space:   pre-wrap;
+    word-wrap:     break-word;
+    min-width:     20px;
+    outline:       none;
+    user-select:   none;   /* Prevent selection so drag works */
+    cursor:        grab;   /* Feedback that it's movable */
+    transition:    background 0.2s, border-color 0.2s;
+    text-shadow:  1px -1px 3px rgba(0, 0, 0, 0.95),
+                 -1px  1px 3px rgba(0, 0, 0, 0.95),
+                  1px  1px 3px rgba(0, 0, 0, 0.95);
+}
+
+.notation-wrap.editing .notation-text {
+    user-select:   text;
+    cursor:        text;
+    background:    rgba(255, 255, 255, 0.05);
+    border-color:  rgba(255, 255, 255, 0.1);
+}
+
+.notation-text:focus {
+    border-bottom: 1px dashed rgba(199, 125, 255, 0.7);
+}
+
+/* Show a dashed bottom border while the user is actively typing. */
+.notation-text:focus {
+    border-bottom: 1px dashed rgba(199, 125, 255, 0.7);
+}
+
+/* Placeholder text for brand-new empty notes before the user types anything. */
+.notation-text:empty::before {
+    content:       'Type note...';
+    color:         rgba(255, 255, 255, 0.25);
+    font-style:    italic;
+    font-weight:   400;
+    pointer-events: none;
+}
+
+
+
+/* Danger-colored context menu item used in the notation right-click menu. */
+.mv-ctx-item--danger {
+    color: #ff7070 !important;
+}
+
+.mv-ctx-item--danger:hover {
+    background: rgba(255, 60, 60, 0.18) !important;
+    color:      #ff9090 !important;
+}
+
+
+/* ================================================================
+   PHASE 20 — CURSOR COORDINATE OVERLAY
+   Floating lat/lng label that follows the cursor whenever any
+   drawing or notation tool is active.
+   ================================================================ */
+
+/* Fixed-position div created dynamically in main.js. Positioned
+   just below-right of the cursor and has pointer-events:none so
+   it never interferes with map clicks. */
+#cursor-coords {
+    position:       fixed;
+    z-index:        9999;
+    pointer-events: none;
+    display:        none;
+    color:          #c77dff;
+    font:           600 10px 'JetBrains Mono', monospace;
+    letter-spacing: 0.03em;
+    text-shadow:    0 0 5px rgba(0, 0, 0, 0.95),
+                    0 0 2px rgba(0, 0, 0, 1);
+    background:     rgba(0, 0, 0, 0.40);
+    padding:        2px 6px;
+    border-radius:  3px;
+    white-space:    nowrap;
+}
+
+
+/* ================================================================
+   PHASE 20 — VERTEX COORDINATE ENGRAVING
+   Small lat/lng labels dropped on the map at each vertex while
+   a polygon or line is being drawn. Cleared on finalization.
+   ================================================================ */
+
+/* The Leaflet DivIcon container — transparent, no border. */
+.engraving-label {
+    background: none !important;
+    border:     none !important;
+    overflow:   visible;
+}
+
+/* The inner text span. Subdued violet to visually tie to the
+   drawing tool color without competing with the map content. */
+.engraving-text {
+    font:            600 9px 'JetBrains Mono', monospace;
+    color:           rgba(199, 125, 255, 0.75);
+    text-shadow:     0 0 4px rgba(0, 0, 0, 0.95),
+                     0 0 2px rgba(0, 0, 0, 1);
+    white-space:     nowrap;
+    pointer-events:  none;
+    display:         inline-block;
+    padding-left:    4px;
+}
+
+
+/* ================================================================
+   PHASE 20 — SESSION SHAPE MANAGER (Shapes sub-panel)
+   List of all ephemeral shapes in the current session.
+   Each row: type icon | renameable name | zoom / visibility / delete.
+   ================================================================ */
+
+/* A single shape row. */
+.shape-list-item {
+    display:        flex;
+    align-items:    center;
+    gap:            5px;
+    padding:        5px 2px;
+    border-bottom:  1px solid rgba(255, 255, 255, 0.06);
+}
+
+.shape-list-item:last-child {
+    border-bottom: none;
+}
+
+/* Small fixed-width icon showing the geometry type. */
+.shape-list-icon {
+    font-size:   11px;
+    color:       #c77dff;
+    opacity:     0.7;
+    flex-shrink: 0;
+    width:       14px;
+    text-align:  center;
+    line-height: 1;
+}
+
+/* Renameable name span (contenteditable). Fills remaining width and
+   truncates with ellipsis when the name is long. */
+.shape-list-name {
+    flex:          1;
+    font-family:   'Inter', sans-serif;
+    font-size:     12px;
+    color:         var(--text-primary);
+    cursor:        text;
+    white-space:   nowrap;
+    overflow:      hidden;
+    text-overflow: ellipsis;
+    outline:       none;
+    border-radius: 2px;
+    padding:       1px 3px;
+    min-width:     0;
+}
+
+/* Highlight when the user focuses the name to edit it. */
+.shape-list-name:focus {
+    background:    rgba(199, 125, 255, 0.12);
+    color:         #c77dff;
+    text-overflow: clip;
+}
+
+/* Action button row at the right of each shape item. */
+.shape-list-actions {
+    display:      flex;
+    gap:          2px;
+    flex-shrink:  0;
+}
+
+/* Individual action buttons (zoom, visibility, delete). */
+.shape-action-btn {
+    background:    transparent;
+    border:        none;
+    color:         var(--text-muted);
+    cursor:        pointer;
+    padding:       2px 4px;
+    font-size:     11px;
+    border-radius: 3px;
+    line-height:   1;
+    transition:    color 0.12s, background 0.12s;
+}
+
+.shape-action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color:      var(--text-primary);
+}
+
+/* Dimmed appearance for the visibility button when the shape is hidden. */
+.shape-action-btn.action-hidden {
+    opacity: 0.35;
+}
+
+/* Red on hover for the delete button. */
+.shape-action-btn.action-delete:hover {
+    color:      #f87171;
+    background: rgba(248, 113, 113, 0.12);
+}
+
+/* Placeholder message shown when no shapes exist. */
+.shapes-empty-msg, .panel-empty-msg {
+    font-family: 'Inter', sans-serif;
+    font-size:   11px;
+    color:       var(--text-muted);
+    text-align:  center;
+    padding:     20px 8px;
+    line-height: 1.6;
+    font-style:  italic;
+    opacity:     0.7;
+}
+
+/* -- Shared Sub-panel List Items (Notes, Geopoints, Range) ------------------- */
+.panel-list-item {
+    display:        flex;
+    align-items:    center;
+    gap:            8px;
+    padding:        6px 4px;
+    border-bottom:  1px solid rgba(255, 255, 255, 0.05);
+    transition:     background 0.1s;
+}
+
+.panel-list-item:hover {
+    background:     rgba(255, 255, 255, 0.03);
+}
+
+.panel-list-item:last-child {
+    border-bottom:  none;
+}
+
+.panel-list-item-info {
+    flex:           1;
+    min-width:      0;
+    display:        flex;
+    flex-direction: column;
+}
+
+.panel-list-item-name {
+    font-family:    'Inter', sans-serif;
+    font-size:      12px;
+    font-weight:    500;
+    color:          var(--text-primary);
+    white-space:    nowrap;
+    overflow:       hidden;
+    text-overflow:  ellipsis;
+}
+
+.panel-list-item-meta {
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      9.5px;
+    color:          var(--text-muted);
+    letter-spacing: 0.02em;
+    margin-top:     1px;
+}
+
+.panel-list-item-actions {
+    display:        flex;
+    gap:            4px;
+    flex-shrink:    0;
+}
+
+.panel-action-btn {
+    background:     transparent;
+    border:         none;
+    color:          var(--text-muted);
+    font-size:      16px;
+    cursor:         pointer;
+    padding:        2px 6px;
+    line-height:    1;
+    border-radius:  4px;
+    transition:     all 0.1s;
+    display:        flex;
+    align-items:    center;
+    justify-content: center;
+}
+
+.panel-action-btn:hover {
+    background:     rgba(255, 255, 255, 0.08);
+    color:          var(--text-primary);
+}
+
+.panel-action-btn.delete-btn:hover {
+    color:          #f87171;
+    background:     rgba(248, 113, 113, 0.12);
+}
+
+
+/* ================================================================
+   REFACTOR — PER-TOOL DRAW NEW BUTTON
+   "Draw New" / "Place Note" button inside each tool sub-panel.
+   Activates the corresponding drawing mode when clicked.
+   Uses the violet palette to visually tie with drawing-tool colors,
+   switching to cyan while the mode is active (matching the toolbar).
+   ================================================================ */
+
+.draw-new-btn {
+    display:        block;
+    width:          100%;
+    padding:        6px 8px;
+    margin-bottom:  8px;
+    background:     rgba(199, 125, 255, 0.10);
+    border:         1px solid rgba(199, 125, 255, 0.35);
+    border-radius:  4px;
+    color:          #c77dff;
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      10px;
+    font-weight:    700;
+    cursor:         pointer;
+    text-align:     left;
+    letter-spacing: 0.02em;
+    transition:     background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.draw-new-btn:hover {
+    background:   rgba(199, 125, 255, 0.20);
+    border-color: rgba(199, 125, 255, 0.65);
+    color:        #d89fff;
+}
+
+/* Active state — drawing mode is currently running for this tool.
+   Mirrors the cyan active colour used by the toolbar icon buttons. */
+.draw-new-btn.active {
+    background:   rgba(0, 212, 255, 0.12);
+    border-color: #00d4ff;
+    color:        #00d4ff;
+}
+
+
+/* ================================================================
+   PHASE 21 — GEO POINT TOOL MARKERS
+   Precision crosshair markers dropped on the map by GeoPointTool.js.
+   Each marker shows a SVG crosshair and its decimal degree coordinates
+   as a permanent floating label directly below the crosshair centre.
+   ================================================================ */
+
+/* Leaflet DivIcon container — transparent so only the SVG and label are visible. */
+.geo-marker-icon {
+    background: none !important;
+    border:     none !important;
+    overflow:   visible;
+}
+
+/* Flex column so the SVG and the coordinate label stack vertically. */
+.geo-marker-wrap {
+    display:         flex;
+    flex-direction:  column;
+    align-items:     center;
+    width:           0;
+    overflow:        visible;
+    pointer-events:  all;
+}
+
+/* Cyan glow filter on the crosshair SVG to make it pop against map tiles. */
+/* Cyan glow filter on the crosshair SVG to make it pop against map tiles. */
+.geo-marker-cross {
+    flex-shrink: 0;
+    filter:      drop-shadow(0 0 3px rgba(0, 212, 255, 0.75));
+}
+
+/* Coordinate text — monospace, cyan, float-style (no background box). */
+.geo-marker-label {
+    font:            600 9.5px 'JetBrains Mono', monospace;
+    color:           #00d4ff;
+    text-shadow:     0 0 4px rgba(0, 0, 0, 0.95),
+                     0 0 2px rgba(0, 0, 0, 1);
+    white-space:     nowrap;
+    margin-top:      3px;
+    pointer-events:  none;
+}
+
+/* -- PHASE 22: RANGE TOOL ---------------------------------------------------- */
+.range-inputs {
+    display:         flex;
+    gap:             8px;
+    margin-bottom:   8px;
+}
+
+.range-input-group {
+    flex:            1;
+    display:         flex;
+    flex-direction:  column;
+    gap:             3px;
+}
+
+.range-input-group label {
+    font-size:       9.5px;
+    font-weight:     500;
+    color:           var(--text-muted);
+    text-transform:  uppercase;
+    letter-spacing:  0.05em;
+}
+
+.range-input-group input[type='number'] {
+    width:           100%;
+    padding:         4px 6px;
+    background:      rgba(255, 255, 255, 0.05);
+    border:          1px solid var(--border);
+    border-radius:   4px;
+    color:           var(--text-primary);
+    font-family:     'JetBrains Mono', monospace;
+    font-size:       11.5px;
+    outline:         none;
+    transition:      border-color 0.15s;
+}
+
+.range-place-here-btn {
+    width:            100%;
+    margin-top:       5px;
+    padding:          5px 0;
+    background:       rgba(255, 255, 255, 0.05);
+    border:           1px solid rgba(255, 255, 255, 0.12);
+    border-radius:    4px;
+    color:            var(--text-secondary);
+    font-family:      'Inter', sans-serif;
+    font-size:        11px;
+    cursor:           pointer;
+    transition:       all 0.15s;
+}
+
+.range-label-icon {
+    background:      transparent !important;
+    border:          none !important;
+    pointer-events:  none;
+    overflow:        visible;
+}
+
+.range-label {
+    font-family:     'JetBrains Mono', monospace;
+    font-size:       9px;
+    color:           rgba(255, 255, 255, 0.55);
+    text-shadow:     0 0 3px #000;
+}
+
+/* -- PHASE 23: DYNAMIC CURSORS ------------------------------------------------ */
+#map.cursor-draw .leaflet-container      { cursor: crosshair !important; }
+#map.cursor-text .leaflet-container      { cursor: text !important; }
+#map.cursor-crosshair .leaflet-container  { cursor: crosshair !important; }
+#map.cursor-range .leaflet-container      { cursor: cell !important; }
+
+/* -- PHASE 25: FLOATING NOTATION STYLE BAR ------------------------------------ */
+.notation-wrap {
+    position:       relative;
+    display:        inline-block;
+}
+
+.notation-floating-bar {
+    position:       absolute;
+    bottom:         calc(100% + 12px);
+    left:           0;
+    display:        none; /* Controlled by .editing class */
+    flex-direction: row;
+    align-items:    center;
+    gap:            12px;
+    padding:        6px 10px;
+    background:     rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border:         1px solid rgba(255, 255, 255, 0.2);
+    border-radius:  8px;
+    box-shadow:     0 8px 32px rgba(0, 0, 0, 0.5);
+    z-index:        1000;
+    white-space:    nowrap;
+    opacity:        0;
+    transform:      translateY(8px);
+    transition:     opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: auto; /* Ensure buttons are clickable */
+}
+
+.notation-wrap.editing .notation-floating-bar {
+    display:        flex;
+    opacity:        1;
+    transform:      translateY(0);
+}
+
+.notation-floating-bar::after {
+    content:        '';
+    position:       absolute;
+    top:            100%;
+    left:           12px;
+    border-width:   6px;
+    border-style:   solid;
+    border-color:   rgba(15, 23, 42, 0.95) transparent transparent transparent;
+}
+
+.style-group {
+    display:        flex;
+    gap:            5px;
+    align-items:    center;
+}
+
+.style-group-label {
+    font-size:      9px;
+    font-weight:    700;
+    color:          rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right:   2px;
+}
+
+.size-btn {
+    width:          24px;
+    height:         19px;
+    background:     rgba(255, 255, 255, 0.7); /* Light background for black text */
+    border:         1px solid rgba(255, 255, 255, 0.2);
+    border-radius:  4px;
+    color:          #000 !important;          /* Black when NOT selected */
+    font-size:      9px;
+    font-weight:    700;
+    cursor:         pointer;
+    display:        flex;
+    align-items:    center;
+    justify-content: center;
+    transition:     all 0.15s ease;
+}
+
+.size-btn.active {
+    background:     #00d4ff !important;
+    border-color:   #00d4ff !important;
+    color:          #fff !important;          /* White when SELECTED */
+}
+
+.color-swatch {
+    width:          18px;
+    height:         18px;
+    border-radius:  50%;
+    border:         2px solid transparent;
+    cursor:         pointer;
+    transition:     transform 0.15s ease;
+}
+
+.color-swatch.active {
+    border-color:   #fff;
+    box-shadow:     0 0 6px rgba(255, 255, 255, 0.4);
+}
+
+.style-bar-divider {
+    width:          1px;
+    height:         16px;
+    background:     rgba(255, 255, 255, 0.15);
+}
+
+
+/* Phase 25: Cursor Coordinates Overlay (fade effect) */
+#cursor-coords {
+    transition:     opacity 0.2s ease, transform 0.1s ease;
+}
+
+#cursor-coords.ui-collision {
+    opacity:        0;
+}
+
+
+
+/* Leaflet DivIcon container: ensure no background or border. */
+.notation-marker {
+    background: transparent !important;
+    border: none !important;
+    overflow: visible !important;
+}
+
+
+
+
+
+/* Hide tooltips when the corresponding sub-panel is open */
+.map-tool-btn.active .map-tool-tooltip { opacity: 0 !important; pointer-events: none !important; }
+
+.map-tool-btn.active .map-tool-tooltip { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+
+
+/* ─── Phase 27: Research Panel ─────────────────────────────────────────────────
+   Styles for the ICAO lookup tool sub-panel (#panel-research).
+   The panel uses the standard .toolbar-subpanel glassmorphic shell; these rules
+   style the three elements unique to the Research panel: the category tabs,
+   the search row (input + button), and the result card. */
+
+/* Tab row — three horizontally-aligned category buttons */
+.research-tabs {
+    display:        flex;
+    gap:            4px;
+    margin-bottom:  10px;
+}
+
+/* Individual category tab button */
+.research-tab-btn {
+    flex:           1;
+    padding:        4px 0;
+    background:     rgba(255, 255, 255, 0.06);
+    border:         1px solid rgba(255, 255, 255, 0.1);
+    border-radius:  4px;
+    color:          var(--text-secondary);
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      10px;
+    font-weight:    600;
+    letter-spacing: 0.04em;
+    cursor:         pointer;
+    transition:     all 0.15s ease;
+    white-space:    nowrap;
+}
+
+.research-tab-btn:hover {
+    background:     rgba(255, 255, 255, 0.12);
+    color:          var(--text-primary);
+}
+
+/* Active tab — highlighted with the app's cyan accent colour */
+.research-tab-btn.active {
+    background:     rgba(0, 212, 255, 0.18);
+    border-color:   rgba(0, 212, 255, 0.45);
+    color:          #00d4ff;
+}
+
+/* Search row: input field side-by-side with the search trigger button */
+.research-search-row {
+    display:        flex;
+    gap:            6px;
+    margin-bottom:  10px;
+    align-items:    center;
+}
+
+/* The ICAO code text input */
+.research-input {
+    flex:           1;
+    min-width:      0;
+    padding:        6px 8px;
+    background:     rgba(255, 255, 255, 0.07);
+    border:         1px solid rgba(255, 255, 255, 0.15);
+    border-radius:  5px;
+    color:          var(--text-primary);
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      12px;
+    outline:        none;
+    transition:     border-color 0.15s ease;
+}
+
+.research-input:focus {
+    border-color:   rgba(0, 212, 255, 0.5);
+}
+
+.research-input::placeholder {
+    color:          var(--text-muted);
+    font-size:      11px;
+}
+
+/* Magnifying glass trigger button */
+.research-search-btn {
+    flex-shrink:    0;
+    width:          30px;
+    height:         30px;
+    display:        flex;
+    align-items:    center;
+    justify-content: center;
+    background:     rgba(0, 212, 255, 0.15);
+    border:         1px solid rgba(0, 212, 255, 0.35);
+    border-radius:  5px;
+    color:          #00d4ff;
+    cursor:         pointer;
+    transition:     all 0.15s ease;
+}
+
+.research-search-btn:hover {
+    background:     rgba(0, 212, 255, 0.28);
+    border-color:   rgba(0, 212, 255, 0.6);
+}
+
+/* Result card — displays the matched ICAO record or a "not found" state */
+.research-result-card {
+    background:     rgba(255, 255, 255, 0.04);
+    border:         1px solid rgba(255, 255, 255, 0.09);
+    border-radius:  6px;
+    padding:        10px 12px;
+    min-height:     54px;
+    white-space:    normal;    /* Allow long values to wrap inside the panel */
+    font-size:      12px;
+    line-height:    1.6;
+    color:          var(--text-secondary);
+}
+
+/* Placeholder text shown before any search is made */
+.research-result-empty {
+    font-size:      11px;
+    color:          var(--text-muted);
+    font-style:     italic;
+    text-align:     center;
+    padding:        6px 0;
+}
+
+/* "Not found" error state */
+.research-result-not-found {
+    font-size:      11px;
+    color:          #f87171;     /* Red-400 — indicates a failed lookup */
+    text-align:     center;
+    padding:        6px 0;
+}
+
+/* Individual key-value row inside the result card */
+.research-result-row {
+    display:        flex;
+    gap:            6px;
+    padding:        2px 0;
+}
+
+/* Field label (e.g. "ICAO", "WTC", "Name") */
+.research-result-label {
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      10px;
+    font-weight:    700;
+    color:          var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    flex-shrink:    0;
+    min-width:      62px;
+    padding-top:    1px;
+}
+
+/* Field value — primary data text */
+.research-result-value {
+    color:          var(--text-primary);
+    font-size:      12px;
+    word-break:     break-word;
+}
+
+
+/* ─── Phase 28: Settings Panel Sliders ─────────────────────────────────────────
+   Styles for the #panel-settings sub-panel. Each slider controls one of the
+   two CSS variables (--map-label-scale, --map-symbol-scale) defined in variables.css.
+   The layout is: label row (name + live value) above a full-width range input. */
+
+/* Wraps one label+value header line above one range slider */
+.settings-slider-row {
+    margin-bottom:  14px;
+}
+
+/* Header line: slider name on the left, live numeric value on the right */
+.settings-slider-header {
+    display:        flex;
+    justify-content: space-between;
+    align-items:    center;
+    margin-bottom:  5px;
+}
+
+/* Name of the slider (e.g. "Label Size") */
+.settings-slider-name {
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      11px;
+    font-weight:    600;
+    color:          var(--text-secondary);
+    letter-spacing: 0.04em;
+}
+
+/* Live numeric readout (e.g. "1.0"), updated by JS on every input event */
+.settings-slider-val {
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      11px;
+    font-weight:    700;
+    color:          #00d4ff;
+    min-width:      28px;
+    text-align:     right;
+}
+
+/* The range input itself — full-width, styled to match the dark theme */
+.settings-slider {
+    width:          100%;
+    accent-color:   #00d4ff;
+    cursor:         pointer;
+    height:         4px;
+}
+
+/* Min/max hint labels below the slider */
+.settings-slider-ticks {
+    display:        flex;
+    justify-content: space-between;
+    margin-top:     3px;
+    font-size:      9px;
+    color:          var(--text-muted);
+    font-family:    'JetBrains Mono', monospace;
+}
+
+
+
+
+/* Navaid click popup — minimal dark styling consistent with the app theme */
+.navaid-popup .leaflet-popup-content-wrapper {
+    background:     rgba(10, 14, 22, 0.96);
+    border:         1px solid rgba(255, 255, 255, 0.12);
+    border-radius:  6px;
+    box-shadow:     0 4px 16px rgba(0, 0, 0, 0.7);
+    color:          var(--text-primary);
+}
+
+.navaid-popup .leaflet-popup-tip {
+    background:     rgba(10, 14, 22, 0.96);
+}
+
+.navaid-popup .leaflet-popup-close-button {
+    color:          var(--text-muted);
+}
+
+
+/* ================================================================
+   PHASE 30: SMALL SCREEN OPTIMIZATION
+   On viewports shorter than 700px (e.g. laptops with 768px height,
+   browser chrome eating space), reduce padding and font sizes to
+   maximize the amount of data visible before scrolling kicks in.
+   ================================================================ */
+@media (max-height: 700px) {
+
+    /* Sub-panels: tighter top padding on small screens.
+       max-height and padding-bottom are set by JS dynamically — no override needed here. */
+    .toolbar-subpanel {
+        padding-top: 8px;
+    }
+
+    /* Section titles inside sub-panels: slightly smaller. */
+    .subpanel-title {
+        font-size:     9px;
+        margin-bottom: 6px;
+        padding-bottom: 5px;
+    }
+
+    /* Checkbox rows: reduce vertical gap to pack more items. */
+    .panel-check-row {
+        padding: 2px 0;
+    }
+
+    /* Sidebar viewer groups: tighten header padding. */
+    .viewer-group-header {
+        padding: 3px 8px;
+    }
+
+    /* View section header: less top padding. */
+    .view-section-header {
+        padding-top: 6px;
+    }
+
+    /* Sidebar content: reduce bottom buffer slightly on small screens. */
+    .sidebar-content {
+        padding-bottom: 3rem;
+    }
+}
+
+
+/* ================================================================
+   PHASE 35: AIRPORT WEATHER POPUP — METAR / TAF CARD
+   Glassmorphic dark popup that shows live weather data for
+   Tier-1 (major) airports when the user clicks their icon.
+   ================================================================ */
+
+/* Override Leaflet's default popup wrapper for our weather popups */
+.airport-wx-popup .leaflet-popup-content-wrapper {
+    background:    rgba(10, 14, 22, 0.97);
+    border:        1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 10px;
+    box-shadow:    0 8px 32px rgba(0, 0, 0, 0.7),
+                   0 1px 0    rgba(255, 255, 255, 0.06) inset;
+    backdrop-filter: blur(12px);
+    color:         var(--text-primary);
+    padding:       0;
+    min-width:     260px;
+    max-width:     340px;
+}
+
+.airport-wx-popup .leaflet-popup-content {
+    margin: 0;
+    width: 100% !important;
+}
+
+.airport-wx-popup .leaflet-popup-tip {
+    background: rgba(10, 14, 22, 0.97);
+}
+
+.airport-wx-popup .leaflet-popup-close-button {
+    color:     var(--text-muted);
+    font-size: 18px;
+    top:       6px;
+    right:     8px;
+}
+
+/* ── Popup header: ICAO badge + airport name ────────────────── */
+.wx-popup-header {
+    display:         flex;
+    align-items:     baseline;
+    gap:             8px;
+    padding:         12px 14px 6px;
+    border-bottom:   1px solid rgba(255, 255, 255, 0.07);
+}
+
+.wx-icao {
+    font-family:   'JetBrains Mono', monospace;
+    font-size:     16px;
+    font-weight:   700;
+    color:         var(--text-primary);
+    letter-spacing: 0.04em;
+}
+
+.wx-airport-name {
+    font-size:    11px;
+    color:        var(--text-muted);
+    flex:         1;
+    overflow:     hidden;
+    text-overflow: ellipsis;
+    white-space:  nowrap;
+}
+
+.wx-popup-coords {
+    font-family: 'JetBrains Mono', monospace;
+    font-size:   10px;
+    color:       var(--text-muted);
+    padding:     2px 14px 8px;
+}
+
+/* ── Weather body: idle / loading / loaded states ────────────── */
+.wx-body {
+    padding: 8px 14px 12px;
+}
+
+/* "Show Weather" trigger button — idle state */
+.wx-show-btn {
+    display:       block;
+    width:         100%;
+    padding:       8px 12px;
+    background:    rgba(59, 158, 255, 0.10);
+    border:        1px solid rgba(59, 158, 255, 0.30);
+    border-radius: 6px;
+    color:         var(--color-sid);
+    font-size:     12px;
+    font-family:   'Inter', sans-serif;
+    font-weight:   500;
+    cursor:        pointer;
+    text-align:    center;
+    transition:    background 0.15s, border-color 0.15s;
+}
+.wx-show-btn:hover {
+    background:   rgba(59, 158, 255, 0.18);
+    border-color: rgba(59, 158, 255, 0.55);
+}
+
+/* Loading state */
+.wx-loading {
+    display:     flex;
+    align-items: center;
+    gap:         10px;
+    padding:     10px 4px;
+    font-size:   12px;
+    color:       var(--text-muted);
+}
+
+/* Spinning ring animation */
+.wx-spinner {
+    width:        18px;
+    height:       18px;
+    border:       2px solid rgba(59, 158, 255, 0.15);
+    border-top:   2px solid var(--color-sid);
+    border-radius: 50%;
+    flex-shrink:  0;
+    animation:    wx-spin 0.8s linear infinite;
+}
+
+@keyframes wx-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Error state */
+.wx-error {
+    padding:     10px 4px;
+    font-size:   12px;
+    color:       var(--color-danger);
+}
+
+/* ── Flight category badge ────────────────────────────────────── */
+.wx-flight-cat {
+    display:       inline-block;
+    padding:       2px 8px;
+    border-radius: 4px;
+    font-family:   'JetBrains Mono', monospace;
+    font-size:     10px;
+    font-weight:   700;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.wx-cat--VFR  { background: rgba(34, 197, 94, 0.20); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.40); }
+.wx-cat--MVFR { background: rgba(59, 130, 246, 0.20); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.40); }
+.wx-cat--IFR  { background: rgba(239, 68, 68, 0.20);  color: #f87171; border: 1px solid rgba(239, 68, 68, 0.40); }
+.wx-cat--LIFR { background: rgba(168, 85, 247, 0.20); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.40); }
+.wx-cat--UNK  { background: rgba(100, 116, 139, 0.20); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.40); }
+
+/* ── Weather data card ───────────────────────────────────────── */
+.wx-card {
+    font-size: 12px;
+}
+
+.wx-section-title {
+    font-family:   'JetBrains Mono', monospace;
+    font-size:     9px;
+    font-weight:   600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color:         var(--text-muted);
+    margin-bottom: 6px;
+}
+
+/* Grid of weather datum items */
+.wx-grid {
+    display:               grid;
+    grid-template-columns: 1fr 1fr;
+    gap:                   4px 8px;
+    margin-bottom:         8px;
+}
+
+.wx-item {
+    display:        flex;
+    flex-direction: column;
+    gap:            1px;
+    padding:        5px 7px;
+    background:     rgba(255, 255, 255, 0.04);
+    border-radius:  5px;
+    border:         1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Wind item spans both columns (it's the most important datum) */
+.wx-item:first-child {
+    grid-column: 1 / -1;
+}
+
+.wx-icon {
+    font-size:   13px;
+    line-height: 1;
+}
+
+.wx-label {
+    font-size: 9px;
+    color:     var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.wx-value {
+    font-family:   'JetBrains Mono', monospace;
+    font-size:     11px;
+    font-weight:   600;
+    color:         var(--text-primary);
+    word-break:    break-all;
+}
+
+/* Raw METAR string */
+.wx-raw-metar {
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    9px;
+    color:        var(--text-muted);
+    padding:      6px 0 2px;
+    word-break:   break-all;
+    line-height:  1.5;
+    border-top:   1px solid rgba(255, 255, 255, 0.05);
+    margin-top:   4px;
+}
+
+/* Divider between METAR and TAF sections */
+.wx-divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    margin: 8px 0;
+}
+
+/* TAF raw text */
+.wx-taf-raw {
+    font-family: 'JetBrains Mono', monospace;
+    font-size:   9px;
+    color:       var(--text-secondary);
+    word-break:  break-all;
+    line-height: 1.5;
+    margin-top:  6px;
+    padding:     6px 8px;
+    background:  rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    border:      1px solid rgba(255, 255, 255, 0.05);
+}
+
+.wx-taf-valid {
+    font-size:  10px;
+    color:      var(--text-muted);
+    margin-top: 4px;
+}
+
+.wx-taf-na {
+    font-size:  11px;
+    color:      var(--text-muted);
+    font-style: italic;
+    margin-top: 4px;
+}
+
+/* Observation timestamp */
+.wx-observed {
+    font-size:  10px;
+    color:      var(--text-muted);
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* ================================================================
+   LANGUAGE TOGGLE (Phase 36)
+   ================================================================ */
+.lang-toggle {
+    display: flex;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 2px;
+    backdrop-filter: blur(8px);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.lang-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.05em;
+}
+
+.lang-btn:hover:not(.active) {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.lang-btn.active {
+    background: var(--color-sid);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(59, 158, 255, 0.3);
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+
+.ds-header-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ds-modal-header {
+    justify-content: space-between;
+}
+
+.ds-footer-left, .ds-footer-right {
+    display: flex;
+    align-items: center;
+}
+
+.ds-footer-right {
+    gap: 16px;
+}
+
+/* ================================================================
+   VFR CORRIDORS (REA/REH) — Phase 39
+   ================================================================ */
+
+.vfr-waypoint-rea, .vfr-waypoint-reh {
+    pointer-events: none;
+}
+
+.vfr-triangle {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 10px solid #ff00ff; /* Magenta */
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 0 3px rgba(255, 0, 255, 0.8));
+}
+
+.vfr-circle {
+    width: 10px;
+    height: 10px;
+    background: #ffff00; /* Yellow */
+    border: 1.5px solid #000;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 5px rgba(255, 255, 0, 0.8);
+}
+
+.vfr-label {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0 3px #000, 0 0 5px #000;
+    white-space: nowrap;
+}
+
+/* VFR Segment Popup Styles */
+.vfr-popup {
+    min-width: 200px;
+    font-family: 'Inter', sans-serif;
+    padding: 2px;
+}
+
+.vfr-popup-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-sid);
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+    letter-spacing: 0.02em;
+}
+
+.vfr-popup-segment {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.vfr-popup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vfr-grid-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.vfr-grid-cell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-primary);
+}
+
+.vfr-segment-popup .leaflet-popup-content-wrapper {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+}
+
+.vfr-segment-popup .leaflet-popup-tip {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-bright);
+}
+
+/* VFR Legend Dots (Airspaces Panel) */
+.vfr-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin: 0 8px;
+    flex-shrink: 0;
+}
+.vfr-dot-rea { background: #00ffff; box-shadow: 0 0 4px rgba(0, 255, 255, 0.6); }
+.vfr-dot-reh { background: #ff8c00; box-shadow: 0 0 4px rgba(255, 140, 0, 0.6); }

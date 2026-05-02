@@ -1,0 +1,13 @@
+{
+  "name": "aeroproc-weather-proxy",
+  "version": "1.0.0",
+  "description": "Secure proxy for CheckWX API",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "npx wrangler dev",
+    "deploy": "npx wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

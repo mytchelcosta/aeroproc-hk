@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AeroProc - Hong Kong</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-header-title-row" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="sidebar-brand-group" style="display: flex; align-items: center; gap: 8px;">
+              <h2 data-i18n="sidebar.brand">AeroProc</h2>
+              <!-- Data currency badge — color reflects worst data staleness status.
+                   Wired in main.js to re-open the Data Status Modal on click. -->
+              <button id="btn-data-status" class="data-status-badge data-status-ok"
+                      title="Data Currency Status — click to review">&#9432;</button>
+            </div>
+            
+              <div class="lang-toggle" id="lang-toggle">
+                <button class="lang-btn active" data-lang="en">EN</button>
+                <button class="lang-btn" data-lang="pt">PT</button>
+                <div class="lang-pill"></div>
+              </div>
+          </div>
+          <span data-i18n="sidebar.title">Hong Kong TMA</span>
+        </div>
+        <div class="sidebar-content">
+          <p>Hello World!</p>
+          <p style="margin-top: 10px;">Foundation architecture initialized successfully.</p>
+        </div>
+        <button id="btn-sidebar-toggle" class="map-tool-btn sidebar-toggle-btn" title="Toggle Sidebar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <!--
+      Floating map toolbar — fixed over the map area, below the Leaflet zoom controls.
+      3-button vertical column: each button can open a floating sub-panel to its left.
+      Buttons 2-3 control sub-panels (click to open/close); Button 1 is a direct toggle.
+      All wired in main.js at startup.
+    -->
+    <div id="map-toolbar" class="map-toolbar">
+      <div class="map-toolbar-scroll-wrapper">
+
+      <!-- ─── Category: Utilities ────────────────────────────────────────────────
+           Primary diagnostic and measuring tools that don't belong to a specific layer. -->
+      
+      <!-- Button 1: Measuring Vector 
+           Direct toggle — no sub-panel. Enables the point-to-point measuring tool. -->
+      <button class="map-tool-btn" id="btn-mv-tool">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <line x1="3" y1="11" x2="19" y2="11"
+                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <polyline points="7,7 3,11 7,15"
+                    stroke="currentColor" stroke-width="1.6"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="15,7 19,11 15,15"
+                    stroke="currentColor" stroke-width="1.6"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="3" y1="8" x2="3" y2="14"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <line x1="19" y1="8" x2="19" y2="14"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.measuring_vector.title">Measuring Vector</div>
+          <div class="tooltip-body" data-i18n="map.tools.measuring_vector.body">Click map to set origin, then<br>click again to set destination.</div>
+          <div class="tooltip-shortcuts">
+            <div class="tooltip-shortcut-row"><kbd>O</kbd><span data-i18n="map.tools.measuring_vector.shortcut_o">Set origin at cursor</span></div>
+            <div class="tooltip-shortcut-row"><kbd>F</kbd><span data-i18n="map.tools.measuring_vector.shortcut_f">Set destination at cursor</span></div>
+          </div>
+        </div>
+      </button>
+
+      <div class="toolbar-separator"></div>
+
+
+      <!-- ─── Category: Drawing Tools ──────────────────────────────────────────────
+           Manual annotation and geometry tools for creating temporary overlays. -->
+      
+      <!-- Button: Draw Polygon 
+           Opens a sub-panel to manage custom irregular shapes. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-draw-polygon">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polygon points="5,7 17,4 18,17 4,18"
+                   stroke="currentColor" stroke-width="1.6"
+                   stroke-linejoin="round" fill="none"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.draw_polygon.title">Draw Polygon</div>
+          <div class="tooltip-body" data-i18n="map.tools.draw_polygon.body">Click to place vertices.<br>Double-click to close.<br>Right-click to delete.</div>
+          <div class="tooltip-shortcuts">
+            <div class="tooltip-shortcut-row"><kbd>Esc</kbd><span data-i18n="ui.shortcuts.cancel">Cancel shape</span></div>
+          </div>
+        </div>
+      </button>
+
+      <!-- Button: Draw Circle 
+           Opens a sub-panel to manage circular distance markers. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-draw-circle">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="11" cy="11" r="7.5"
+                  stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <circle cx="11" cy="3.5" r="1.2" fill="currentColor"/>
+          <line x1="11" y1="4.7" x2="11" y2="11"
+                stroke="currentColor" stroke-width="1" stroke-dasharray="2,1.5"
+                stroke-linecap="round"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.draw_circle.title">Draw Circle</div>
+          <div class="tooltip-body" data-i18n="map.tools.draw_circle.body">Click centre, then set radius.<br>Click to fix.<br>Right-click to delete.</div>
+          <div class="tooltip-shortcuts">
+            <div class="tooltip-shortcut-row"><kbd>Esc</kbd><span data-i18n="ui.shortcuts.cancel">Cancel shape</span></div>
+          </div>
+        </div>
+      </button>
+
+      <!-- Button: Draw Line 
+           Opens a sub-panel to manage polyline paths. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-draw-line">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polyline points="3,19 9,10 15,14 19,4"
+                    stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="3"  cy="19" r="1.6" fill="currentColor"/>
+          <circle cx="9"  cy="10" r="1.6" fill="currentColor"/>
+          <circle cx="15" cy="14" r="1.6" fill="currentColor"/>
+          <circle cx="19" cy="4"  r="1.6" fill="currentColor"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.draw_line.title">Draw Line</div>
+          <div class="tooltip-body" data-i18n="map.tools.draw_line.body">Click to place vertices.<br>Double-click to finalize.<br>Right-click to delete.</div>
+          <div class="tooltip-shortcuts">
+            <div class="tooltip-shortcut-row"><kbd>Esc</kbd><span data-i18n="ui.shortcuts.cancel_line">Cancel line</span></div>
+          </div>
+        </div>
+      </button>
+
+      <!-- Button: Notation Tool 
+           Opens a sub-panel for text annotations. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-notation">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M4 18h4l9-9-4-4-9 9v4z"
+                stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M13 5l4 4"
+                stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round"/>
+          <line x1="4" y1="20" x2="18" y2="20"
+                stroke="currentColor" stroke-width="1.2"
+                stroke-linecap="round" opacity="0.5"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.notation.title">Notation Tool</div>
+          <div class="tooltip-body" data-i18n="map.tools.notation.body">Click map to drop a note.<br>Drag to move.<br>Right-click to edit.</div>
+          <div class="tooltip-shortcuts">
+            <div class="tooltip-shortcut-row"><kbd>Esc</kbd><span data-i18n="ui.shortcuts.deactivate">Deactivate mode</span></div>
+          </div>
+        </div>
+      </button>
+
+      <!-- Button: Geo Point Tool 
+           Opens a sub-panel for dropping precise Lat/Lon markers. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-geopoint">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="11" cy="11" r="6.5"
+                  stroke="currentColor" stroke-width="1.4" fill="none"/>
+          <circle cx="11" cy="11" r="1.8" fill="currentColor"/>
+          <line x1="11" y1="2"    x2="11" y2="5"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <line x1="11" y1="17"   x2="11" y2="20"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <line x1="2"  y1="11"   x2="5"  y2="11"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <line x1="17" y1="11"   x2="20" y2="11"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.geopoint.title">Geo Point Tool</div>
+          <div class="tooltip-body" data-i18n="map.tools.geopoint.body">Drop precision markers.<br>Shows lat/lon coordinates.<br>Right-click to delete.</div>
+        </div>
+      </button>
+
+      <!-- Button: Range Tool 
+           Opens a sub-panel for drawing concentric DME range rings. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-range">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="11" cy="11" r="8.5"
+                  stroke="currentColor" stroke-width="1.2" fill="none"/>
+          <circle cx="11" cy="11" r="5"
+                  stroke="currentColor" stroke-width="1.2" fill="none"/>
+          <circle cx="11" cy="11" r="1.8" fill="currentColor"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.range.title">DME Range Rings</div>
+          <div class="tooltip-body" data-i18n="map.tools.range.body">Draw concentric distance rings.<br>Set interval and count.<br>Click map to place.</div>
+        </div>
+      </button>
+
+      <div class="toolbar-separator"></div>
+
+
+      <!-- ─── Category: Data Layers ────────────────────────────────────────────────
+           Toggles for static aeronautical data (Airports, Fixes, Airspaces). -->
+      
+      <!-- Button: Objects 
+           Opens a sub-panel to toggle Airport and Fix visibility. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-objects">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M11 2a6 6 0 0 1 6 6c0 4-6 12-6 12S5 12 5 8a6 6 0 0 1 6-6z"
+                stroke="currentColor" stroke-width="1.5"
+                stroke-linejoin="round" fill="none"/>
+          <circle cx="11" cy="8" r="2"
+                  stroke="currentColor" stroke-width="1.3" fill="none"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.objects.title">Objects</div>
+          <div class="tooltip-body" data-i18n="map.tools.objects.body">Toggle airports, fixes,<br>and NAVAID layers.</div>
+        </div>
+      </button>
+
+      <!-- Button: Airspaces 
+           Opens a sub-panel to toggle TMA/CTR/ATZ boundaries. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-airspaces">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polygon points="11,2 19,6 19,16 11,20 3,16 3,6"
+                   stroke="currentColor" stroke-width="1.4"
+                   stroke-dasharray="3,2"
+                   stroke-linejoin="round" fill="none"/>
+          <text x="11" y="13.5" text-anchor="middle"
+                font-size="6" font-family="monospace"
+                fill="currentColor" font-weight="bold">A</text>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.airspaces.title">Airspaces</div>
+          <div class="tooltip-body" data-i18n="map.tools.airspaces.body">Toggle TMA and CTR/ATZ<br>airspace overlays.</div>
+        </div>
+      </button>
+
+      <!-- Button: Research
+           Opens a sub-panel with ICAO lookup for Aircraft, Airline, and Airport codes.
+           The lookup is lazy — the underlying data files are only fetched on the first search. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-research">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <!-- Magnifying glass: circle body + handle line -->
+          <circle cx="9.5" cy="9.5" r="6"
+                  stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <line x1="14" y1="14" x2="19" y2="19"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.research.title">Research</div>
+          <div class="tooltip-body" data-i18n="map.tools.research.body">Look up ICAO codes for<br>aircraft types, airlines,<br>and airports.</div>
+        </div>
+      </button>
+
+      <div class="toolbar-separator"></div>
+
+
+      <!-- ─── Category: Traffic ────────────────────────────────────────────────────
+           Real-time aircraft data integration. -->
+      
+      <!-- Button: Live Traffic 
+           Opens a sub-panel for real-time ADS-B traffic display. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-live-traffic">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polygon points="11,2 12.5,8 19,11 19,12.5 12.5,11.5 12,17 14,18 14,19.5 11,18.5 8,19.5 8,18 10,17 9.5,11.5 3,12.5 3,11 9.5,8"
+                   stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="currentColor" opacity="0.85"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.live_traffic.title">Live Traffic</div>
+          <div class="tooltip-body" data-i18n="map.tools.live_traffic.body">Display real-time ADS-B<br>aircraft positions.</div>
+        </div>
+      </button>
+
+      <div class="toolbar-separator"></div>
+
+
+      <!-- Button: Settings
+           Opens a sub-panel with two sliders: Label Size and Symbol Size.
+           Adjusting them updates the --map-label-scale and --map-symbol-scale
+           CSS variables in real time, scaling all map labels and fix markers. -->
+      <button class="map-tool-btn map-panel-btn" id="btn-settings">
+        <svg viewBox="0 0 22 22" width="18" height="18" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <!-- Gear / cog icon -->
+          <circle cx="11" cy="11" r="3.2"
+                  stroke="currentColor" stroke-width="1.4" fill="none"/>
+          <path d="M11 2v2M11 18v2M2 11h2M18 11h2
+                   M4.93 4.93l1.41 1.41M15.66 15.66l1.41 1.41
+                   M4.93 17.07l1.41-1.41M15.66 6.34l1.41-1.41"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <div class="map-tool-tooltip">
+          <div class="tooltip-title" data-i18n="map.tools.settings.title">Display Settings</div>
+          <div class="tooltip-body" data-i18n="map.tools.settings.body">Adjust map label size<br>and symbol size.</div>
+        </div>
+      </button>
+
+      <!-- ─── Sub-panel: Range Tool ────────────────────────────────────────────────
+           Per-tool manager for DME range ring sets.
+           User configures interval and count, then clicks the map to place rings. -->
+      <div class="toolbar-subpanel hidden" id="panel-range">
+        <div class="subpanel-title" data-i18n="ui.panels.range.title">DME Range Rings</div>
+
+        <!-- Configuration inputs: set these before clicking the map -->
+        <div class="range-inputs">
+          <div class="range-input-group">
+            <label for="range-interval" data-i18n="ui.panels.range.label_interval">Interval (NM)</label>
+            <input type="number" id="range-interval" value="10" min="1" max="300" step="1" />
+          </div>
+          <div class="range-input-group">
+            <label for="range-count" data-i18n="ui.panels.range.label_count">Rings (max 20)</label>
+            <input type="number" id="range-count" value="5" min="1" max="20" step="1" />
+          </div>
+        </div>
+
+        <!-- "Place Range" button — activates click-to-drop mode when clicked. -->
+        <button class="draw-new-btn" id="btn-start-range" data-i18n="ui.panels.range.btn_place">&#9654; Place Range</button>
+
+        <!-- Manual coordinate entry — alternative to clicking the map -->
+        <div class="range-manual-entry">
+          <div class="range-inputs" style="margin-top:6px;">
+            <div class="range-input-group">
+              <label for="range-manual-lat" data-i18n="ui.panels.range.label_lat">Lat</label>
+              <input type="number" id="range-manual-lat" placeholder="-23.4356" step="0.0001" />
+            </div>
+            <div class="range-input-group">
+              <label for="range-manual-lon" data-i18n="ui.panels.range.label_lon">Lon</label>
+              <input type="number" id="range-manual-lon" placeholder="113.9146" step="0.0001" />
+            </div>
+          </div>
+          <button class="range-place-here-btn" id="btn-range-place-here" data-i18n="ui.panels.range.btn_here">Place Here</button>
+        </div>
+
+        <div id="range-list">
+          <!-- Populated dynamically by _refreshRangePanel in main.js -->
+          <div class="shapes-empty-msg" data-i18n="ui.panels.range.empty_msg">No ranges yet.<br>Click &#9654; Place Range to start.</div>
+        </div>
+      </div>
+
+      <!-- ─── Sub-panel: Geo Point ──────────────────────────────────────────────────
+           Per-tool manager for precision geo point markers.
+           "Drop Point" activates placement mode; the list shows all dropped points. -->
+      <div class="toolbar-subpanel hidden" id="panel-geopoint">
+        <div class="subpanel-title" data-i18n="ui.panels.geopoint.title">Geo Points</div>
+        <!-- "Drop Point" button — activates geo point drop mode when clicked. -->
+        <button class="draw-new-btn" id="btn-start-geopoint" data-i18n="ui.panels.geopoint.btn_drop">&#9654; Drop Point</button>
+        <div id="geopoint-list">
+          <!-- Populated dynamically by _refreshGeoPointPanel in main.js -->
+          <div class="shapes-empty-msg" data-i18n="ui.panels.geopoint.empty_msg">No points yet.<br>Click &#9654; Drop Point to start.</div>
+        </div>
+      </div>
+
+      </div><!-- end .map-toolbar-scroll-wrapper -->
+
+      <!-- ─── Sub-panel: Objects ───────────────────────────────────────────────────
+           Appears to the LEFT of the toolbar when Button 2 is clicked.
+           Checkboxes replace the native Leaflet L.control.layers panel. -->
+      <div class="toolbar-subpanel hidden" id="panel-objects">
+        <div class="subpanel-title" data-i18n="ui.panels.objects.title">Objects</div>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-major-airports" checked />
+          <span data-i18n="ui.panels.objects.chk_major">Major Airports</span>
+        </label>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-regional-airports" />
+          <span data-i18n="ui.panels.objects.chk_regional">Regional Airports</span>
+        </label>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-heliports" />
+          <span data-i18n="ui.panels.objects.chk_heliports">Heliports</span>
+        </label>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-rnav-fixes" checked />
+          <span data-i18n="ui.panels.objects.chk_fixes">RNAV Fixes</span>
+        </label>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-navaids" checked />
+          <span data-i18n="ui.panels.objects.chk_navaids">NAVAIDs</span>
+        </label>
+      </div>
+
+      <!-- ─── Sub-panel: Airspaces ─────────────────────────────────────────────────
+           Appears to the LEFT of the toolbar when Button 3 is clicked.
+           Sections: TMA Overview (outer boundary + SP2), TMA Sectors (collapsible,
+           with All Sectors master toggle + T-01…T-13 individual), Terminal Areas
+           (CTR/FIZ/ATZ group toggles with per-zone sub-items).
+           All wired in main.js at startup. -->
+      <div class="toolbar-subpanel hidden" id="panel-airspaces">
+        <div class="subpanel-title" data-i18n="ui.panels.airspaces.title">Airspaces</div>
+
+        <!-- TMA Overview — outer boundary envelope + SP2 (separate from sectors) -->
+        <div class="subpanel-section-label" data-i18n="ui.panels.airspaces.label_overview">TMA Overview</div>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-tma-outer" checked />
+          <span data-i18n="ui.panels.airspaces.chk_outer">Outer Boundary</span>
+        </label>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-tma-sp2" />
+          <span data-i18n="ui.panels.airspaces.chk_sp2">Secondary TMA</span>
+        </label>
+
+        <!-- TMA Sectors — collapsible list with All Sectors master toggle -->
+        <details class="subpanel-collapsible" open>
+          <summary class="subpanel-collapsible-header" data-i18n="ui.panels.airspaces.label_sectors">TMA Sectors</summary>
+          <label class="panel-check-row panel-group-toggle">
+            <input type="checkbox" id="chk-tma-sectors-all" checked />
+            <span><b data-i18n="ui.panels.airspaces.chk_all">All Sectors</b></span>
+          </label>
+          <div class="subpanel-nested">
+            <label class="panel-check-row"><input type="checkbox" id="chk-tma-hk"  checked /><span>HK TMA</span></label>
+          </div>
+        </details>
+
+        <!-- Terminal Areas — group toggles (CTR on, FIZ/ATZ off by default) -->
+        <div class="subpanel-section-label subpanel-section-separator" data-i18n="ui.panels.airspaces.label_terminal">Terminal Areas</div>
+
+        <!-- CTR group — ON by default -->
+        <label class="panel-check-row panel-group-toggle">
+          <input type="checkbox" id="chk-ctr-group" checked />
+          <span data-i18n="ui.panels.airspaces.chk_ctrs">CTRs</span>
+        </label>
+        <div class="subpanel-nested" id="ctr-group-items">
+          <label class="panel-check-row"><input type="checkbox" id="chk-ctr-hk" checked /><span>HK CTR</span></label>
+        </div>
+
+        <!-- FIZ group — ON by default (Phase 31: Initial Visibility Profile) -->
+        <label class="panel-check-row panel-group-toggle">
+          <input type="checkbox" id="chk-fiz-group" checked />
+          <span data-i18n="ui.panels.airspaces.chk_fizs">FIZs</span>
+        </label>
+        <div class="subpanel-nested" id="fiz-group-items">
+          <label class="panel-check-row"><input type="checkbox" id="chk-atz-hk" checked /><span>HK ATZ</span></label>
+        </div>
+
+        <!-- ATZ group — ON by default (Phase 31: Initial Visibility Profile) -->
+        <label class="panel-check-row panel-group-toggle">
+          <input type="checkbox" id="chk-atz-group" checked />
+          <span data-i18n="ui.panels.airspaces.chk_atzs">ATZs</span>
+        </label>
+        <div class="subpanel-nested" id="atz-group-items" style="display:none;"></div>
+
+        <!-- Phase 39: VFR Corridors (REA/REH) -->
+        <div class="subpanel-section-label subpanel-section-separator" data-i18n="ui.panels.airspaces.label_vfr">VFR Corridors</div>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-vfr-rea" />
+          <span class="vfr-dot vfr-dot-rea"></span>
+          <span data-i18n="ui.panels.airspaces.chk_rea">REA (VFR Corridors)</span>
+        </label>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-vfr-reh" />
+          <span class="vfr-dot vfr-dot-reh"></span>
+          <span data-i18n="ui.panels.airspaces.chk_reh">REH (Helicopter Routes)</span>
+        </label>
+      </div>
+
+      <!-- ─── Sub-panel: Live Traffic ────────────────────────────────────────────────
+           Appears to the LEFT of the toolbar when Button 4 is clicked.
+           Controls the ADS-B live traffic layer and its label overlay. -->
+      <div class="toolbar-subpanel hidden" id="panel-live-traffic">
+        <div class="subpanel-title" data-i18n="ui.panels.traffic.title">Live Traffic</div>
+
+        <!-- Master on/off toggle -->
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-live-traffic" />
+          <span data-i18n="ui.panels.traffic.chk_feed">Enable ADS-B Feed</span>
+        </label>
+
+        <!-- Label toggle — dimmed when traffic is off -->
+        <label class="panel-check-row" id="row-ac-labels" style="opacity:0.4;pointer-events:none">
+          <input type="checkbox" id="chk-ac-labels" checked disabled />
+          <span data-i18n="ui.panels.traffic.chk_labels">Show Labels</span>
+        </label>
+        
+        <div class="subpanel-nested" id="ac-labels-group" style="opacity:0.4;pointer-events:none">
+          <label class="panel-check-row"><input type="checkbox" id="chk-lbl-callsign" checked disabled /><span data-i18n="ui.panels.traffic.lbl_callsign">Callsign</span></label>
+          <label class="panel-check-row"><input type="checkbox" id="chk-lbl-type" checked disabled /><span data-i18n="ui.panels.traffic.lbl_type">Type & Route</span></label>
+          <label class="panel-check-row"><input type="checkbox" id="chk-lbl-altspd" checked disabled /><span data-i18n="ui.panels.traffic.lbl_altspd">Alt & Speed</span></label>
+          <label class="panel-check-row"><input type="checkbox" id="chk-lbl-track" checked disabled /><span data-i18n="ui.panels.traffic.lbl_track">Track (TRK)</span></label>
+        </div>
+
+        <label class="panel-check-row" id="row-auto-declutter" style="opacity:0.4;pointer-events:none;margin-top:6px;">
+          <input type="checkbox" id="chk-auto-declutter" disabled />
+          <span data-i18n="ui.panels.traffic.chk_declutter">Auto De-clutter</span>
+        </label>
+
+        <!-- Status bar: shows source name + aircraft count, or error state -->
+        <div class="traffic-status-bar">
+          <span class="traffic-dot traffic-dot--off" id="traffic-dot"></span>
+          <span class="traffic-status-text" id="traffic-status-text" data-i18n="ui.panels.traffic.status_offline">OFFLINE</span>
+        </div>
+
+        <!-- Colour legend — airport-based (Phase 16) -->
+        <div class="subpanel-section-label" style="margin-top:8px;" data-i18n="ui.panels.traffic.label_airport">Airport</div>
+        <div class="traffic-legend">
+          <div class="traffic-legend-row"><span class="traffic-legend-dot" style="background:#ffd84a"></span>VHHH</div>
+          <div class="traffic-legend-row"><span class="traffic-legend-dot" style="background:#e07b39"></span>VMMC</div>
+          <div class="traffic-legend-row"><span class="traffic-legend-dot" style="background:#22c55e"></span>ZGSZ</div>
+          <div class="traffic-legend-row"><span class="traffic-legend-dot" style="background:#94a3b8"></span><span data-i18n="ui.panels.traffic.legend_other">Other</span></div>
+        </div>
+      </div>
+
+      <!-- ─── Sub-panel: Polygon ───────────────────────────────────────────────────
+           Per-tool shape manager for Polygon shapes.
+           "Draw New" activates polygon mode; the list below shows all drawn polygons. -->
+      <div class="toolbar-subpanel hidden" id="panel-polygon">
+        <div class="subpanel-title" data-i18n="ui.panels.polygon.title">Polygon Shapes</div>
+        <!-- "Draw New" button — activates polygon draw mode when clicked.
+             Gains the 'active' CSS class while polygon mode is running. -->
+        <button class="draw-new-btn" id="btn-start-polygon" data-i18n="ui.panels.polygon.btn_draw">&#9654; Draw New</button>
+        <div id="polygon-shapes-list">
+          <!-- Populated dynamically by _refreshPolygonPanel in main.js -->
+          <div class="shapes-empty-msg" data-i18n="ui.panels.polygon.empty_msg">No polygons yet.<br>Click &#9654; Draw New to start.</div>
+        </div>
+      </div>
+
+      <!-- ─── Sub-panel: Circle ─────────────────────────────────────────────────────
+           Per-tool shape manager for Circle shapes.
+           "Draw New" activates circle mode; the list below shows all drawn circles. -->
+      <div class="toolbar-subpanel hidden" id="panel-circle">
+        <div class="subpanel-title" data-i18n="ui.panels.circle.title">Circle Shapes</div>
+        <button class="draw-new-btn" id="btn-start-circle" data-i18n="ui.panels.circle.btn_draw">&#9654; Draw New</button>
+        <div id="circle-shapes-list">
+          <div class="shapes-empty-msg" data-i18n="ui.panels.circle.empty_msg">No circles yet.<br>Click &#9654; Draw New to start.</div>
+        </div>
+      </div>
+
+      <!-- ─── Sub-panel: Line ───────────────────────────────────────────────────────
+           Per-tool shape manager for Line shapes.
+           "Draw New" activates line mode; the list below shows all drawn lines. -->
+      <div class="toolbar-subpanel hidden" id="panel-line">
+        <div class="subpanel-title" data-i18n="ui.panels.line.title">Line Shapes</div>
+        <button class="draw-new-btn" id="btn-start-line" data-i18n="ui.panels.line.btn_draw">&#9654; Draw New</button>
+        <div id="line-shapes-list">
+          <div class="shapes-empty-msg" data-i18n="ui.panels.line.empty_msg">No lines yet.<br>Click &#9654; Draw New to start.</div>
+        </div>
+      </div>
+
+      <!-- ─── Sub-panel: Notation ─────────────────────────────────────────────────
+           Lets instructors place free-text annotations directly on the map.
+           Style (size, color) is changed via the floating bar that appears on the
+           note marker itself when it is focused — not from this sub-panel. -->
+      <div class="toolbar-subpanel hidden" id="panel-notation">
+        <div class="subpanel-title" data-i18n="ui.panels.notation.title">Notes</div>
+        <button class="draw-new-btn" id="btn-start-notation" data-i18n="ui.panels.notation.btn_place">&#9654; Place Note</button>
+        <div id="notation-list">
+          <div class="shapes-empty-msg" data-i18n="ui.panels.notation.empty_msg">No notes yet.<br>Click &#9654; Place Note to start.</div>
+        </div>
+      </div>
+
+      <!-- ─── Sub-panel: Settings ──────────────────────────────────────────────
+           Two range sliders:
+             • Label Size  — scales all CSS-rendered map text (fix labels, measurement
+               labels, airport labels) via the --map-label-scale CSS variable.
+             • Symbol Size — scales Leaflet circleMarker radius (fix dots) which cannot
+               be driven by CSS; main.js calls applySymbolScale() on slider release. -->
+      <div class="toolbar-subpanel hidden" id="panel-settings" style="min-width:210px;">
+        <div class="subpanel-title" data-i18n="ui.panels.settings.title">Display Settings</div>
+
+        <!-- Label Size slider — affects all text labels on the map -->
+        <div class="settings-slider-row">
+          <div class="settings-slider-header">
+            <span class="settings-slider-name" data-i18n="ui.panels.settings.label_size">Label Size</span>
+            <span class="settings-slider-val" id="settings-label-scale-val">1.0</span>
+          </div>
+          <input type="range" class="settings-slider" id="settings-label-scale"
+                 min="0.5" max="2.0" step="0.1" value="1.0" />
+          <div class="settings-slider-ticks"><span>0.5×</span><span>2.0×</span></div>
+        </div>
+
+        <!-- Symbol Size slider — affects RNAV fix dots AND airport/navaid SVG icons -->
+        <div class="settings-slider-row">
+          <div class="settings-slider-header">
+            <span class="settings-slider-name" data-i18n="ui.panels.settings.symbol_size">Symbol Size</span>
+            <span class="settings-slider-val" id="settings-symbol-scale-val">1.0</span>
+          </div>
+          <input type="range" class="settings-slider" id="settings-symbol-scale"
+                 min="0.5" max="2.0" step="0.1" value="1.0" />
+          <div class="settings-slider-ticks"><span>0.5×</span><span>2.0×</span></div>
+        </div>
+
+        <!-- Interface Text slider — scales sidebar + toolbar panel font sizes (--ui-scale) -->
+        <div class="settings-slider-row">
+          <div class="settings-slider-header">
+            <span class="settings-slider-name" data-i18n="ui.panels.settings.ui_size">Interface Text</span>
+            <span class="settings-slider-val" id="settings-ui-scale-val">1.0</span>
+          </div>
+          <input type="range" class="settings-slider" id="settings-ui-scale"
+                 min="0.7" max="1.5" step="0.05" value="1.0" />
+          <div class="settings-slider-ticks"><span>0.7×</span><span>1.5×</span></div>
+        </div>
+      </div>
+
+      <!-- ─── Sub-panel: Research ───────────────────────────────────────────────
+           ICAO lookup tool for Aircraft types, Airlines, and Airports.
+           Three tab buttons switch the active category; the search input accepts
+           an ICAO code; the result card below shows the matched record or a
+           "not found" message. Data is loaded lazily on first use (no startup cost). -->
+      <div class="toolbar-subpanel hidden" id="panel-research" style="min-width:230px;">
+        <div class="subpanel-title" data-i18n="ui.panels.research.title">Research</div>
+
+        <!-- Category tabs — clicking one sets the active lookup type -->
+        <div class="research-tabs">
+          <button class="research-tab-btn active" data-category="aircraft" data-i18n="ui.panels.research.tab_aircraft">Aircraft</button>
+          <button class="research-tab-btn" data-category="airline" data-i18n="ui.panels.research.tab_airline">Airline</button>
+          <button class="research-tab-btn" data-category="airport" data-i18n="ui.panels.research.tab_airport">Airport</button>
+        </div>
+
+        <!-- Search row: text input + search button -->
+        <div class="research-search-row">
+          <input type="text" class="research-input" id="research-input"
+                 placeholder="e.g. B738, CPA, VHHH"
+                 data-i18n-placeholder="ui.panels.research.placeholder"
+                 autocomplete="off" spellcheck="false" maxlength="12" />
+          <button class="research-search-btn" id="btn-research-search" title="Search" data-i18n-title="ui.panels.research.btn_search">
+            <!-- Magnifying glass icon -->
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none"
+                 xmlns="http://www.w3.org/2000/svg">
+              <circle cx="6.5" cy="6.5" r="5"
+                      stroke="currentColor" stroke-width="1.4" fill="none"/>
+              <line x1="10.5" y1="10.5" x2="14.5" y2="14.5"
+                    stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Result card: populated dynamically by main.js after each lookup -->
+        <div class="research-result-card" id="research-result-card">
+          <div class="research-result-empty" data-i18n="ui.panels.research.empty_msg">Enter an ICAO code and press Search.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Main App -->
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

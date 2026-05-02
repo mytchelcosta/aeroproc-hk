@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroProc - Procedure Database Builder</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-card: #1c2128;
+            --border: #30363d;
+            --border-bright: #484f58;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            
+            /* Color Coding */
+            --color-sid: #388bfd;       /* Blue */
+            --color-sid-dim: rgba(56, 139, 253, 0.2);
+            --glow-sid: 0 0 12px rgba(56, 139, 253, 0.4);
+            
+            --color-star: #d29922;      /* Yellow */
+            --color-star-dim: rgba(210, 153, 34, 0.2);
+            --glow-star: 0 0 12px rgba(210, 153, 34, 0.4);
+
+            --color-iac: #3fb950;       /* Green */
+            --color-iac-dim: rgba(63, 185, 80, 0.2);
+            --glow-iac: 0 0 12px rgba(63, 185, 80, 0.4);
+
+            --accent-red: #f85149;
+        }
+
+        html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg-primary); font-family: 'Inter', sans-serif; }
+        #root { width: 100%; height: 100%; display: flex; }
+        .leaflet-container { background: #111820 !important; }
+        
+        /* Remove default browser focus rings on map lines/elements */
+        .leaflet-container *:focus { outline: none !important; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 340px;
+            min-width: 340px;
+            height: 100%;
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            overflow: hidden;
+            transition: width 0.3s ease, min-width 0.3s ease;
+        }
+        .sidebar.closed {
+            width: 0;
+            min-width: 0;
+            border-right: none;
+        }
+
+        .sidebar-header {
+            padding: 18px 16px 14px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .header-title { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+        .header-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg-secondary); }
+        .tab-btn {
+            flex: 1; padding: 10px; background: transparent; border: none; color: var(--text-secondary);
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; border-bottom: 2px solid transparent;
+        }
+        .tab-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+        .tab-btn.active { color: var(--text-primary); border-bottom-color: var(--color-sid); }
+
+        .sidebar-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 14px; }
+        .sidebar-body::-webkit-scrollbar { width: 6px; }
+        .sidebar-body::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-body::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+        /* DB Controls */
+        .db-controls { display: flex; gap: 8px; margin-bottom: 8px; }
+        .btn-action {
+            flex: 1; padding: 8px; border-radius: 5px; border: 1px solid var(--border);
+            background: var(--bg-tertiary); color: var(--text-primary); font-size: 11px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s;
+        }
+        .btn-action:hover { border-color: var(--border-bright); background: var(--border); }
+        
+        /* ── Section headers ── */
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 0 2px; }
+        .section-label { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; font-family: 'JetBrains Mono', monospace; }
+        
+        .section-label.sids  { color: var(--color-sid); }
+        .section-label.stars { color: var(--color-star); }
+        .section-label.iacs  { color: var(--color-iac); }
+
+        .section-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .sids .section-dot  { background: var(--color-sid); }
+        .stars .section-dot { background: var(--color-star); }
+        .iacs .section-dot  { background: var(--color-iac); }
+
+        /* ── Procedure buttons ── */
+        .proc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .proc-btn {
+            position: relative; padding: 8px 10px; border-radius: 5px; border: 1px solid var(--border);
+            background: var(--bg-secondary); cursor: pointer; transition: all 0.15s ease; text-align: left; overflow: hidden;
+        }
+        .proc-btn:hover { border-color: var(--border-bright); background: var(--bg-tertiary); }
+        
+        .proc-btn.active.sid  { background: var(--color-sid-dim); border-color: var(--color-sid); box-shadow: var(--glow-sid); }
+        .proc-btn.active.star { background: var(--color-star-dim); border-color: var(--color-star); box-shadow: var(--glow-star); }
+        .proc-btn.active.iac  { background: var(--color-iac-dim); border-color: var(--color-iac); box-shadow: var(--glow-iac); }
+
+        .proc-btn-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-primary); display: block; }
+        .proc-btn.active.sid .proc-btn-name  { color: var(--color-sid); }
+        .proc-btn.active.star .proc-btn-name { color: var(--color-star); }
+        .proc-btn.active.iac .proc-btn-name  { color: var(--color-iac); }
+
+        .proc-btn-type { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-muted); display: block; margin-top: 1px; }
+
+        .proc-btn-indicator {
+            position: absolute; right: 7px; top: 50%; transform: translateY(-50%); width: 5px; height: 5px; border-radius: 50%; opacity: 0; transition: 0.15s;
+        }
+        .proc-btn.active .proc-btn-indicator { opacity: 1; }
+        .proc-btn.active.sid .proc-btn-indicator  { background: var(--color-sid); }
+        .proc-btn.active.star .proc-btn-indicator { background: var(--color-star); }
+        .proc-btn.active.iac .proc-btn-indicator  { background: var(--color-iac); }
+
+        .empty-msg { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-align: center; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; grid-column: span 2; }
+
+        /* Forms */
+        .form-group { margin-bottom: 12px; }
+        .form-label { display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+        .form-input { width: 100%; background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary); padding: 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+        .form-input:focus { outline: none; border-color: var(--color-sid); }
+        .form-row { display: flex; gap: 8px; }
+        .form-row > * { flex: 1; }
+        .add-btn { width: 100%; padding: 8px; background: var(--color-sid); color: #fff; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 11px; transition: 0.2s; }
+        .add-btn:hover { background: #297be6; }
+
+        .item-list { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; max-height: 150px; overflow-y: auto; }
+        .item-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-primary); align-items: center;}
+        .item-row:last-child { border-bottom: none; }
+        .item-del { color: var(--accent-red); cursor: pointer; background: none; border: none; font-size: 14px; }
+
+        /* ── Detail panel ── */
+        .detail-panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+        .detail-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; }
+        .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-key { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .detail-val { font-size: 11px; font-weight: 600; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; }
+
+        /* ── Display Settings Toggles ── */
+        .disp-settings-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px; background: var(--bg-primary); border-bottom: 1px solid var(--border); align-items: center; }
+        .toggle-btn { flex: 1; min-width: 60px; padding: 6px 0; background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-size: 9px; font-weight: 700; font-family: 'JetBrains Mono', monospace; cursor: pointer; border-radius: 4px; transition: 0.2s; }
+        .toggle-btn:hover { border-color: var(--border-bright); }
+        .toggle-btn.active { background: var(--bg-tertiary); border-color: var(--color-sid); color: var(--text-primary); }
+
+        .size-slider { flex: 1; margin: 0 8px; accent-color: var(--color-sid); }
+        
+        #map { flex: 1; height: 100%; position: relative; }
+
+        .sidebar-toggle {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            transition: 0.2s;
+        }
+        .sidebar-toggle:hover { background: var(--bg-tertiary); border-color: var(--border-bright); }
+
+        /* ── Leaflet overrides & Custom Labels ── */
+        .leaflet-tooltip.proc-tooltip { background: rgba(13, 17, 23, 0.92); border: 1px solid var(--border-bright); color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; padding: 4px 9px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .leaflet-tooltip.proc-tooltip::before { display: none; }
+        
+        .leaflet-tooltip.wp-hover-tooltip { background: rgba(13, 17, 23, 0.95); border: 1px solid var(--text-primary); color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 11px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); padding: 4px 8px; }
+        .leaflet-tooltip.wp-hover-tooltip::before { display: none; }
+
+        .wp-marker-outer { width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; pointer-events: auto; transition: transform 0.2s; cursor: crosshair; }
+        .wp-marker-outer:hover, .wp-marker-outer.is-hovered { transform: scale(1.4); z-index: 1000 !important; }
+        .wp-marker-outer:hover polygon, .wp-marker-outer.is-hovered polygon { fill: var(--text-primary) !important; stroke: var(--text-primary) !important; }
+
+        /* ── Animated Smart Labels (SVG/DOM Engine) ── */
+        .custom-label-container { position: absolute; z-index: 650; pointer-events: none; }
+        
+        .custom-leader-svg {
+            position: absolute;
+            left: 0; top: 0;
+            width: 1px; height: 1px;
+            overflow: visible;
+            z-index: 1;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .custom-leader-svg path {
+            transition: d 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .custom-leader-svg path.is-hovered {
+            stroke: var(--text-primary) !important;
+            stroke-width: 2px !important;
+        }
+
+        .custom-label-box { 
+            position: absolute; 
+            background: rgba(13, 17, 23, 0.85); 
+            border: 1px solid var(--border-bright); 
+            color: var(--text-primary); 
+            font-family: 'JetBrains Mono', monospace; 
+            font-weight: 600; 
+            border-radius: 4px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5); 
+            backdrop-filter: blur(4px); 
+            white-space: nowrap; 
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease, border-color 0.2s, box-shadow 0.2s; 
+            transform-origin: 50% 50%; 
+            z-index: 2; 
+            padding: 4px 8px;
+            pointer-events: auto; 
+        }
+        
+        .custom-label-box:hover, .custom-label-box.is-hovered {
+            border-color: var(--text-primary);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+        }
+        
+        /* Distance Labels */
+        .dist-label { pointer-events: none; background: none; border: none; }
+        .dist-label-inner { 
+            background: var(--bg-secondary); 
+            border: 1px solid var(--border-bright); 
+            color: var(--text-secondary); 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 9px; 
+            font-weight: 700; 
+            padding: 2px 6px; 
+            border-radius: 10px; 
+            white-space: nowrap; 
+            transform: translate(-50%, -50%); 
+            display: inline-block; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5); 
+            letter-spacing: 0.05em; 
+        }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ─── Fully Loaded VHHH HKIA Database ───────────────
+const INITIAL_DB = {
+    metadata: { name: "VHHH HKIA Database", author: "Mytchel" },
+    fixes: {
+        "VHHH": [22.3089, 113.9146],
+        "PORPA": [22.33586, 114.02119],
+        "TD": [22.24789, 114.29314],
+        "SHELY": [22.09074, 114.65387],
+        "LAKES": [21.97814, 114.91072],
+        "OCEAN": [21.81194, 114.81333],
+        "RAMEN": [22.16089, 114.08608],
+        "BREAM": [21.77944, 114.05778],
+        "TITAN": [21.67428, 114.05070],
+        "PECAN": [21.43894, 114.03490],
+        "ATENA": [22.41107, 114.38663],
+        "BEKOL": [22.54333, 114.13333],
+        "SIERA": [21.98667, 113.55333],
+        "BORDA": [21.69233, 113.40806],
+        "ROCCA": [21.53206, 113.58096],
+        "CANTO": [21.65073, 113.70697],
+        "MURRY": [21.75788, 113.81166],
+        "SILVA": [21.85125, 113.90302],
+        "LIMES": [22.10711, 113.77572],
+        "BETTY": [21.48634, 114.55887],
+        "MANGO": [21.61361, 114.51472],
+        "GUAVA": [22.16003, 114.06008],
+        "SOKOE": [22.07811, 113.84392],
+        "TUTBA": [22.23384, 113.71248],
+        "VH701": [22.28080, 113.75597],
+        "VH702": [22.29724, 113.80684],
+        "RW07L": [22.32159, 113.88229],
+        "VH726": [22.34341, 113.95006],
+        "VH727": [22.43851, 114.02755],
+        "VH754": [22.45675, 114.16964],
+        "SAMPU": [22.42755, 114.26136],
+        "ABBEY": [22.26972, 114.92387],
+        "MUSEL": [22.26500, 114.78115],
+        "TAMAR": [22.25583, 114.51028]
+    },
+    procedures: [
+        {
+            id: "p1", name: "LAKES 3A", type: "SID", runway: "07R",
+            waypoints: [
+                { fix: "VHHH", altType: "NONE", spdType: "NONE" },
+                { fix: "PORPA", altType: "BELOW", alt1: "5000", spdType: "MIN", spd: "205" },
+                { fix: "TD", altType: "NONE", spdType: "AT", spd: "220" },
+                { fix: "SHELY", altType: "NONE", spdType: "NONE" },
+                { fix: "LAKES", altType: "NONE", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p2", name: "OCEAN 2A", type: "SID", runway: "07R",
+            waypoints: [
+                { fix: "VHHH", altType: "NONE", spdType: "NONE" },
+                { fix: "PORPA", altType: "BELOW", alt1: "5000", spdType: "MIN", spd: "205" },
+                { fix: "TD", altType: "NONE", spdType: "AT", spd: "220" },
+                { fix: "OCEAN", altType: "NONE", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p3", name: "PECAN 1A", type: "SID", runway: "07R",
+            waypoints: [
+                { fix: "VHHH", altType: "NONE", spdType: "NONE" },
+                { fix: "PORPA", altType: "BELOW", alt1: "5000", spdType: "MIN", spd: "205" },
+                { fix: "RAMEN", altType: "NONE", spdType: "AT", spd: "220" },
+                { fix: "BREAM", altType: "NONE", spdType: "NONE" },
+                { fix: "TITAN", altType: "NONE", spdType: "NONE" },
+                { fix: "PECAN", altType: "NONE", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p4", name: "BEKOL 3A", type: "SID", runway: "07R",
+            waypoints: [
+                { fix: "VHHH", altType: "NONE", spdType: "NONE" },
+                { fix: "PORPA", altType: "BELOW", alt1: "5000", spdType: "MIN", spd: "205" },
+                { fix: "TD", altType: "NONE", spdType: "AT", spd: "220" },
+                { fix: "ATENA", altType: "NONE", spdType: "NONE" },
+                { fix: "BEKOL", altType: "ABOVE", alt1: "4800m", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p5", name: "SIERA 7A", type: "STAR", runway: "07L/R",
+            waypoints: [
+                { fix: "SIERA", altType: "NONE", spdType: "AT", spd: "280" },
+                { fix: "CANTO", altType: "ABOVE", alt1: "FL130", spdType: "NONE" },
+                { fix: "MURRY", altType: "WINDOW", alt1: "FL110", alt2: "FL130", spdType: "NONE" },
+                { fix: "SILVA", altType: "NONE", spdType: "NONE" },
+                { fix: "LIMES", altType: "NONE", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p6", name: "SIERA 7C", type: "STAR", runway: "07L/R",
+            waypoints: [
+                { fix: "SIERA", altType: "NONE", spdType: "AT", spd: "280" },
+                { fix: "BORDA", altType: "NONE", spdType: "AT", spd: "250" },
+                { fix: "ROCCA", altType: "NONE", spdType: "NONE" },
+                { fix: "CANTO", altType: "ABOVE", alt1: "FL130", spdType: "NONE" },
+                { fix: "MURRY", altType: "WINDOW", alt1: "FL110", alt2: "FL130", spdType: "NONE" },
+                { fix: "SILVA", altType: "NONE", spdType: "NONE" },
+                { fix: "LIMES", altType: "NONE", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p7", name: "BETTY 2A", type: "STAR", runway: "07L/R",
+            waypoints: [
+                { fix: "BETTY", altType: "NONE", spdType: "NONE" },
+                { fix: "MANGO", altType: "AT", alt1: "FL130", spdType: "AT", spd: "280" },
+                { fix: "GUAVA", altType: "NONE", spdType: "NONE" },
+                { fix: "SOKOE", altType: "NONE", spdType: "NONE" },
+                { fix: "LIMES", altType: "NONE", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p8", name: "BETTY 2B", type: "STAR", runway: "25L/R",
+            waypoints: [
+                { fix: "BETTY", altType: "NONE", spdType: "NONE" },
+                { fix: "MANGO", altType: "AT", alt1: "FL130", spdType: "AT", spd: "280" },
+                { fix: "TD", altType: "NONE", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p9", name: "CANTO 3A", type: "STAR", runway: "07L/C/R",
+            waypoints: [
+                { fix: "CANTO", altType: "ABOVE", alt1: "FL130", spdType: "AT", spd: "280" },
+                { fix: "MURRY", altType: "WINDOW", alt1: "FL110", alt2: "FL130", spdType: "NONE" },
+                { fix: "SILVA", altType: "NONE", spdType: "NONE" },
+                { fix: "LIMES", altType: "WINDOW", alt1: "3000", alt2: "6000", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p10", name: "ILS OR LOC 07L", type: "IAC", runway: "07L",
+            waypoints: [
+                { fix: "LIMES", altType: "WINDOW", alt1: "3000", alt2: "6000", spdType: "NONE" },
+                { fix: "TUTBA", altType: "ABOVE", alt1: "2000", spdType: "AT", spd: "180" },
+                { fix: "VH701", altType: "ABOVE", alt1: "1500", spdType: "AT", spd: "180" },
+                { fix: "VH702", altType: "NONE", spdType: "NONE" },
+                { fix: "RW07L", altType: "NONE", spdType: "NONE" },
+                { fix: "VH726", altType: "NONE", spdType: "MAX", spd: "200" },
+                { fix: "VH727", altType: "NONE", spdType: "AT", spd: "200" },
+                { fix: "VH754", altType: "NONE", spdType: "AT", spd: "230" },
+                { fix: "SAMPU", altType: "AT", alt1: "5000", spdType: "AT", spd: "230" },
+                { fix: "TD", altType: "NONE", spdType: "AT", spd: "230" },
+                { fix: "GUAVA", altType: "NONE", spdType: "AT", spd: "230" },
+                { fix: "SOKOE", altType: "NONE", spdType: "AT", spd: "230" },
+                { fix: "LIMES", altType: "NONE", spdType: "AT", spd: "230" }
+            ]
+        },
+        {
+            id: "p11", name: "ABBEY 3A", type: "STAR", runway: "07L/R",
+            waypoints: [
+                { fix: "ABBEY", altType: "NONE", spdType: "NONE" },
+                { fix: "MUSEL", altType: "AT", alt1: "FL130", spdType: "AT", spd: "280" },
+                { fix: "TAMAR", altType: "NONE", spdType: "NONE" },
+                { fix: "TD", altType: "NONE", spdType: "NONE" },
+                { fix: "GUAVA", altType: "NONE", spdType: "NONE" },
+                { fix: "SOKOE", altType: "NONE", spdType: "NONE" },
+                { fix: "LIMES", altType: "NONE", spdType: "NONE" }
+            ]
+        },
+        {
+            id: "p12", name: "ABBEY 2B", type: "STAR", runway: "25L/R",
+            waypoints: [
+                { fix: "ABBEY", altType: "NONE", spdType: "NONE" },
+                { fix: "MUSEL", altType: "AT", alt1: "FL130", spdType: "AT", spd: "280" },
+                { fix: "TAMAR", altType: "NONE", spdType: "NONE" },
+                { fix: "TD", altType: "NONE", spdType: "NONE" }
+            ]
+        }
+    ],
+    airspaces: [
+        {
+            id: "atz_vhhh",
+            name: "HK ATZ",
+            color: "#fd79a8", /* Pink */
+            coords: [[22.33278, 113.85306], [22.36250, 113.94944], [22.28472, 113.97806], [22.25667, 113.88333]]
+        },
+        {
+            id: "ctr_vhhh",
+            name: "HK CTR",
+            color: "#f39c12", /* Orange */
+            coords: [[22.47611, 114.01500], [22.44972, 114.00694], [22.43083, 114.05083], [22.40556, 114.06944], [22.42083, 114.11889], [22.41111, 114.17778], [22.37778, 114.22222], [22.34167, 114.22361], [22.25417, 114.35000], [22.14722, 114.35000], [22.14722, 114.28472], [22.13889, 114.25556], [22.14722, 114.23611], [22.14722, 114.19583], [22.11111, 114.19583], [21.94028, 113.80000], [22.22889, 113.66583], [22.40944, 113.82889]]
+        },
+        {
+            id: "tma_vhhh",
+            name: "HK TMA",
+            color: "#00cec9", /* Teal */
+            coords: [[23.66667, 117.50000], [21.00000, 117.50000], [18.93333, 115.81667], [19.00000, 112.50000], [19.50000, 111.50000], [21.41667, 111.50000]]
+        },
+        {
+            id: "fir_vhhh",
+            name: "HK FIR",
+            color: "#e056fd", /* Purple */
+            coords: [[23.66667, 117.50000], [21.00000, 117.50000], [16.66667, 114.00000], [19.50000, 111.50000], [21.41667, 111.50000]]
+        }
+    ]
+};
+
+const STYLES = {
+    SID:  { color: '#388bfd', weight: 4, opacity: 0.85 },
+    STAR: { color: '#d29922', weight: 4, opacity: 0.85 },
+    IAC:  { color: '#3fb950', weight: 4, opacity: 0.85 },
+};
+
+const BASE_MAP_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+// ─── Mathematical Geometry Helpers ───
+const sqr = x => x * x;
+const dist2 = (v, w) => sqr(v.x - w.x) + sqr(v.y - w.y);
+const distToSegmentSquared = (p, v, w) => {
+    const l2 = dist2(v, w);
+    if (l2 === 0) return dist2(p, v);
+    let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return dist2(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
+};
+
+// Box vs Line precise collision checker
+const ccw = (p1, p2, p3) => (p3.y - p1.y) * (p2.x - p1.x) > (p2.y - p1.y) * (p3.x - p1.x);
+const lineIntersectsLine = (A, B, C, D) => ccw(A, C, D) !== ccw(B, C, D) && ccw(A, B, C) !== ccw(A, B, D);
+const lineIntersectsBox = (p1, p2, box, pad = 0) => {
+    const l = box.l - pad, r = box.r + pad, t = box.t - pad, b = box.b + pad;
+    if ((p1.x >= l && p1.x <= r && p1.y >= t && p1.y <= b) || (p2.x >= l && p2.x <= r && p2.y >= t && p2.y <= b)) return true;
+    return lineIntersectsLine(p1, p2, {x: l, y: t}, {x: r, y: t}) ||
+           lineIntersectsLine(p1, p2, {x: r, y: t}, {x: r, y: b}) ||
+           lineIntersectsLine(p1, p2, {x: r, y: b}, {x: l, y: b}) ||
+           lineIntersectsLine(p1, p2, {x: l, y: b}, {x: l, y: t});
+};
+
+const parseCoordinate = (str, isLat) => {
+    const cleanStr = str.trim().toUpperCase();
+    if (/^-?[\d.]+$/.test(cleanStr)) return parseFloat(cleanStr);
+    const dirMatch = cleanStr.match(/[NSEW]/);
+    if (!dirMatch) return NaN;
+    const dir = dirMatch[0];
+    if (isLat && (dir === 'E' || dir === 'W')) return NaN;
+    if (!isLat && (dir === 'N' || dir === 'S')) return NaN;
+    const nums = cleanStr.match(/[\d.]+/g);
+    if (!nums || nums.length < 3) return NaN;
+    const deg = parseInt(nums[0], 10);
+    const min = parseInt(nums[1], 10);
+    const sec = parseFloat(nums[2]);
+    let decimal = deg + (min / 60) + (sec / 3600);
+    if (dir === 'S' || dir === 'W') decimal = -decimal;
+    return decimal;
+};
+
+const getIntersection = (p1, p2, p3, p4) => {
+    const x1 = p1[1], y1 = p1[0], x2 = p2[1], y2 = p2[0], x3 = p3[1], y3 = p3[0], x4 = p4[1], y4 = p4[0];
+    const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (denom === 0) return null; 
+    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+    const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) return [y1 + t * (y2 - y1), x1 + t * (x2 - x1)]; 
+    return null;
+};
+
+const formatAlt = (alt) => {
+    if (!alt) return '';
+    const trimmed = alt.trim();
+    if (/^\d+$/.test(trimmed)) return `${trimmed} FT`;
+    return trimmed;
+};
+
+const formatSpd = (spd) => {
+    if (!spd) return '';
+    const trimmed = spd.trim();
+    if (/^\d+$/.test(trimmed)) return `${trimmed} KIAS`;
+    return trimmed;
+};
+
+
+const App = () => {
+    const [db, setDb] = useState(INITIAL_DB);
+    const [activeIds, setActiveIds] = useState([]);
+    const [tab, setTab] = useState('view');
+    const [layers, setLayers] = useState({ sids: true, stars: true, iacs: true });
+    
+    const [dispOpts, setDispOpts] = useState({ labels: true, constraints: true, distances: true, ranges: false, atz: true, ctr: true, tma: false, fir: false, declutter: true });
+    const [textSize, setTextSize] = useState(10);
+    const [lineSize, setLineSize] = useState(5);
+    const [rwyFilter, setRwyFilter] = useState('ALL');
+    const [zoomTrigger, setZoomTrigger] = useState(0);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+
+    const [newFixName, setNewFixName] = useState('');
+    const [newFixLat, setNewFixLat] = useState('');
+    const [newFixLon, setNewFixLon] = useState('');
+    const [fixError, setFixError] = useState('');
+
+    const [newProcName, setNewProcName] = useState('');
+    const [newProcType, setNewProcType] = useState('SID');
+    const [newProcRwy, setNewProcRwy] = useState('');
+    const [newProcWpts, setNewProcWpts] = useState([]);
+    const [selectedWpToAdd, setSelectedWpToAdd] = useState('');
+
+    const [wpAltType, setWpAltType] = useState('NONE');
+    const [wpAlt1, setWpAlt1] = useState('');
+    const [wpAlt2, setWpAlt2] = useState('');
+    const [wpSpdType, setWpSpdType] = useState('NONE');
+    const [wpSpd, setWpSpd] = useState('');
+
+    const fileInputRef = useRef(null);
+    const mapRef = useRef(null);
+    const mapDivRef = useRef(null);
+    const fgRef = useRef({});
+    const mapInited = useRef(false);
+    
+    const labelsCache = useRef({});
+
+    // ── Map Initialization ──────────────────────────────────────────────────
+    useEffect(() => {
+        if (!mapDivRef.current || mapInited.current) return;
+        mapInited.current = true;
+
+        const map = L.map(mapDivRef.current, {
+            center: [22.3089, 113.9146], 
+            zoom: 10,
+            zoomControl: false, 
+            attributionControl: false,
+            zoomSnap: 0.1,         // Allows fractional zoom levels for precision
+            zoomDelta: 0.5,        // Finer steps when using zoom buttons
+            wheelPxPerZoomLevel: 120 // Makes mouse wheel zooming much smoother/slower
+        });
+        
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        L.tileLayer(BASE_MAP_URL, { maxZoom: 19 }).addTo(map);
+
+        map.on('zoomend', () => setZoomTrigger(prev => prev + 1));
+        
+        const procLg    = L.layerGroup().addTo(map);
+        const hlLg      = L.layerGroup().addTo(map);
+
+        fgRef.current = { map, procLg, hlLg };
+        mapRef.current = map;
+    }, []);
+
+    // Handle Map Resize when sidebar toggles
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (fgRef.current.map) fgRef.current.map.invalidateSize();
+        }, 300); // Matches CSS transition duration
+        return () => clearTimeout(timeout);
+    }, [sidebarOpen]);
+
+    // ── Main Map Rendering Logic (Procedures & Declutter) ───────────────────
+    useEffect(() => {
+        const fg = fgRef.current;
+        if (!fg.map) return;
+
+        fg.procLg.clearLayers();
+        fg.hlLg.clearLayers();
+
+        const seenLabels = new Set();
+
+        // 1. Draw Airspaces
+        if (db.airspaces) {
+            db.airspaces.forEach(airspace => {
+                let isVisible = false;
+                if (airspace.id === 'atz_vhhh' && dispOpts.atz) isVisible = true;
+                if (airspace.id === 'ctr_vhhh' && dispOpts.ctr) isVisible = true;
+                if (airspace.id === 'tma_vhhh' && dispOpts.tma) isVisible = true;
+                if (airspace.id === 'fir_vhhh' && dispOpts.fir) isVisible = true;
+
+                if (!isVisible) return;
+
+                const poly = L.polygon(airspace.coords, {
+                    color: airspace.color, weight: 1.5, opacity: 0.6,
+                    fillColor: airspace.color, fillOpacity: 0.05,
+                    dashArray: '4, 4', interactive: false
+                }).addTo(fg.procLg);
+                
+                const center = poly.getBounds().getCenter();
+                const labelIcon = L.divIcon({
+                    className: '',
+                    html: `<div style="color: ${airspace.color}; opacity: 0.6; font-size: ${textSize}px; font-weight: bold; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 3px #0d1117;">${airspace.name}</div>`,
+                    iconSize: [100, 12], iconAnchor: [50, 6]
+                });
+                L.marker(center, { icon: labelIcon, interactive: false }).addTo(fg.procLg);
+            });
+        }
+
+        // 2. Draw Range Rings
+        if (dispOpts.ranges) {
+            const arp = db.fixes["VHHH"] || [22.3089, 113.9146];
+            for (let i = 1; i <= 6; i++) {
+                L.circle(arp, {
+                    radius: i * 10 * 1852, color: '#6e7681', weight: 1, fill: false,
+                    dashArray: '4, 4', opacity: 0.5, interactive: false
+                }).addTo(fg.procLg);
+                
+                const offsetLat = arp[0] + (i * 10 / 60);
+                const ringLabelIcon = L.divIcon({
+                    className: '',
+                    html: `<div style="color: #6e7681; font-size: ${Math.max(8, textSize - 1)}px; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 3px #0d1117;">${i*10}</div>`,
+                    iconSize: [20, 12], iconAnchor: [10, 6]
+                });
+                L.marker([offsetLat, arp[1]], { icon: ringLabelIcon, interactive: false }).addTo(fg.procLg);
+            }
+        }
+
+        const getSegments = (waypoints) => {
+            const coords = [];
+            for (const wp of waypoints) {
+                const fixName = typeof wp === 'string' ? wp : wp.fix;
+                if (db.fixes[fixName]) coords.push(db.fixes[fixName]);
+            }
+            return coords;
+        };
+
+        // 3. Draw INACTIVE procedures
+        db.procedures.forEach(proc => {
+            if (activeIds.includes(proc.id)) return;
+            if (proc.type === 'SID' && !layers.sids) return;
+            if (proc.type === 'STAR' && !layers.stars) return;
+            if (proc.type === 'IAC' && !layers.iacs) return;
+            if (rwyFilter !== 'ALL' && (!proc.runway || !proc.runway.includes(rwyFilter))) return;
+
+            const coords = getSegments(proc.waypoints);
+            if (coords.length < 2) return;
+
+            L.polyline(coords, { ...STYLES[proc.type], opacity: 0.25, weight: 2 })
+             .bindTooltip(`<div style="font-size: ${textSize}px">${proc.name}</div>`, { sticky: true, className: 'proc-tooltip' })
+             .on('mouseover', function() { this.setStyle({ opacity: 0.8, weight: 4 }); })
+             .on('mouseout', function() { this.setStyle({ opacity: 0.25, weight: 2 }); })
+             .addTo(fg.procLg);
+        });
+
+        // DOM Updater for Labels
+        const updateCustomLabel = (id, coord, cx, cy, html, lineColor = 'var(--border-bright)', w = 0, h = 0, marker = null, shouldDraw = true) => {
+            seenLabels.add(id);
+            let cache = labelsCache.current[id];
+            const pane = fg.map.getPane('tooltipPane');
+
+            if (!cache) {
+                const container = L.DomUtil.create('div', 'custom-label-container', pane);
+                
+                const svgNs = "http://www.w3.org/2000/svg";
+                const svg = document.createElementNS(svgNs, "svg");
+                svg.setAttribute('class', 'custom-leader-svg');
+                const path = document.createElementNS(svgNs, "path");
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke-dasharray', '2, 3');
+                path.setAttribute('stroke-width', '1.5');
+                svg.appendChild(path);
+                container.appendChild(svg);
+
+                const box = L.DomUtil.create('div', 'custom-label-box', container);
+                cache = { container, svg, path, box, marker: null };
+                labelsCache.current[id] = cache;
+                
+                box.addEventListener('mouseenter', () => {
+                    box.classList.add('is-hovered');
+                    path.classList.add('is-hovered');
+                    if (cache.marker && cache.marker.getElement()) {
+                        const iconDiv = cache.marker.getElement().querySelector('.wp-marker-outer');
+                        if (iconDiv) iconDiv.classList.add('is-hovered');
+                    }
+                });
+                box.addEventListener('mouseleave', () => {
+                    box.classList.remove('is-hovered');
+                    path.classList.remove('is-hovered');
+                    if (cache.marker && cache.marker.getElement()) {
+                        const iconDiv = cache.marker.getElement().querySelector('.wp-marker-outer');
+                        if (iconDiv) iconDiv.classList.remove('is-hovered');
+                    }
+                });
+            }
+            
+            cache.marker = marker;
+
+            if (!shouldDraw) {
+                cache.box.style.opacity = '0';
+                cache.svg.style.opacity = '0';
+                cache.box.style.pointerEvents = 'none';
+                return;
+            }
+
+            cache.box.style.opacity = '1';
+            cache.box.style.pointerEvents = 'auto';
+
+            const pt = fg.map.latLngToLayerPoint(coord);
+            L.DomUtil.setPosition(cache.container, pt);
+
+            if (cache.box.innerHTML !== html) cache.box.innerHTML = html;
+            cache.box.style.transform = `translate(calc(${cx}px - 50%), calc(${cy}px - 50%))`;
+
+            // Calculate endpoint so the line stops at the border of the box instead of the center
+            let ex = cx, ey = cy;
+            if (w > 0 && h > 0 && (Math.abs(cx) > 0 || Math.abs(cy) > 0)) {
+                const paddedW = w + 4; 
+                const paddedH = h + 4;
+                const tx = Math.abs(cx) > 0 ? (paddedW / 2) / Math.abs(cx) : Infinity;
+                const ty = Math.abs(cy) > 0 ? (paddedH / 2) / Math.abs(cy) : Infinity;
+                const t = Math.min(tx, ty);
+                
+                if (t < 1) {
+                    ex = cx * (1 - t);
+                    ey = cy * (1 - t);
+                } else {
+                    ex = 0; ey = 0;
+                }
+            }
+
+            const dStr = `M 0,0 C ${ex * 0.5},0 ${ex * 0.5},${ey} ${ex},${ey}`;
+            cache.path.setAttribute('d', dStr);
+            cache.path.setAttribute('stroke', lineColor);
+            
+            const dist = Math.hypot(ex, ey);
+            cache.svg.style.opacity = (dispOpts.declutter && dist > 8) ? '0.7' : '0';
+        };
+
+        const activeProcs = activeIds.map(id => db.procedures.find(p => p.id === id)).filter(Boolean);
+
+        // 4. Draw ACTIVE procedures
+        if (activeProcs.length > 0) {
+            const aggWps = {}; 
+            const activeSegments = []; 
+            const distancesToDraw = []; 
+            const pendingLabels = [];
+
+            activeProcs.forEach(proc => {
+                const coords = getSegments(proc.waypoints);
+                if (coords.length >= 2) {
+                    const style = STYLES[proc.type];
+                    
+                    L.polyline(coords, { ...style, weight: lineSize, opacity: 1 })
+                        .bindTooltip(`<div style="font-size: ${textSize}px"><b>${proc.name}</b> ${proc.type}</div>`, { sticky: true, className: 'proc-tooltip' })
+                        .on('mouseover', function() { this.setStyle({ weight: lineSize + 4 }); })
+                        .on('mouseout', function() { this.setStyle({ weight: lineSize }); })
+                        .addTo(fg.hlLg);
+                    
+                    for (let i = 0; i < coords.length - 1; i++) {
+                        activeSegments.push({ procId: proc.id, p1: coords[i], p2: coords[i+1] });
+                        distancesToDraw.push({ p1: coords[i], p2: coords[i+1] });
+                    }
+
+                    proc.waypoints.forEach(wp => {
+                        const fixName = typeof wp === 'string' ? wp : wp.fix;
+                        const coord = db.fixes[fixName];
+                        if (!coord) return;
+
+                        if (!aggWps[fixName]) aggWps[fixName] = { coord, pt: fg.map.latLngToLayerPoint(coord), color: style.color, constraintHtmls: [] };
+
+                        if (typeof wp === 'object') {
+                            const a1 = formatAlt(wp.alt1);
+                            const a2 = formatAlt(wp.alt2);
+                            const s = formatSpd(wp.spd);
+
+                            let altHtml = '';
+                            if (wp.altType === 'AT') altHtml = `<div style="text-decoration: underline overline;">${a1}</div>`;
+                            else if (wp.altType === 'ABOVE') altHtml = `<div style="text-decoration: underline;">${a1}</div>`;
+                            else if (wp.altType === 'BELOW') altHtml = `<div style="text-decoration: overline;">${a1}</div>`;
+                            else if (wp.altType === 'WINDOW') altHtml = `<div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;"><span style="text-decoration: overline;">${a2}</span><span style="text-decoration: underline;">${a1}</span></div>`;
+
+                            let spdHtml = '';
+                            if (wp.spdType === 'AT') spdHtml = `SPD ${s}`;
+                            else if (wp.spdType === 'MAX') spdHtml = `MAX ${s}`;
+                            else if (wp.spdType === 'MIN') spdHtml = `MIN ${s}`;
+                            if(spdHtml) spdHtml = `<div style="margin-top:2px;">${spdHtml}</div>`;
+
+                            if (altHtml || spdHtml) {
+                                aggWps[fixName].constraintHtmls.push({
+                                    procName: proc.name,
+                                    html: `<div style="display:flex; flex-direction:column; align-items:center; color:var(--text-primary);">${altHtml}${spdHtml}</div>`
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+
+            const activeSegmentsPx = activeSegments.map(seg => ({
+                p1: fg.map.latLngToLayerPoint(seg.p1),
+                p2: fg.map.latLngToLayerPoint(seg.p2)
+            }));
+
+            // BUILD LABEL DATA
+            Object.keys(aggWps).forEach(fixName => {
+                const wpData = aggWps[fixName];
+                const pt = wpData.pt;
+                
+                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
+                    <polygon points="7,1 13,13 1,13" fill="${wpData.color}" fill-opacity="0.9" stroke="#0d1117" stroke-width="1.5"/>
+                </svg>`;
+                const icon = L.divIcon({ className: '', html: `<div class="wp-marker-outer">${svg}</div>`, iconSize: [14,14], iconAnchor: [7,7] });
+                const marker = L.marker(wpData.coord, { icon });
+                
+                let tooltipHtml = '';
+                let blockCount = 0;
+                let maxChars = fixName.length;
+
+                const showLabels = dispOpts.labels;
+                const showConstraints = dispOpts.constraints && wpData.constraintHtmls.length > 0;
+
+                if (showLabels || showConstraints) {
+                    tooltipHtml += `<div style="font-size: ${textSize}px; line-height: 1.2; display: flex; flex-direction: column; align-items: center;">`;
+                    if (showLabels) tooltipHtml += `<b style="color:${wpData.color}">${fixName}</b>`;
+                    
+                    if (showConstraints) {
+                        const grouped = {};
+                        wpData.constraintHtmls.forEach(item => {
+                            if (!grouped[item.html]) grouped[item.html] = [];
+                            if (!grouped[item.html].includes(item.procName)) grouped[item.html].push(item.procName);
+                        });
+
+                        blockCount = Object.keys(grouped).length;
+                        const borderStyle = showLabels ? `margin-top: 4px; border-top: 1px solid var(--border-bright); padding-top: 4px; width: 100%; display: flex; flex-direction: column; align-items: center;` : `display: flex; flex-direction: column; align-items: center; width: 100%;`;
+                        
+                        tooltipHtml += `<div style="${borderStyle}">`;
+                        const blocks = Object.keys(grouped).map(html => {
+                            const procs = grouped[html].join(', ');
+                            const strippedHtml = html.replace(/<[^>]*>?/gm, '');
+                            maxChars = Math.max(maxChars, procs.length, strippedHtml.length);
+
+                            if (activeProcs.length > 1) {
+                                return `<div style="font-size: ${Math.max(8, textSize - 2)}px; color: #8b949e; padding-bottom: 2px; text-align: center;">${procs}</div>${html}`;
+                            } else {
+                                return `${html}`;
+                            }
+                        });
+
+                        tooltipHtml += blocks.join('<div style="height:1px; width: 100%; margin: 4px 0; background: var(--border-bright);"></div>');
+                        tooltipHtml += `</div>`;
+                    }
+                    tooltipHtml += `</div>`;
+                }
+
+                const id = `wp_${fixName}`;
+                const weight = wpData.constraintHtmls.length;
+
+                let nativeHoverHtml = `<div style="text-align:center"><b style="color:${wpData.color}">${fixName}</b></div>`;
+                if (wpData.constraintHtmls.length > 0) {
+                    const uniqueH = [...new Set(wpData.constraintHtmls.map(i => i.html))];
+                    nativeHoverHtml += `<div style="margin-top: 4px; border-top: 1px solid var(--border-bright); padding-top: 4px;">${uniqueH.join('<div style="height:4px"></div>')}</div>`;
+                }
+                
+                marker.on('mouseover', () => {
+                    if (labelsCache.current[id]) {
+                        labelsCache.current[id].box.classList.add('is-hovered');
+                        labelsCache.current[id].path.classList.add('is-hovered');
+                    }
+                });
+                marker.on('mouseout', () => {
+                    if (labelsCache.current[id]) {
+                        labelsCache.current[id].box.classList.remove('is-hovered');
+                        labelsCache.current[id].path.classList.remove('is-hovered');
+                    }
+                });
+                marker.addTo(fg.hlLg);
+
+                if (tooltipHtml) {
+                    // Amped up height/width estimates so collision engine never overlaps them
+                    const linesPerBlock = activeProcs.length > 1 ? 3.5 : 2.5;
+                    const w = maxChars * (textSize * 0.7) + 24;
+                    const h = (showLabels ? textSize * 1.5 : 0) + (blockCount * (textSize * linesPerBlock + 12)) + 16;
+
+                    pendingLabels.push({
+                        id, coord: wpData.coord, pt, w, h,
+                        html: tooltipHtml, color: wpData.color, marker,
+                        weight, nativeHoverHtml
+                    });
+                } else {
+                    marker.bindTooltip(nativeHoverHtml, { direction: 'top', offset: [0, -8], className: 'wp-hover-tooltip' });
+                }
+            });
+
+            // DETERMINISTIC RADIAL SEARCH ENGINE (Greedy Placement)
+            const placedBoxes = [];
+            
+            // Sort: Heaviest labels (most constraints) get placed first.
+            pendingLabels.sort((a, b) => b.weight - a.weight);
+
+            // Search vectors (16 angles for precise filling)
+            const searchAngles = [
+                -Math.PI/4, Math.PI/4, -3*Math.PI/4, 3*Math.PI/4,
+                0, -Math.PI/2, Math.PI/2, Math.PI,
+                -Math.PI/8, Math.PI/8, -3*Math.PI/8, 3*Math.PI/8,
+                -5*Math.PI/8, 5*Math.PI/8, -7*Math.PI/8, 7*Math.PI/8
+            ];
+
+            for (let l of pendingLabels) {
+                if (!dispOpts.declutter) {
+                    l.cx = 20 + l.w/2;
+                    l.cy = 0;
+                    l.shouldDraw = true;
+                    continue;
+                }
+
+                let bestPos = null;
+                const minRadii = 15; 
+                const maxRadii = l.weight > 0 ? 180 : 80; 
+                const step = 15;
+
+                for (let r = minRadii; r <= maxRadii && !bestPos; r += step) {
+                    for (let angle of searchAngles) {
+                        let cx = r * Math.cos(angle);
+                        let cy = r * Math.sin(angle);
+
+                        // Push center of box out so edge touches radius
+                        if (Math.abs(Math.cos(angle)) > 0.1) cx += Math.sign(Math.cos(angle)) * (l.w/2);
+                        if (Math.abs(Math.sin(angle)) > 0.1) cy += Math.sign(Math.sin(angle)) * (l.h/2);
+
+                        const box = {
+                            l: l.pt.x + cx - l.w/2,
+                            r: l.pt.x + cx + l.w/2,
+                            t: l.pt.y + cy - l.h/2,
+                            b: l.pt.y + cy + l.h/2
+                        };
+
+                        let collision = false;
+                        const pad = 4;
+
+                        // Check 1: Other placed boxes
+                        for (let pb of placedBoxes) {
+                            if (!(box.r + pad < pb.l || box.l - pad > pb.r || box.b + pad < pb.t || box.t - pad > pb.b)) {
+                                collision = true; break;
+                            }
+                        }
+                        if (collision) continue;
+
+                        // Check 2: Waypoint markers (so we don't cover a triangle)
+                        const wpPad = 14;
+                        for (let wpId in aggWps) {
+                            const wpPt = aggWps[wpId].pt;
+                            if (wpPt.x > box.l - wpPad && wpPt.x < box.r + wpPad && wpPt.y > box.t - wpPad && wpPt.y < box.b + wpPad) {
+                                collision = true; break;
+                            }
+                        }
+                        if (collision) continue;
+
+                        // Check 3: Flight path lines
+                        for (let seg of activeSegmentsPx) {
+                            if (lineIntersectsBox(seg.p1, seg.p2, box, 4)) {
+                                collision = true; break;
+                            }
+                        }
+                        if (collision) continue;
+
+                        bestPos = { cx, cy, box };
+                        break; 
+                    }
+                }
+
+                if (bestPos) {
+                    l.cx = bestPos.cx;
+                    l.cy = bestPos.cy;
+                    l.shouldDraw = true;
+                    placedBoxes.push(bestPos.box);
+                } else {
+                    l.shouldDraw = false; 
+                }
+            }
+
+            // Commit calculated positions to DOM
+            pendingLabels.forEach(l => {
+                updateCustomLabel(l.id, l.coord, l.cx, l.cy, l.html, l.color, l.w, l.h, l.marker, l.shouldDraw);
+                
+                if (l.shouldDraw) {
+                    if (l.marker.getTooltip()) l.marker.unbindTooltip();
+                } else {
+                    if (l.marker.getTooltip()) {
+                        l.marker.setTooltipContent(l.nativeHoverHtml);
+                    } else {
+                        l.marker.bindTooltip(l.nativeHoverHtml, { direction: 'top', offset: [0, -8], className: 'wp-hover-tooltip' });
+                    }
+                }
+            });
+
+            // Draw Distances statically (Distance markers stay perfectly centered on path)
+            if (dispOpts.distances) {
+                const drawnSegments = new Set();
+                distancesToDraw.forEach(seg => {
+                    const p1 = L.latLng(seg.p1);
+                    const p2 = L.latLng(seg.p2);
+                    
+                    const segKey = `${seg.p1[0]},${seg.p1[1]}-${seg.p2[0]},${seg.p2[1]}`;
+                    const segKeyRev = `${seg.p2[0]},${seg.p2[1]}-${seg.p1[0]},${seg.p1[1]}`;
+                    if (drawnSegments.has(segKey) || drawnSegments.has(segKeyRev)) return;
+                    drawnSegments.add(segKey);
+                    
+                    const distMeters = p1.distanceTo(p2);
+                    const distNM = (distMeters / 1852).toFixed(1);
+                    const midLat = (p1.lat + p2.lat) / 2;
+                    const midLng = (p1.lng + p2.lng) / 2;
+
+                    const distIcon = L.divIcon({
+                        className: 'dist-label',
+                        html: `<div class="dist-label-inner">${distNM} NM</div>`,
+                        iconSize: [0, 0] 
+                    });
+
+                    L.marker([midLat, midLng], { icon: distIcon, interactive: false }).addTo(fg.hlLg);
+                });
+            }
+
+            // Draw Conflicts (subtle, no text)
+            const intersections = [];
+            for (let i = 0; i < activeSegments.length; i++) {
+                for (let j = i + 1; j < activeSegments.length; j++) {
+                    if (activeSegments[i].procId === activeSegments[j].procId) continue; 
+                    const pt = getIntersection(activeSegments[i].p1, activeSegments[i].p2, activeSegments[j].p1, activeSegments[j].p2);
+                    if (pt) {
+                        const isDup = intersections.some(existing => Math.abs(existing[0] - pt[0]) < 0.0001 && Math.abs(existing[1] - pt[1]) < 0.0001);
+                        if (!isDup) intersections.push(pt);
+                    }
+                }
+            }
+
+            intersections.forEach(pt => {
+                L.circleMarker(pt, { radius: 12, color: 'var(--accent-red)', weight: 1, opacity: 0.5, fillColor: 'var(--accent-red)', fillOpacity: 0.15, dashArray: '3, 4', interactive: false })
+                    .addTo(fg.hlLg);
+            });
+        }
+
+        // Cleanup unused animated labels
+        Object.keys(labelsCache.current).forEach(id => {
+            if (!seenLabels.has(id)) {
+                labelsCache.current[id].container.remove();
+                delete labelsCache.current[id];
+            }
+        });
+
+    }, [db, activeIds, layers, dispOpts, textSize, lineSize, rwyFilter, zoomTrigger]);
+
+    useEffect(() => {
+        const fixNames = Object.keys(db.fixes);
+        if (fixNames.length > 0 && !selectedWpToAdd) {
+            setSelectedWpToAdd(fixNames[0]);
+        }
+    }, [db.fixes]);
+
+    const handleSaveDB = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+        const dlAnchorElem = document.createElement('a');
+        dlAnchorElem.setAttribute("href", dataStr);
+        dlAnchorElem.setAttribute("download", "aeroproc_database.json");
+        dlAnchorElem.click();
+    };
+
+    const handleLoadDB = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const loaded = JSON.parse(e.target.result);
+                if (loaded.fixes && loaded.procedures) {
+                    if (!loaded.airspaces) loaded.airspaces = [];
+                    setDb(loaded);
+                    setActiveIds([]);
+                    const keys = Object.keys(loaded.fixes);
+                    if(keys.length > 0 && fgRef.current.map) {
+                        fgRef.current.map.setView(loaded.fixes[keys[0]], 10);
+                    }
+                } else {
+                    alert("Invalid Database Format!");
+                }
+            } catch (err) {
+                alert("Error reading JSON file.");
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    };
+
+    const handleAddFix = () => {
+        setFixError('');
+        if (!newFixName.trim() || !newFixLat.trim() || !newFixLon.trim()) return setFixError('All fields are required.');
+
+        const lat = parseCoordinate(newFixLat, true);
+        const lon = parseCoordinate(newFixLon, false);
+
+        if (isNaN(lat) || lat < -90 || lat > 90) return setFixError('Invalid Latitude format. Use decimals (-23.5) or DMS (22 20 09.10N).');
+        if (isNaN(lon) || lon < -180 || lon > 180) return setFixError('Invalid Longitude format. Use decimals (-46.5) or DMS (114 01 16.30E).');
+
+        const name = newFixName.toUpperCase().trim();
+        if (!/^[A-Z0-9]+$/.test(name)) return setFixError('Fix name must be alphanumeric.');
+
+        setDb(prev => ({ ...prev, fixes: { ...prev.fixes, [name]: [lat, lon] } }));
+        setNewFixName(''); setNewFixLat(''); setNewFixLon('');
+    };
+
+    const handleDeleteFix = (name) => {
+        setDb(prev => {
+            const newFixes = { ...prev.fixes };
+            delete newFixes[name];
+            return { ...prev, fixes: newFixes };
+        });
+    };
+
+    const handleAddWpToProc = () => {
+        if (selectedWpToAdd) {
+            const newWp = { fix: selectedWpToAdd, altType: wpAltType, alt1: wpAlt1, alt2: wpAlt2, spdType: wpSpdType, spd: wpSpd };
+            setNewProcWpts([...newProcWpts, newWp]);
+            setWpAltType('NONE'); setWpAlt1(''); setWpAlt2(''); setWpSpdType('NONE'); setWpSpd('');
+        }
+    };
+
+    const handleRemoveWpFromProc = (idx) => {
+        setNewProcWpts(newProcWpts.filter((_, i) => i !== idx));
+    };
+
+    const handleSaveProcedure = () => {
+        if (!newProcName || newProcWpts.length < 2) return;
+        const newProc = { id: `proc_${Date.now()}`, name: newProcName.toUpperCase().trim(), type: newProcType, runway: newProcRwy.toUpperCase().trim(), waypoints: [...newProcWpts] };
+        setDb(prev => ({ ...prev, procedures: [...prev.procedures, newProc] }));
+        setNewProcName(''); setNewProcRwy(''); setNewProcWpts([]);
+    };
+
+    const handleDeleteProcedure = (id) => {
+        setDb(prev => ({ ...prev, procedures: prev.procedures.filter(p => p.id !== id) }));
+        setActiveIds(prev => prev.filter(activeId => activeId !== id));
+    };
+
+    const filterProc = (p) => {
+        if (rwyFilter === 'ALL') return true;
+        if (!p.runway) return false;
+        return p.runway.includes(rwyFilter);
+    };
+
+    const sids = db.procedures.filter(p => p.type === 'SID' && filterProc(p));
+    const stars = db.procedures.filter(p => p.type === 'STAR' && filterProc(p));
+    const iacs = db.procedures.filter(p => p.type === 'IAC' && filterProc(p));
+
+    const activeProcs = activeIds.map(id => db.procedures.find(p => p.id === id)).filter(Boolean);
+
+    return (
+        <div style={{ display:'flex', width:'100%', height:'100%' }}>
+            <div className={`sidebar ${sidebarOpen ? '' : 'closed'}`}>
+                <div className="sidebar-header">
+                    <div className="header-title">AeroProc DB</div>
+                    <div className="header-sub">Procedure Builder & Viewer</div>
+                </div>
+
+                <div className="tabs">
+                    <button className={`tab-btn ${tab==='view'?'active':''}`} onClick={() => setTab('view')}>VIEWER</button>
+                    <button className={`tab-btn ${tab==='edit'?'active':''}`} onClick={() => setTab('edit')}>DB BUILDER</button>
+                </div>
+
+                <div className="disp-settings-row" style={{padding: '8px 12px'}}>
+                    <div style={{display:'flex', flex:1, alignItems:'center', paddingRight:'8px', borderRight:'1px solid var(--border)'}}>
+                        <span style={{fontSize: '9px', fontWeight: 'bold', color: 'var(--text-muted)', width:'30px'}}>TEXT</span>
+                        <input className="size-slider" type="range" min="8" max="16" value={textSize} onChange={e => setTextSize(parseInt(e.target.value))} />
+                    </div>
+                    <div style={{display:'flex', flex:1, alignItems:'center', paddingLeft:'8px'}}>
+                        <span style={{fontSize: '9px', fontWeight: 'bold', color: 'var(--text-muted)', width:'30px'}}>LINE</span>
+                        <input className="size-slider" type="range" min="2" max="10" value={lineSize} onChange={e => setLineSize(parseInt(e.target.value))} />
+                    </div>
+                </div>
+
+                <div className="disp-settings-row">
+                    <button className={`toggle-btn ${dispOpts.labels ? 'active' : ''}`} onClick={() => setDispOpts(p => ({...p, labels: !p.labels}))}>FIX LABELS</button>
+                    <button className={`toggle-btn ${dispOpts.constraints ? 'active' : ''}`} onClick={() => setDispOpts(p => ({...p, constraints: !p.constraints}))}>RESTRICTIONS</button>
+                    <button className={`toggle-btn ${dispOpts.distances ? 'active' : ''}`} onClick={() => setDispOpts(p => ({...p, distances: !p.distances}))}>DIST (NM)</button>
+                    <button className={`toggle-btn ${dispOpts.declutter ? 'active' : ''}`} onClick={() => setDispOpts(p => ({...p, declutter: !p.declutter}))} style={{background: dispOpts.declutter ? 'var(--color-iac-dim)' : 'transparent', borderColor: dispOpts.declutter ? 'var(--color-iac)' : 'var(--border)', color: dispOpts.declutter ? 'var(--color-iac)' : 'var(--text-muted)'}}>DECLUTTER</button>
+                </div>
+                <div className="disp-settings-row">
+                    <button className={`toggle-btn ${dispOpts.ranges ? 'active' : ''}`} onClick={() => setDispOpts(p => ({...p, ranges: !p.ranges}))}>10NM RINGS</button>
+                    <button className={`toggle-btn ${dispOpts.atz ? 'active' : ''}`} onClick={() => setDispOpts(p => ({...p, atz: !p.atz}))}>ATZ</button>
+                    <button className={`toggle-btn ${dispOpts.ctr ? 'active' : ''}`} onClick={() => setDispOpts(p => ({...p, ctr: !p.ctr}))}>CTR</button>
+                    <button className={`toggle-btn ${dispOpts.tma ? 'active' : ''}`} onClick={() => setDispOpts(p => ({...p, tma: !p.tma}))}>TMA</button>
+                    <button className={`toggle-btn ${dispOpts.fir ? 'active' : ''}`} onClick={() => setDispOpts(p => ({...p, fir: !p.fir}))}>FIR</button>
+                </div>
+
+                <div className="sidebar-body">
+                    <div className="db-controls">
+                        <input type="file" accept=".json" style={{display:'none'}} ref={fileInputRef} onChange={handleLoadDB} />
+                        <button className="btn-action" onClick={() => fileInputRef.current.click()}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Load JSON
+                        </button>
+                        <button className="btn-action" onClick={handleSaveDB}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 16 12 21 17 16"></polyline><line x1="12" y1="12" x2="12" y2="21"></line></svg>
+                            Save JSON
+                        </button>
+                    </div>
+
+                    {tab === 'view' && (
+                        <>
+                            <div className="disp-settings-row" style={{background: 'var(--bg-secondary)', borderRadius: '6px', border: '1px solid var(--border)', margin: '4px 0'}}>
+                                <span style={{fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', marginRight: 'auto', paddingLeft: '4px'}}>RUNWAY FILTER</span>
+                                <button className={`toggle-btn ${rwyFilter === 'ALL' ? 'active' : ''}`} onClick={() => setRwyFilter('ALL')}>ALL</button>
+                                <button className={`toggle-btn ${rwyFilter === '07' ? 'active' : ''}`} onClick={() => setRwyFilter('07')}>07</button>
+                                <button className={`toggle-btn ${rwyFilter === '25' ? 'active' : ''}`} onClick={() => setRwyFilter('25')}>25</button>
+                            </div>
+
+                            {/* SIDs */}
+                            <div>
+                                <div className="section-header">
+                                    <div className="section-label sids"><div className="section-dot"></div> Departures (SIDs)</div>
+                                </div>
+                                <div className="proc-grid">
+                                    {sids.length === 0 ? <div className="empty-msg">No SIDs in DB</div> :
+                                        sids.map(p => (
+                                            <button key={p.id} className={`proc-btn sid ${activeIds.includes(p.id) ? 'active sid' : ''}`} onClick={() => setActiveIds(prev => prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id])}>
+                                                <span className="proc-btn-name">{p.name} {p.runway ? <span style={{color:'var(--text-muted)', fontSize:'0.9em'}}>({p.runway})</span> : ''}</span>
+                                                <span className="proc-btn-type">{p.waypoints.length} Fixes</span>
+                                                <div className="proc-btn-indicator"></div>
+                                            </button>
+                                        ))
+                                    }
+                                </div>
+                            </div>
+
+                            {/* STARs */}
+                            <div>
+                                <div className="section-header">
+                                    <div className="section-label stars"><div className="section-dot"></div> Arrivals (STARs)</div>
+                                </div>
+                                <div className="proc-grid">
+                                    {stars.length === 0 ? <div className="empty-msg">No STARs in DB</div> :
+                                        stars.map(p => (
+                                            <button key={p.id} className={`proc-btn star ${activeIds.includes(p.id) ? 'active star' : ''}`} onClick={() => setActiveIds(prev => prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id])}>
+                                                <span className="proc-btn-name">{p.name} {p.runway ? <span style={{color:'var(--text-muted)', fontSize:'0.9em'}}>({p.runway})</span> : ''}</span>
+                                                <span className="proc-btn-type">{p.waypoints.length} Fixes</span>
+                                                <div className="proc-btn-indicator"></div>
+                                            </button>
+                                        ))
+                                    }
+                                </div>
+                            </div>
+
+                            {/* IACs */}
+                            <div>
+                                <div className="section-header">
+                                    <div className="section-label iacs"><div className="section-dot"></div> Approaches (IACs)</div>
+                                </div>
+                                <div className="proc-grid">
+                                    {iacs.length === 0 ? <div className="empty-msg">No IACs in DB</div> :
+                                        iacs.map(p => (
+                                            <button key={p.id} className={`proc-btn iac ${activeIds.includes(p.id) ? 'active iac' : ''}`} onClick={() => setActiveIds(prev => prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id])}>
+                                                <span className="proc-btn-name">{p.name} {p.runway ? <span style={{color:'var(--text-muted)', fontSize:'0.9em'}}>({p.runway})</span> : ''}</span>
+                                                <span className="proc-btn-type">{p.waypoints.length} Fixes</span>
+                                                <div className="proc-btn-indicator"></div>
+                                            </button>
+                                        ))
+                                    }
+                                </div>
+                            </div>
+
+                            {/* Active Detail Panel */}
+                            {activeProcs.length > 0 && (
+                                <div className="detail-panel" style={{display:'flex', flexDirection:'column', gap:'12px', maxHeight:'40vh', overflowY:'auto'}}>
+                                    <div className="detail-title" style={{display:'flex', justifyContent:'space-between', marginBottom: 0}}>
+                                        <span>Active Procedures ({activeProcs.length})</span>
+                                        <span style={{cursor:'pointer', color:'var(--accent-red)'}} onClick={()=>setActiveIds([])}>CLEAR ALL</span>
+                                    </div>
+                                    {activeProcs.map(proc => (
+                                        <div key={proc.id} style={{borderTop:'1px solid var(--border)', paddingTop:'8px'}}>
+                                            <div className="detail-row" style={{paddingTop: 0}}>
+                                                <span className="detail-key" style={{color: `var(--color-${proc.type.toLowerCase()})`, fontSize:'11px', fontWeight:700}}>{proc.name}</span>
+                                                <span className="detail-val" style={{fontSize:'10px'}}>{proc.type} • {proc.runway || 'N/A'}</span>
+                                            </div>
+                                            <div className="detail-row" style={{borderBottom:'none', display:'flex', justifyContent:'space-between', alignItems:'flex-end'}}>
+                                                <span className="detail-val" style={{fontSize:'9px', textAlign:'left', wordBreak:'break-word', color:'var(--text-secondary)', flex:1}}>
+                                                    {proc.waypoints.map(wp => typeof wp === 'string' ? wp : wp.fix).join(' → ')}
+                                                </span>
+                                                <button className="item-del" style={{fontSize:'10px', marginLeft:'8px'}} onClick={() => handleDeleteProcedure(proc.id)}>DELETE</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {tab === 'edit' && (
+                        <>
+                            {/* Create Fix */}
+                            <div className="detail-panel">
+                                <div className="detail-title">1. Create Waypoints</div>
+                                <div className="form-group">
+                                    <input className="form-input" placeholder="Fix Name (e.g. SBGR)" value={newFixName} onChange={e=>setNewFixName(e.target.value)} />
+                                </div>
+                                <div className="form-group form-row">
+                                    <input className="form-input" placeholder="Lat (e.g. 22 20 09.10N)" type="text" value={newFixLat} onChange={e=>setNewFixLat(e.target.value)} />
+                                    <input className="form-input" placeholder="Lon (e.g. 114 01 16.30E)" type="text" value={newFixLon} onChange={e=>setNewFixLon(e.target.value)} />
+                                </div>
+                                {fixError && <div style={{color: 'var(--accent-red)', fontSize: '10px', marginBottom: '8px', fontFamily: "'JetBrains Mono', monospace"}}>{fixError}</div>}
+                                <button className="add-btn" onClick={handleAddFix}>Save Fix to DB</button>
+                                
+                                <div className="form-label" style={{marginTop:12}}>Existing Fixes ({Object.keys(db.fixes).length})</div>
+                                <div className="item-list">
+                                    {Object.entries(db.fixes).map(([name, coords]) => (
+                                        <div key={name} className="item-row">
+                                            <span>{name} <span style={{color:'var(--text-muted)'}}>[{coords[0].toFixed(2)}, {coords[1].toFixed(2)}]</span></span>
+                                            <button className="item-del" onClick={()=>handleDeleteFix(name)}>×</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Create Procedure */}
+                            <div className="detail-panel">
+                                <div className="detail-title">2. Build Procedure</div>
+                                <div className="form-group form-row">
+                                    <input className="form-input" placeholder="Proc Name" value={newProcName} onChange={e=>setNewProcName(e.target.value)} />
+                                    <select className="form-input" style={{flex: 0.5}} value={newProcType} onChange={e=>setNewProcType(e.target.value)}>
+                                        <option value="SID">SID</option>
+                                        <option value="STAR">STAR</option>
+                                        <option value="IAC">IAC</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <input className="form-input" placeholder="Assigned Runway (e.g. 07R)" value={newProcRwy} onChange={e=>setNewProcRwy(e.target.value)} />
+                                </div>
+                                
+                                <div className="form-label" style={{marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)'}}>Select Fix to Add</div>
+                                <div className="form-group">
+                                    <select className="form-input" value={selectedWpToAdd} onChange={e=>setSelectedWpToAdd(e.target.value)}>
+                                        {Object.keys(db.fixes).map(f => <option key={f} value={f}>{f}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="form-label">Fix Constraints (Optional)</div>
+                                <div className="form-group form-row">
+                                    <select className="form-input" style={{flex: 1}} value={wpAltType} onChange={e=>setWpAltType(e.target.value)}>
+                                        <option value="NONE">Alt: None</option>
+                                        <option value="AT">Alt: At</option>
+                                        <option value="ABOVE">Alt: Above</option>
+                                        <option value="BELOW">Alt: Below</option>
+                                        <option value="WINDOW">Alt: Window</option>
+                                    </select>
+                                    {wpAltType !== 'NONE' && <input className="form-input" style={{flex: 1}} placeholder={wpAltType === 'WINDOW' ? "Lower (Alt 1)" : "Altitude"} value={wpAlt1} onChange={e=>setWpAlt1(e.target.value)} />}
+                                    {wpAltType === 'WINDOW' && <input className="form-input" style={{flex: 1}} placeholder="Upper (Alt 2)" value={wpAlt2} onChange={e=>setWpAlt2(e.target.value)} />}
+                                </div>
+                                <div className="form-group form-row">
+                                    <select className="form-input" style={{flex: 1}} value={wpSpdType} onChange={e=>setWpSpdType(e.target.value)}>
+                                        <option value="NONE">Spd: None</option>
+                                        <option value="AT">Spd: At</option>
+                                        <option value="MAX">Spd: Max (&lt;)</option>
+                                        <option value="MIN">Spd: Min (&gt;)</option>
+                                    </select>
+                                    {wpSpdType !== 'NONE' && <input className="form-input" style={{flex: 1}} placeholder="Speed (kts)" value={wpSpd} onChange={e=>setWpSpd(e.target.value)} />}
+                                </div>
+                                
+                                <button className="add-btn" style={{marginBottom: 12}} onClick={handleAddWpToProc}>+ Add Fix to Sequence</button>
+
+                                <div className="form-label">Procedure Sequence</div>
+                                <div className="item-list" style={{marginBottom: 12}}>
+                                    {newProcWpts.length === 0 ? <div className="item-row" style={{color:'var(--text-muted)'}}>No fixes added yet.</div> : null}
+                                    {newProcWpts.map((wp, idx) => {
+                                        const a1 = formatAlt(wp.alt1);
+                                        const a2 = formatAlt(wp.alt2);
+                                        const s = formatSpd(wp.spd);
+
+                                        const altStr = wp.altType !== 'NONE' ? `Alt: ${wp.altType} ${a1}${wp.altType==='WINDOW'? ' - '+a2 : ''}` : '';
+                                        const spdStr = wp.spdType !== 'NONE' ? `Spd: ${wp.spdType} ${s}` : '';
+                                        return (
+                                            <div key={idx} className="item-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+                                                <div style={{display:'flex', justifyContent:'space-between', width:'100%'}}>
+                                                    <span>{idx + 1}. {wp.fix}</span>
+                                                    <button className="item-del" onClick={()=>handleRemoveWpFromProc(idx)}>×</button>
+                                                </div>
+                                                {(altStr || spdStr) && <div style={{fontSize:'9px', color:'var(--text-muted)', marginTop:'4px'}}>{altStr} {spdStr ? ` | ${spdStr}` : ''}</div>}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <button className="add-btn" onClick={handleSaveProcedure} disabled={newProcWpts.length < 2 || !newProcName} style={{opacity: (newProcWpts.length < 2 || !newProcName) ? 0.5 : 1, background: 'var(--color-iac)'}}>
+                                    Save Final Procedure
+                                </button>
+                        </div>
+                    </>
+                )}
+
+            </div>
+        </div>
+
+        {/* ── Map ── */}
+        <div id="map" ref={mapDivRef}>
+            <button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle Sidebar">
+                {sidebarOpen ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                )}
+            </button>
+        </div>
+    </div>
+);
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

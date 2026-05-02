@@ -1,0 +1,12 @@
+[
+  { "id": "VHHH 07L", "name": "Hong Kong 07L", "lat": 22.32159, "lng": 113.88229 },
+  { "id": "VHHH 25R", "name": "Hong Kong 25R", "lat": 22.3117, "lng": 113.9197 },
+  { "id": "VHHH 07C", "name": "Hong Kong 07C", "lat": 22.3121, "lng": 113.9009 },
+  { "id": "VHHH 25C", "name": "Hong Kong 25C", "lat": 22.3022, "lng": 113.9383 },
+  { "id": "VHHH 07R", "name": "Hong Kong 07R", "lat": 22.3023, "lng": 113.8894 },
+  { "id": "VHHH 25L", "name": "Hong Kong 25L", "lat": 22.2925, "lng": 113.9268 },
+  { "id": "VMMC 16", "name": "Macau 16", "lat": 22.1627, "lng": 113.5855 },
+  { "id": "VMMC 34", "name": "Macau 34", "lat": 22.1363, "lng": 113.5975 },
+  { "id": "ZGSZ 15", "name": "Shenzhen 15", "lat": 22.6515, "lng": 113.8015 },
+  { "id": "ZGSZ 33", "name": "Shenzhen 33", "lat": 22.6145, "lng": 113.8235 }
+]

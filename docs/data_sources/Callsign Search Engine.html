@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATC Master Directory & Global DB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050b14; /* Deep, dark radar background */
+            color: #f8fafc;
+            overflow-y: scroll;
+        }
+        
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #0ea5e9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+
+        /* Tab Active States */
+        .tab-btn { transition: all 0.2s ease-in-out; }
+        .tab-btn.active {
+            background-color: rgba(14, 165, 233, 0.15);
+            border-color: #0ea5e9;
+            color: #38bdf8;
+        }
+
+        /* File Drop Zone */
+        .drop-zone {
+            border: 2px dashed rgba(56, 189, 248, 0.3);
+            transition: all 0.2s ease-in-out;
+        }
+        .drop-zone.dragover {
+            background-color: rgba(14, 165, 233, 0.1);
+            border-color: #0ea5e9;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6 min-h-screen flex flex-col items-center selection:bg-sky-900 selection:text-sky-50">
+
+    <div class="w-full max-w-6xl space-y-6">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row items-center justify-between border-b border-sky-900/50 pb-4">
+            <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                <div class="p-3 bg-sky-900/30 rounded-lg border border-sky-500/30">
+                    <svg class="w-8 h-8 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight text-white">ATC <span class="text-sky-400">Master Terminal</span></h1>
+                    <p class="text-slate-400 text-sm">Unified FIR & Global ICAO Database</p>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="flex space-x-2 bg-slate-900/50 p-1 rounded-lg border border-slate-800">
+                <button onclick="switchTab('hkfir')" id="tab-hkfir" class="tab-btn active px-4 py-2 rounded-md text-sm font-semibold border border-transparent text-slate-300 hover:text-white">HK FIR</button>
+                <button onclick="switchTab('airlines')" id="tab-airlines" class="tab-btn px-4 py-2 rounded-md text-sm font-semibold border border-transparent text-slate-300 hover:text-white flex items-center gap-2">
+                    Global Airlines <span id="badge-airlines" class="hidden w-2 h-2 rounded-full bg-emerald-500"></span>
+                </button>
+                <button onclick="switchTab('aircraft')" id="tab-aircraft" class="tab-btn px-4 py-2 rounded-md text-sm font-semibold border border-transparent text-slate-300 hover:text-white flex items-center gap-2">
+                    Global Aircraft <span id="badge-aircraft" class="hidden w-2 h-2 rounded-full bg-emerald-500"></span>
+                </button>
+                <button onclick="switchTab('airports')" id="tab-airports" class="tab-btn px-4 py-2 rounded-md text-sm font-semibold border border-transparent text-slate-300 hover:text-white flex items-center gap-2">
+                    Global Airports <span id="badge-airports" class="hidden w-2 h-2 rounded-full bg-emerald-500"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Search Bar -->
+        <div class="relative group">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                <svg class="w-5 h-5 text-slate-400 group-focus-within:text-sky-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            <input type="text" id="searchInput" class="w-full bg-slate-900/80 border border-slate-700 text-white text-lg rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 block pl-12 p-4 transition-all placeholder-slate-500 shadow-lg font-mono" placeholder="Search current database...">
+        </div>
+
+        <!-- Content Area -->
+        <div class="glass-panel rounded-xl overflow-hidden min-h-[500px] relative flex flex-col">
+            
+            <!-- Upload Overlay (Shows if tab needs data) -->
+            <div id="uploadOverlay" class="hidden absolute inset-0 z-10 bg-slate-900/95 flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm">
+                <div id="dropZone" class="drop-zone w-full max-w-xl rounded-2xl p-12 bg-slate-800/50 cursor-pointer flex flex-col items-center justify-center">
+                    <svg class="w-16 h-16 text-sky-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <h3 class="text-2xl font-bold text-white mb-2" id="uploadTitle">Load Global Database</h3>
+                    <p class="text-slate-400 mb-6" id="uploadDesc">Click or drag and drop your ICAO file here to parse it.</p>
+                    <button class="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-semibold transition-colors shadow-lg shadow-sky-900/50">Browse File</button>
+                    <input type="file" id="fileInput" class="hidden" accept=".txt">
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="overflow-x-auto flex-1">
+                <table class="w-full text-left border-collapse">
+                    <thead id="tableHead" class="bg-slate-800/80 text-slate-300 text-sm uppercase tracking-wider border-b border-sky-900/50 sticky top-0">
+                        <!-- Headers injected via JS -->
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-800/80 text-slate-200">
+                        <!-- Rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="no-results" class="hidden flex-col items-center justify-center p-12 text-slate-500 flex-1">
+                <svg class="w-12 h-12 mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <p class="text-lg">No entries match your search criteria.</p>
+            </div>
+            
+            <!-- Limit Warning -->
+            <div id="limit-warning" class="hidden bg-sky-900/30 border-t border-sky-800 p-2 text-center text-xs text-sky-400 font-mono">
+                Showing top 100 results for performance. Keep typing to filter further.
+            </div>
+        </div>
+
+        <footer class="flex justify-between items-center text-slate-500 text-sm mt-4 pb-4">
+            <div>Mode: <span id="statusIndicator" class="text-emerald-400 font-bold">HK FIR Reference</span></div>
+            <div>Total Loaded: <span id="countDisplay" class="font-mono text-sky-400 font-bold">0</span></div>
+        </footer>
+
+    </div>
+
+    <script>
+        // === CORE HK FIR DATASET ===
+        const hkFirData = [
+            { icao: "AAR", name: "Asiana Airlines", callsign: "ASIANA", fleet: "A388, B744, A359, A333" },
+            { icao: "ABB", name: "Air Belgium", callsign: "AIR BELGIUM", fleet: "A339, A332F, B748" },
+            { icao: "ABL", name: "Air Busan", callsign: "AIR BUSAN", fleet: "A320, A321" },
+            { icao: "ABX", name: "ABX Air", callsign: "ABEX", fleet: "B763F" },
+            { icao: "ACA", name: "Air Canada", callsign: "AIR CANADA", fleet: "B789, B77W" },
+            { icao: "AFR", name: "Air France", callsign: "AIRFRANS", fleet: "B77W, A359" },
+            { icao: "AHK", name: "Air Hong Kong", callsign: "AIR HONG KONG", fleet: "A306, A332F, A333F" },
+            { icao: "AIC", name: "Air India", callsign: "AIRINDIA", fleet: "B788, A320neo" },
+            { icao: "AIQ", name: "Thai AirAsia", callsign: "THAI ASIA", fleet: "A320, A20N" },
+            { icao: "AMU", name: "Air Macau", callsign: "MACAU", fleet: "A320, A321, A20N, A21N" },
+            { icao: "ANA", name: "All Nippon Airways (ANA)", callsign: "ALL NIPPON", fleet: "B763, B789, B788" },
+            { icao: "ANG", name: "Air Niugini", callsign: "NIUGINI", fleet: "B763" },
+            { icao: "ANZ", name: "Air New Zealand", callsign: "NEW ZEALAND", fleet: "B789, B77W" },
+            { icao: "AOC", name: "Air China Cargo", callsign: "AIRCHINA FREIGHT", fleet: "B77L" },
+            { icao: "APG", name: "APG Airlines", callsign: "RIVIERA", fleet: "BE20, B738" },
+            { icao: "APJ", name: "Peach Aviation", callsign: "AIR PEACH", fleet: "A320, A20N" },
+            { icao: "APZ", name: "Air Premia", callsign: "AIR PREMIA", fleet: "B789" },
+            { icao: "ASV", name: "Air Seoul", callsign: "AIR SEOUL", fleet: "A320" },
+            { icao: "ATI", name: "Air Transport International", callsign: "AIR TRANSPORT", fleet: "B763F" },
+            { icao: "AWQ", name: "Indonesia AirAsia", callsign: "WAGON AIR", fleet: "A320" },
+            { icao: "AXM", name: "AirAsia", callsign: "RED CAP", fleet: "A320, A20N" },
+            { icao: "AZG", name: "Silk Way West Airlines", callsign: "SILK WEST", fleet: "B748F, B744F, B77L" },
+            { icao: "BAW", name: "British Airways", callsign: "SPEEDBIRD", fleet: "B789, A35K" },
+            { icao: "BBA", name: "Bamboo Airways", callsign: "BAMBOO", fleet: "A320, A321, B789" },
+            { icao: "BBC", name: "Biman Bangladesh Airlines", callsign: "BANGLADESH", fleet: "B738, B788" },
+            { icao: "BCA", name: "Beijing Capital Airlines", callsign: "CAPITAL JET", fleet: "A332, A320" },
+            { icao: "BCS", name: "European Air Transport (DHL)", callsign: "EUROTRANS", fleet: "A306, B752F, A332F" },
+            { icao: "BOX", name: "AeroLogic", callsign: "GERMAN CARGO", fleet: "B77L" },
+            { icao: "BTK", name: "Batik Air", callsign: "BATIK", fleet: "A320, B738" },
+            { icao: "CAL", name: "China Airlines", callsign: "DYNASTY", fleet: "A333, A359, B77W, A321neo" },
+            { icao: "CBG", name: "GX Airlines", callsign: "GREEN CITY", fleet: "A320" },
+            { icao: "CCA", name: "Air China", callsign: "AIR CHINA", fleet: "B748, B77W, A333, A321, A320" },
+            { icao: "CDC", name: "Loong Air", callsign: "LOONG AIR", fleet: "A320" },
+            { icao: "CDG", name: "Shandong Airlines", callsign: "SHANDONG", fleet: "B738" },
+            { icao: "CEB", name: "Cebu Pacific", callsign: "CEBU", fleet: "A339, A320, A20N" },
+            { icao: "CES", name: "China Eastern Airlines", callsign: "CHINA EASTERN", fleet: "A320, A332, A333, B77W" },
+            { icao: "CGZ", name: "China Postal Airlines", callsign: "CHINA POST", fleet: "B738F, B752F" },
+            { icao: "CHH", name: "Hainan Airlines", callsign: "HAINAN", fleet: "B738, B789, A333" },
+            { icao: "CKK", name: "China Cargo Airlines", callsign: "CARGO KING", fleet: "B77L, B744F" },
+            { icao: "CKS", name: "Kalitta Air", callsign: "CONNIE", fleet: "B744F, B77L" },
+            { icao: "CLX", name: "Cargolux", callsign: "CARGOLUX", fleet: "B748F, B744F" },
+            { icao: "CPA", name: "Cathay Pacific", callsign: "CATHAY", fleet: "A359, A35K, A333, B77W, B748F, B744F" },
+            { icao: "CQH", name: "Spring Airlines", callsign: "AIR SPRING", fleet: "A320" },
+            { icao: "CRK", name: "Hong Kong Airlines", callsign: "BAUHINIA", fleet: "A332, A333, A320" },
+            { icao: "CSC", name: "Sichuan Airlines", callsign: "SICHUAN", fleet: "A320, A333, A359" },
+            { icao: "CSN", name: "China Southern Airlines", callsign: "CHINA SOUTHERN", fleet: "A320, A333, B738, B789, A359" },
+            { icao: "CSS", name: "SF Airlines", callsign: "SHUN FENG", fleet: "B744F, B763F, B752F" },
+            { icao: "CSZ", name: "Shenzhen Airlines", callsign: "SHENZHEN AIR", fleet: "B738, A320, A333" },
+            { icao: "CXA", name: "XiamenAir", callsign: "XIAMEN AIR", fleet: "B738, B788, B789" },
+            { icao: "DAL", name: "Delta Air Lines", callsign: "DELTA", fleet: "A359, A339" },
+            { icao: "DHK", name: "DHL Air UK", callsign: "WORLD EXPRESS", fleet: "B77L, B763F" },
+            { icao: "DKH", name: "Juneyao Airlines", callsign: "AIR JUNEYAO", fleet: "A320, B789" },
+            { icao: "DLH", name: "Lufthansa", callsign: "LUFTHANSA", fleet: "A346, A359, B748" },
+            { icao: "ELY", name: "El Al Israel Airlines", callsign: "ELAL", fleet: "B789" },
+            { icao: "EMU", name: "Sky Shuttle Helicopters", callsign: "EAST ASIA", fleet: "AW39" },
+            { icao: "ESR", name: "Eastar Jet", callsign: "EASTARJET", fleet: "B738" },
+            { icao: "ETD", name: "Etihad Airways", callsign: "ETIHAD", fleet: "B789, B78X, B77W" },
+            { icao: "ETH", name: "Ethiopian Airlines", callsign: "ETHIOPIAN", fleet: "B77W, B788, B789, B77L" },
+            { icao: "EVA", name: "EVA Air", callsign: "EVA", fleet: "B77W, B789, B78X" },
+            { icao: "FDX", name: "FedEx Express", callsign: "FEDEX", fleet: "B77L, B763, MD11" },
+            { icao: "FIN", name: "Finnair", callsign: "FINNAIR", fleet: "A359" },
+            { icao: "FJI", name: "Fiji Airways", callsign: "FIJI", fleet: "A332, A359" },
+            { icao: "GBA", name: "Gulf And Caribbean Cargo", callsign: "GULF CARIBBEAN", fleet: "B752F, C208" },
+            { icao: "GIA", name: "Garuda Indonesia", callsign: "INDONESIA", fleet: "A333, B77W" },
+            { icao: "GTI", name: "Atlas Air", callsign: "GIANT", fleet: "B748F, B744F, B77L" },
+            { icao: "HGB", name: "Greater Bay Airlines", callsign: "GREATER BAY", fleet: "B738" },
+            { icao: "HKB", name: "HK Bellawings Jet", callsign: "BELLAWINGS", fleet: "G650, GL7T" },
+            { icao: "HKC", name: "Hong Kong Air Cargo", callsign: "MASCOT", fleet: "A332F" },
+            { icao: "HKE", name: "HK Express", callsign: "HONGKONG SHUTTLE", fleet: "A320, A20N, A321, A21N" },
+            { icao: "HKG", name: "Hong Kong Government Flying Service", callsign: "HONG KONG GOVERNMENT", fleet: "H175, CL60" },
+            { icao: "HKH", name: "Hongkong Jet", callsign: "HONGKONG JET", fleet: "GL5T, G650" },
+            { icao: "HVN", name: "Vietnam Airlines", callsign: "VIET NAM AIRLINES", fleet: "A321, A359, B789" },
+            { icao: "HYT", name: "YTO Cargo Airlines", callsign: "QUICK AIR", fleet: "B752F, B763F" },
+            { icao: "ICV", name: "Cargolux Italia", callsign: "CARGOLUX ITALIA", fleet: "B744F" },
+            { icao: "IGO", name: "IndiGo", callsign: "IFLY", fleet: "A321neo, A320neo" },
+            { icao: "JAL", name: "Japan Airlines", callsign: "JAPAN AIR", fleet: "B788, B789, B77W" },
+            { icao: "JEY", name: "Spring Japan", callsign: "J-SPRING", fleet: "B738" },
+            { icao: "JJA", name: "Jeju Air", callsign: "JEJU AIR", fleet: "B738" },
+            { icao: "JNA", name: "Jin Air", callsign: "JIN AIR", fleet: "B738, B772" },
+            { icao: "JSA", name: "Jetstar Asia", callsign: "JETSTAR ASIA", fleet: "A320" },
+            { icao: "JST", name: "Jetstar", callsign: "JETSTAR", fleet: "A320, B788" },
+            { icao: "KAL", name: "Korean Air", callsign: "KOREANAIR", fleet: "B748, B77W, B789, A333" },
+            { icao: "KLM", name: "KLM Royal Dutch Airlines", callsign: "KLM", fleet: "B77W, B789" },
+            { icao: "KME", name: "Cambodia Airways", callsign: "GIANT IBIS", fleet: "A319, A320" },
+            { icao: "LNI", name: "Lion Air", callsign: "LION INTER", fleet: "B738, A333" },
+            { icao: "MAS", name: "Malaysia Airlines", callsign: "MALAYSIAN", fleet: "A333, B738, A359" },
+            { icao: "MDA", name: "Mandarin Airlines", callsign: "MANDARIN", fleet: "E190, AT76" },
+            { icao: "MFX", name: "Centrum Air / My Freighter", callsign: "WHITEBIRD", fleet: "A320, A321neo, B763F" },
+            { icao: "MGE", name: "Asia Pacific Airlines", callsign: "MAGELLAN", fleet: "B752F" },
+            { icao: "MGL", name: "MIAT Mongolian Airlines", callsign: "MONGOL AIR", fleet: "B738, B763, B789" },
+            { icao: "MPH", name: "Martinair Cargo", callsign: "MACAIR", fleet: "B744F" },
+            { icao: "MSR", name: "EgyptAir", callsign: "EGYPTAIR", fleet: "B77W, B789, A332F" },
+            { icao: "MTJ", name: "Metrojet", callsign: "METROJET", fleet: "GL5T, G650" },
+            { icao: "MXD", name: "Batik Air Malaysia", callsign: "MALINDO", fleet: "B738, B38M, A333" },
+            { icao: "NCA", name: "Nippon Cargo Airlines", callsign: "NIPPON CARGO", fleet: "B748F" },
+            { icao: "NPT", name: "National Airlines", callsign: "NATIONAL CARGO", fleet: "B744F" },
+            { icao: "OAE", name: "Omni Air International", callsign: "OMNI-EXPRESS", fleet: "B772" },
+            { icao: "OMA", name: "Oman Air", callsign: "OMAN AIR", fleet: "B789" },
+            { icao: "PAC", name: "Polar Air Cargo", callsign: "POLAR", fleet: "B748F, B744F" },
+            { icao: "PAL", name: "Philippine Airlines", callsign: "PHILIPPINE", fleet: "B77W, A333, A321" },
+            { icao: "PIA", name: "Pakistan International Airlines", callsign: "PAKISTAN", fleet: "B772, B77W" },
+            { icao: "PIC", name: "Pacific Airlines", callsign: "PACIFIC AIRLINES", fleet: "A320" },
+            { icao: "QDA", name: "Qingdao Airlines", callsign: "SKY LEGEND", fleet: "A320" },
+            { icao: "QFA", name: "Qantas", callsign: "QANTAS", fleet: "A333, A388" },
+            { icao: "QTR", name: "Qatar Airways", callsign: "QATARI", fleet: "B77W, A359, A35K" },
+            { icao: "RBA", name: "Royal Brunei Airlines", callsign: "BRUNEI", fleet: "A320neo, B788" },
+            { icao: "RCR", name: "RomCargo Airlines", callsign: "ROMCARGO", fleet: "B744F" },
+            { icao: "RJA", name: "Royal Jordanian", callsign: "JORDANIAN", fleet: "B788" },
+            { icao: "SIA", name: "Singapore Airlines", callsign: "SINGAPORE", fleet: "A388, B77W, A359, B78X" },
+            { icao: "SJX", name: "Starlux Airlines", callsign: "STARWALKER", fleet: "A321neo, A330neo, A359" },
+            { icao: "SVA", name: "Saudia", callsign: "SAUDIA", fleet: "B77W, B789" },
+            { icao: "SWR", name: "Swiss International Air Lines", callsign: "SWISS", fleet: "B77W, A343" },
+            { icao: "TAY", name: "ASL Airlines Belgium", callsign: "QUALITY", fleet: "B744F, B738F" },
+            { icao: "TBA", name: "Tibet Airlines", callsign: "TIBET", fleet: "A332, A319" },
+            { icao: "TBJ", name: "TAG Aviation Asia", callsign: "TAG JET", fleet: "GL6T, FA7X" },
+            { icao: "TGW", name: "Scoot", callsign: "SCOOTER", fleet: "B788, B789, A320" },
+            { icao: "THA", name: "Thai Airways", callsign: "THAI", fleet: "A359, B789, B77W" },
+            { icao: "THY", name: "Turkish Airlines", callsign: "TURKISH", fleet: "B77W, A359" },
+            { icao: "TTW", name: "Tigerair Taiwan", callsign: "SMART CAT", fleet: "A320" },
+            { icao: "TVR", name: "Terra Avia (Cargo)", callsign: "TERRA AVIA", fleet: "B744F" },
+            { icao: "TWB", name: "T'way Air", callsign: "TEEWAY", fleet: "B738, A333" },
+            { icao: "UAE", name: "Emirates", callsign: "EMIRATES", fleet: "A388, B77W" },
+            { icao: "UAL", name: "United Airlines", callsign: "UNITED", fleet: "B77W, B772" },
+            { icao: "UIA", name: "Uni Air", callsign: "GLORY", fleet: "A321" },
+            { icao: "UPS", name: "UPS Airlines", callsign: "UPS", fleet: "B748F, B744F, B763F" },
+            { icao: "VJC", name: "VietJet Air", callsign: "VIETJET", fleet: "A320, A321" },
+            { icao: "VTI", name: "Vistara", callsign: "VISTARA", fleet: "A321neo" },
+            { icao: "WEN", name: "Western Global Airlines", callsign: "WESTERN GLOBAL", fleet: "MD11, B744F" },
+            { icao: "XAX", name: "AirAsia X", callsign: "XANADU", fleet: "A333" },
+            { icao: "YZR", name: "Suparna Airlines", callsign: "YANGTZE RIVER", fleet: "B738F, B744F" }
+        ];
+        hkFirData.sort((a, b) => a.icao.localeCompare(b.icao));
+
+        // === STATE MANAGEMENT ===
+        let globalData = {
+            airlines: null,
+            aircraft: null,
+            airports: null
+        };
+        let currentTab = 'hkfir';
+
+        // === DOM ELEMENTS ===
+        const tbody = document.getElementById('tableBody');
+        const thead = document.getElementById('tableHead');
+        const searchInput = document.getElementById('searchInput');
+        const noResults = document.getElementById('no-results');
+        const countDisplay = document.getElementById('countDisplay');
+        const uploadOverlay = document.getElementById('uploadOverlay');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const limitWarning = document.getElementById('limit-warning');
+        const statusIndicator = document.getElementById('statusIndicator');
+
+        // === TAB CONFIGURATION ===
+        const tabConfigs = {
+            hkfir: { 
+                name: "HK FIR Reference",
+                columns: ["ICAO", "Airline Name", "Radio Callsign", "Primary Fleet"],
+                renderRow: (item) => `
+                    <td class="p-4 border-b border-slate-800/80"><span class="inline-flex items-center px-2 py-1 rounded bg-sky-900/40 text-sky-400 font-mono text-sm font-bold border border-sky-800/50">${item.icao}</span></td>
+                    <td class="p-4 border-b border-slate-800/80 font-medium text-slate-200">${item.name}</td>
+                    <td class="p-4 border-b border-slate-800/80"><span class="font-mono text-emerald-400 font-semibold tracking-wide">${item.callsign}</span></td>
+                    <td class="p-4 border-b border-slate-800/80 text-slate-400 text-sm">${item.fleet}</td>
+                `,
+                searchKeys: ['icao', 'name', 'callsign', 'fleet']
+            },
+            airlines: {
+                name: "Global Airlines DB",
+                reqFile: "ICAO_Airlines.txt",
+                columns: ["ICAO", "Company Name", "Callsign", "Country"],
+                renderRow: (item) => `
+                    <td class="p-4 border-b border-slate-800/80"><span class="inline-flex items-center px-2 py-1 rounded bg-indigo-900/40 text-indigo-400 font-mono text-sm font-bold border border-indigo-800/50">${item[0]}</span></td>
+                    <td class="p-4 border-b border-slate-800/80 font-medium text-slate-200">${item[1]}</td>
+                    <td class="p-4 border-b border-slate-800/80"><span class="font-mono text-amber-400 font-semibold tracking-wide">${item[2] || 'N/A'}</span></td>
+                    <td class="p-4 border-b border-slate-800/80 text-slate-400 text-sm">${item[3] || ''}</td>
+                `
+            },
+            aircraft: {
+                name: "Global Aircraft DB",
+                reqFile: "ICAO_Aircraft.txt",
+                columns: ["Designator", "Type/WTC", "Manufacturer", "Model"],
+                renderRow: (item) => `
+                    <td class="p-4 border-b border-slate-800/80"><span class="inline-flex items-center px-2 py-1 rounded bg-rose-900/40 text-rose-400 font-mono text-sm font-bold border border-rose-800/50">${item[0]}</span></td>
+                    <td class="p-4 border-b border-slate-800/80 text-slate-400 font-mono text-sm">${item[1]}</td>
+                    <td class="p-4 border-b border-slate-800/80 text-slate-300">${item[2]}</td>
+                    <td class="p-4 border-b border-slate-800/80 font-medium text-slate-200">${item[3]}</td>
+                `
+            },
+            airports: {
+                name: "Global Airports DB",
+                reqFile: "ICAO_Airports.txt",
+                columns: ["ICAO", "Airport Name / City", "Country"],
+                renderRow: (item) => `
+                    <td class="p-4 border-b border-slate-800/80"><span class="inline-flex items-center px-2 py-1 rounded bg-teal-900/40 text-teal-400 font-mono text-sm font-bold border border-teal-800/50">${item[0]}</span></td>
+                    <td class="p-4 border-b border-slate-800/80 font-medium text-slate-200">${item[1]}</td>
+                    <td class="p-4 border-b border-slate-800/80 text-slate-400 text-sm">${item[2]}</td>
+                `
+            }
+        };
+
+        // === UI RENDERING ===
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            
+            const config = tabConfigs[tabId];
+            statusIndicator.innerText = config.name;
+            searchInput.value = ''; // clear search on tab switch
+
+            // Setup Table Headers
+            thead.innerHTML = `<tr>${config.columns.map(col => `<th class="p-4 font-semibold">${col}</th>`).join('')}</tr>`;
+
+            if (tabId === 'hkfir') {
+                uploadOverlay.classList.add('hidden');
+                executeSearch('');
+            } else {
+                if (!globalData[tabId]) {
+                    // Needs file upload
+                    tbody.innerHTML = '';
+                    countDisplay.innerText = '0';
+                    noResults.classList.add('hidden');
+                    limitWarning.classList.add('hidden');
+                    document.getElementById('uploadTitle').innerText = `Load ${config.reqFile}`;
+                    document.getElementById('uploadDesc').innerText = `Drag and drop your ${config.reqFile} here to unlock the global database.`;
+                    uploadOverlay.classList.remove('hidden');
+                } else {
+                    uploadOverlay.classList.add('hidden');
+                    executeSearch('');
+                }
+            }
+        }
+
+        function executeSearch(query) {
+            query = query.toLowerCase().trim();
+            let dataToRender = [];
+            const config = tabConfigs[currentTab];
+
+            if (currentTab === 'hkfir') {
+                dataToRender = hkFirData.filter(a => 
+                    a.icao.toLowerCase().includes(query) || 
+                    a.callsign.toLowerCase().includes(query) || 
+                    a.name.toLowerCase().includes(query) ||
+                    a.fleet.toLowerCase().includes(query)
+                );
+                
+                // Prioritize Exact Match
+                dataToRender.sort((a, b) => {
+                    const aExact = a.icao.toLowerCase() === query;
+                    const bExact = b.icao.toLowerCase() === query;
+                    if (aExact && !bExact) return -1;
+                    if (!aExact && bExact) return 1;
+                    return a.icao.localeCompare(b.icao);
+                });
+
+            } else {
+                // Global DB Search
+                const dataset = globalData[currentTab];
+                if (!dataset) return;
+
+                if (query === '') {
+                    dataToRender = dataset; 
+                } else {
+                    dataToRender = dataset.filter(row => {
+                        return row.some(col => col && col.toLowerCase().includes(query));
+                    });
+                    
+                    // Prioritize exact code match (Col 0)
+                    dataToRender.sort((a, b) => {
+                        const aExact = a[0] && a[0].toLowerCase() === query;
+                        const bExact = b[0] && b[0].toLowerCase() === query;
+                        if (aExact && !bExact) return -1;
+                        if (!aExact && bExact) return 1;
+                        return 0;
+                    });
+                }
+            }
+
+            renderTableData(dataToRender, config.renderRow);
+        }
+
+        function renderTableData(filteredData, renderRowFn) {
+            countDisplay.innerText = filteredData.length.toLocaleString();
+            tbody.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                noResults.classList.remove('hidden');
+                limitWarning.classList.add('hidden');
+            } else {
+                noResults.classList.add('hidden');
+                
+                // Virtualization/Limiting for massive datasets
+                const renderLimit = 150; 
+                const slicedData = filteredData.slice(0, renderLimit);
+                
+                if (filteredData.length > renderLimit) {
+                    limitWarning.classList.remove('hidden');
+                } else {
+                    limitWarning.classList.add('hidden');
+                }
+
+                const fragment = document.createDocumentFragment();
+                slicedData.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-800/50 transition-colors cursor-default";
+                    tr.innerHTML = renderRowFn(item);
+                    fragment.appendChild(tr);
+                });
+                tbody.appendChild(fragment);
+            }
+        }
+
+        searchInput.addEventListener('input', (e) => executeSearch(e.target.value));
+
+        // === FILE PARSING ENGINE ===
+        function parseTSV(text, tabId) {
+            const lines = text.split('\n');
+            const parsed = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line || line.startsWith(';')) continue; // Skip comments/empty
+                
+                const parts = line.split('\t');
+                if (parts.length >= 2) {
+                    parsed.push(parts);
+                }
+            }
+            
+            globalData[tabId] = parsed;
+            document.getElementById(`badge-${tabId}`).classList.remove('hidden');
+            switchTab(tabId); // Re-trigger render
+        }
+
+        function handleFile(file) {
+            if (!file || !file.name.toLowerCase().endsWith('.txt')) {
+                alert("Please upload a valid .txt database file.");
+                return;
+            }
+
+            // Auto-detect which file it is based on filename
+            let targetTab = currentTab;
+            const filename = file.name.toLowerCase();
+            if (filename.includes('airlines')) targetTab = 'airlines';
+            else if (filename.includes('aircraft')) targetTab = 'aircraft';
+            else if (filename.includes('airports')) targetTab = 'airports';
+
+            if (targetTab === 'hkfir') {
+                alert("Please navigate to a Global Database tab to upload this file.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => parseTSV(e.target.result, targetTab);
+            reader.readAsText(file);
+        }
+
+        // === DRAG & DROP LOGIC ===
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // Initialize
+        switchTab('hkfir');
+
+    </script>
+</body>
+</html>

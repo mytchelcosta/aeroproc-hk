@@ -1,0 +1,11 @@
+# Ignore large data files to save tokens
+MEDIA/
+*.xlsx
+*.csv
+*.txt
+
+# Ignore build artifacts and node modules
+node_modules/
+dist/
+.vscode/
+.git/

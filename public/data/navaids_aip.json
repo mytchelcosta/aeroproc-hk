@@ -1,0 +1,18 @@
+[
+  {
+    "ident": "TD",
+    "name": "TUNG LUNG",
+    "type": "VOR/DME",
+    "freq": 116.1,
+    "lat": 22.24789,
+    "lon": 114.29314
+  },
+  {
+    "ident": "CH",
+    "name": "CHEUNG CHAU",
+    "type": "VOR/DME",
+    "freq": 112.3,
+    "lat": 22.2185,
+    "lon": 114.0287
+  }
+]
