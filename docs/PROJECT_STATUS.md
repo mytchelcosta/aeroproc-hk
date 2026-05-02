@@ -1,26 +1,31 @@
 # Project Status: AeroProc Hong Kong (VHHH)
 
-**Current Status**: 🟢 Initializing Phase 1 (Foundation)
+**Current Status**: 🔵 Phase 4: Procedure Migration & Advanced Integration
 **Last Updated**: 2026-05-02
-**Target Area**: Hong Kong International (VHHH)
+**Target Area**: Hong Kong FIR (VHHK)
+**Live Site**: [mytchelcosta.github.io/aeroproc-hk/](https://mytchelcosta.github.io/aeroproc-hk/)
 
 ---
 
 ## 🚀 Project Overview
-This project is a derivative of AeroProc São Paulo, pivoted to provide an interactive procedural visualization experience for the Hong Kong TMA.
+AeroProc HK is a high-fidelity aeronautical visualization tool for the Hong Kong Flight Information Region. It provides interactive displays of FIR sectors, FIS volumes, and precise waypoint data for ATC training and situational awareness.
 
 ## 🛠 Active Work
-- [x] Implementation Plan created.
-- [ ] Updating focal point to VHHH (Hong Kong).
-- [ ] Replacing São Paulo dataset with Hong Kong dataset.
-- [ ] Adjusting persistence keys for regional isolation.
+- [x] **FIR/Sector Integration**: Detailed modeling of HK South ACC/FIS and Central FIS.
+- [x] **SCT Data Extraction**: Bulk import of 884 waypoints and 21 NAVAIDs from EuroScope sector files.
+- [x] **UCARA Integration**: Reporting areas implemented with standard amber styling.
+- [x] **CI/CD Pipeline**: Automated deployment to GitHub Pages via GitHub Actions.
+- [ ] **Procedure Migration**: Mapping STARs and SIDs from official AIP HK charts.
+- [ ] **Weather Integration**: Finalizing Cloudflare Worker proxy for real-time METAR/TAF.
 
 ## 📈 Milestone Progress
-- **Phase 1: Foundation**: 20%
-- **Phase 2: Data Migration**: 0%
-- **Phase 3: Engine Calibration**: 0%
-- **Phase 4: UI & Branding**: 0%
+- **Phase 1: Foundation**: 100% 🟢
+- **Phase 2: Data Expansion (SCT)**: 100% 🟢
+- **Phase 3: Airspace Modeling**: 100% 🟢
+- **Phase 4: CI/CD & Cloud**: 100% 🟢
+- **Phase 5: Procedures**: 10% 🟡
 
 ## 📝 Recent Notes
-- **2026-05-02**: Project initiated. Foundation copied from `aeroproc-sp`.
-- **2026-05-02**: Reference data identified in `reference/AEROPROC BUILDER 1.0.html`.
+- **2026-05-02**: Successfully parsed `Hong-Kong-Sector-File.sct`, increasing waypoint count from 34 to 884.
+- **2026-05-02**: Corrected HK ATZ styling and categorized it within the orange ATZ layer.
+- **2026-05-02**: GitHub Pages deployment resolved by switching source to GitHub Actions.
