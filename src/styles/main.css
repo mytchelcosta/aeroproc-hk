@@ -2205,7 +2205,7 @@ html, body {
    A fixed SVG overlay in the bottom-right corner of the map that
    permanently displays the relationship between True North (TN, the
    map tile orientation) and Magnetic North (MN, ~22°W declination
-   for São Paulo TMA). Never intercepts map clicks.
+   for Hong Kong TMA). Never intercepts map clicks.
    ================================================================ */
 
 /* The container is positioned over the map (absolute, not a Leaflet layer).

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/aeroproc-sp/' : '/',
+  base: command === 'build' ? '/aeroproc-hk/' : '/',
   server: {
     port: 3000,
     open: true

@@ -1,18 +1,191 @@
 [
   {
-    "ident": "TD",
-    "name": "TUNG LUNG",
+    "ident": "CH",
+    "name": "CH",
     "type": "VOR/DME",
-    "freq": 116.1,
-    "lat": 22.24789,
-    "lon": 114.29314
+    "frequency_mhz": 112.3,
+    "lat": 22.219542,
+    "lon": 114.030056,
+    "source": "Hong-Kong-Sector-File.sct"
   },
   {
-    "ident": "CH",
-    "name": "CHEUNG CHAU",
+    "ident": "DSA",
+    "name": "DSA",
     "type": "VOR/DME",
-    "freq": 112.3,
-    "lat": 22.2185,
-    "lon": 114.0287
+    "frequency_mhz": 112.9,
+    "lat": 16.835,
+    "lon": 112.341667,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "GLN",
+    "name": "GLN",
+    "type": "VOR/DME",
+    "frequency_mhz": 112,
+    "lat": 22.708333,
+    "lon": 114.033333,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "MCU",
+    "name": "MCU",
+    "type": "VOR/DME",
+    "frequency_mhz": 116.4,
+    "lat": 22.135556,
+    "lon": 113.597778,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "NLG",
+    "name": "NLG",
+    "type": "VOR/DME",
+    "frequency_mhz": 117.7,
+    "lat": 22.531667,
+    "lon": 113.561667,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "POU",
+    "name": "POU",
+    "type": "VOR/DME",
+    "frequency_mhz": 114.1,
+    "lat": 23.021667,
+    "lon": 113.19,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "SHL",
+    "name": "SHL",
+    "type": "VOR/DME",
+    "frequency_mhz": 115.7,
+    "lat": 23.091667,
+    "lon": 113.85,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "SHK",
+    "name": "SHK",
+    "type": "VOR/DME",
+    "frequency_mhz": 115.9,
+    "lat": 22.496667,
+    "lon": 113.903333,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "SMT",
+    "name": "SMT",
+    "type": "VOR/DME",
+    "frequency_mhz": 114.8,
+    "lat": 22.337619,
+    "lon": 113.982072,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "TD",
+    "name": "TD",
+    "type": "VOR/DME",
+    "frequency_mhz": 116.1,
+    "lat": 22.247894,
+    "lon": 114.293139,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "ZAO",
+    "name": "ZAO",
+    "type": "VOR/DME",
+    "frequency_mhz": 117.2,
+    "lat": 22.252778,
+    "lon": 113.619444,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "ZUH",
+    "name": "ZUH",
+    "type": "VOR/DME",
+    "frequency_mhz": 116.7,
+    "lat": 22.221667,
+    "lon": 113.466667,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "CC",
+    "name": "CC",
+    "type": "NDB",
+    "frequency_mhz": 0.36,
+    "lat": 22.201944,
+    "lon": 114.032778,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "M",
+    "name": "M",
+    "type": "NDB",
+    "frequency_mhz": 0.195,
+    "lat": 22.616667,
+    "lon": 113.825,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "MH",
+    "name": "MH",
+    "type": "NDB",
+    "frequency_mhz": 0.287,
+    "lat": 22.416667,
+    "lon": 113.785,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "RW",
+    "name": "RW",
+    "type": "NDB",
+    "frequency_mhz": 0.377,
+    "lat": 22.326587,
+    "lon": 114.191215,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "SC",
+    "name": "SC",
+    "type": "NDB",
+    "frequency_mhz": 0.236,
+    "lat": 22.320021,
+    "lon": 114.132199,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "SL",
+    "name": "SL",
+    "type": "NDB",
+    "frequency_mhz": 0.377,
+    "lat": 22.291,
+    "lon": 113.906899,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "TH",
+    "name": "TH",
+    "type": "NDB",
+    "frequency_mhz": 0.28,
+    "lat": 22.2392,
+    "lon": 114.2877,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "U",
+    "name": "U",
+    "type": "NDB",
+    "frequency_mhz": 0.272,
+    "lat": 21.987244,
+    "lon": 113.355828,
+    "source": "Hong-Kong-Sector-File.sct"
+  },
+  {
+    "ident": "UJ",
+    "name": "UJ",
+    "type": "NDB",
+    "frequency_mhz": 0.204,
+    "lat": 21.92,
+    "lon": 113.293333,
+    "source": "Hong-Kong-Sector-File.sct"
   }
 ]

@@ -413,15 +413,36 @@
       <div class="toolbar-subpanel hidden" id="panel-airspaces">
         <div class="subpanel-title" data-i18n="ui.panels.airspaces.title">Airspaces</div>
 
-        <!-- TMA Overview — outer boundary envelope + SP2 (separate from sectors) -->
-        <div class="subpanel-section-label" data-i18n="ui.panels.airspaces.label_overview">TMA Overview</div>
+        <!-- Phase 40: Flight Information Region (FIR) -->
+        <div class="subpanel-section-label" data-i18n="ui.panels.airspaces.label_fir">FIR Boundary</div>
+        <label class="panel-check-row">
+          <input type="checkbox" id="chk-fir-hk" checked />
+          <span data-i18n="ui.panels.airspaces.chk_fir">Hong Kong FIR</span>
+        </label>
+
+        <details class="subpanel-collapsible" open>
+          <summary class="subpanel-collapsible-header" data-i18n="ui.panels.airspaces.label_fir_sectors">FIR Sectors</summary>
+          <div class="subpanel-nested">
+            <label class="panel-check-row">
+              <input type="checkbox" id="chk-fir-sector-central-fis" checked />
+              <span data-i18n="ui.panels.airspaces.chk_fir_central_fis">Central FIS (Beneath TMA)</span>
+            </label>
+            <label class="panel-check-row">
+              <input type="checkbox" id="chk-fir-sector-south-fis" checked />
+              <span data-i18n="ui.panels.airspaces.chk_fir_south_fis">Southern FIS (Information)</span>
+            </label>
+            <label class="panel-check-row">
+              <input type="checkbox" id="chk-fir-sector-south-acc" checked />
+              <span data-i18n="ui.panels.airspaces.chk_fir_south_acc">Southern ACC (Radar)</span>
+            </label>
+          </div>
+        </details>
+
+        <!-- TMA Overview — outer boundary envelope (separate from sectors) -->
+        <div class="subpanel-section-label subpanel-section-separator" data-i18n="ui.panels.airspaces.label_overview">TMA Overview</div>
         <label class="panel-check-row">
           <input type="checkbox" id="chk-tma-outer" checked />
           <span data-i18n="ui.panels.airspaces.chk_outer">Outer Boundary</span>
-        </label>
-        <label class="panel-check-row">
-          <input type="checkbox" id="chk-tma-sp2" />
-          <span data-i18n="ui.panels.airspaces.chk_sp2">Secondary TMA</span>
         </label>
 
         <!-- TMA Sectors — collapsible list with All Sectors master toggle -->
@@ -464,17 +485,15 @@
         </label>
         <div class="subpanel-nested" id="atz-group-items" style="display:none;"></div>
 
-        <!-- Phase 39: VFR Corridors (REA/REH) -->
-        <div class="subpanel-section-label subpanel-section-separator" data-i18n="ui.panels.airspaces.label_vfr">VFR Corridors</div>
+        <!-- Phase 39: VFR & Reporting Areas -->
+        <div class="subpanel-section-label subpanel-section-separator" data-i18n="ui.panels.airspaces.label_vfr_reporting">VFR & Reporting</div>
         <label class="panel-check-row">
-          <input type="checkbox" id="chk-vfr-rea" />
-          <span class="vfr-dot vfr-dot-rea"></span>
-          <span data-i18n="ui.panels.airspaces.chk_rea">REA (VFR Corridors)</span>
+          <input type="checkbox" id="chk-ucara-1" checked />
+          <span data-i18n="ui.panels.airspaces.chk_ucara_1">UCARA (i)</span>
         </label>
         <label class="panel-check-row">
-          <input type="checkbox" id="chk-vfr-reh" />
-          <span class="vfr-dot vfr-dot-reh"></span>
-          <span data-i18n="ui.panels.airspaces.chk_reh">REH (Helicopter Routes)</span>
+          <input type="checkbox" id="chk-ucara-2" checked />
+          <span data-i18n="ui.panels.airspaces.chk_ucara_2">UCARA (ii)</span>
         </label>
       </div>
 

@@ -371,7 +371,7 @@ const _handleMouseMove = (latlng, originalEvent, mapInstance) => {
 
   // Calculate live telemetry. These are the same formulas used throughout the app
   // for leg measurements — Haversine distance and initial great-circle bearing,
-  // then converted from True to Magnetic using the São Paulo TMA declination.
+  // then converted from True to Magnetic using the Hong Kong TMA declination.
   const distNm  = calculateDistance(_originLatLng.lat, _originLatLng.lng, destPt.lat, destPt.lng);
   const trueBrg = calculateTrueBearing(_originLatLng.lat, _originLatLng.lng, destPt.lat, destPt.lng);
   const magBrg  = trueToMagnetic(trueBrg);

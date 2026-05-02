@@ -200,7 +200,7 @@ const parseAircraftData = (rawText) => {
 };
 
 // Fetches and parses the Hong Kong fixes JSON file.
-// This replaces the old waypoint_aisweb.xlsx (São Paulo) which contained
+// This replaces the old waypoint datasets which contained
 // Brazilian waypoints. The new source is data/fixes_hk.json.
 //
 // Returned shape: [{ ident, lat, lon, tipo }, ...]
@@ -261,7 +261,7 @@ const FIXED_WING_TYPES = new Set(['small_airport', 'medium_airport', 'large_airp
 // Fetches and parses the OurAirports airports.csv file, then filters it to
 // the airports within 300 Nautical Miles of SBGR (Guarulhos International).
 // This replaces the old hardcoded list of 16 airports with a live, comprehensive
-// dataset that automatically includes every airfield in the São Paulo area.
+// dataset that automatically includes every airfield in the Hong Kong area.
 //
 // The CSV is ~12 MB and contains ~85,000 airports globally. PapaParse handles
 // this without freezing the browser by parsing the text asynchronously.
@@ -421,10 +421,10 @@ const loadDataManifest = async () => {
 // Fetches and parses the pre-generated data/airspaces_aip.json file.
 // This JSON was created by the convert_airspaces.js script from the raw
 // data/airspaces.csv source exported from AIP Brasil AIP ENR 2.1.
-// It contains the São Paulo TMA sector polygons and CTR zones.
+// It contains the Hong Kong TMA sector polygons and CTR zones.
 //
 // JSON schema: [{ name, type, coordinates: [[lat, lon], ...] }]
-//   name        — display name, e.g. "TMA São Paulo SECT 01"
+//   name        — display name, e.g. "HK TMA"
 //   type        — "TMA" (major controlled airspace) or "CTR" (control zone)
 //   coordinates — array of [lat, lon] pairs in Leaflet convention (already converted)
 //

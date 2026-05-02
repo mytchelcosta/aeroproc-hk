@@ -2563,7 +2563,7 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
 
 
 // ── PHASE 10.5 PART A: AIRSPACE POLYGON OVERLAYS ─────────────────────────────
-// Renders the São Paulo TMA sector polygons and CTR zones from the
+// Renders the Hong Kong TMA sector polygons and CTR zones from the
 // pre-generated MEDIA/airspaces_aip.json file onto the Leaflet map.
 //
 // Each airspace type gets its own distinct visual style:
@@ -2611,19 +2611,22 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
 const renderAirspaces = (mapInstance, airspaces) => {
   if (!mapInstance) {
     console.error('[MapLayers] renderAirspaces: No map instance provided.');
-    return { tmaOuterLayer: null, tmaSectors: {}, ctrPolygons: {}, fizPolygons: {}, atzPolygons: {} };
+    return { tmaOuterLayer: null, tmaSectors: {}, ctrPolygons: {}, fizPolygons: {}, atzPolygons: {}, firPolygons: {}, sectorPolygons: {}, ucaraPolygons: {} };
   }
 
   if (!airspaces || airspaces.length === 0) {
     console.warn('[MapLayers] renderAirspaces: No airspace data provided.');
-    return { tmaOuterLayer: null, tmaSectors: {}, ctrPolygons: {}, fizPolygons: {}, atzPolygons: {} };
+    return { tmaOuterLayer: null, tmaSectors: {}, ctrPolygons: {}, fizPolygons: {}, atzPolygons: {}, firPolygons: {}, sectorPolygons: {}, ucaraPolygons: {} };
   }
 
   // Per-polygon reference maps — keyed by the exact name string from the JSON.
-  const tmaSectors  = {};
-  const ctrPolygons = {};
-  const fizPolygons = {};
-  const atzPolygons = {};
+  const tmaSectors     = {};
+  const ctrPolygons    = {};
+  const fizPolygons    = {};
+  const atzPolygons    = {};
+  const firPolygons    = {};
+  const sectorPolygons = {};
+  const ucaraPolygons  = {};
 
   // Only sectors 1-8 and 13 define the outer TMA envelope.
   // Sub-sectors 02F, 03F and inner sectors 09-12 are excluded from the hull so the
@@ -2671,13 +2674,41 @@ const renderAirspaces = (mapInstance, airspaces) => {
       fillOpacity = 0.07;
       weight      = 1;
       dashArray   = '4,4';
-    } else {
+    } else if (type === 'ATZ') {
       // ATZ — orange; retains good contrast against both the gray TMA and blue CTR.
       fillColor   = '#f97316';
       strokeColor = 'rgba(249,115,22,0.55)';
       fillOpacity = 0.07;
       weight      = 1;
       dashArray   = '3,3';
+    } else if (type === 'FIR') {
+      // Light green, very transparent — background layer for the entire FIR.
+      fillColor   = '#4ade80';
+      strokeColor = 'rgba(74,222,128,0.3)';
+      fillOpacity = 0.03;
+      weight      = 1;
+      dashArray   = null;
+    } else if (type === 'SEC') {
+      // FIR Sectors — dashed border, very light green fill.
+      fillColor   = '#4ade80';
+      strokeColor = 'rgba(74,222,128,0.5)';
+      fillOpacity = 0.04;
+      weight      = 1.5;
+      dashArray   = '5, 5';
+    } else if (type === 'UCARA') {
+      // Uncontrolled Airspace Reporting Areas — Yellowish/Amber, dashed.
+      fillColor   = '#facc15';
+      strokeColor = 'rgba(250,204,21,0.5)';
+      fillOpacity = 0.06;
+      weight      = 1.2;
+      dashArray   = '4, 2';
+    } else {
+      // Unknown types - fallback to a neutral gray
+      fillColor   = '#94a3b8';
+      strokeColor = 'rgba(148,163,184,0.5)';
+      fillOpacity = 0.05;
+      weight      = 1;
+      dashArray   = '2,2';
     }
 
     const polygon = L.polygon(coordinates, {
@@ -2689,14 +2720,12 @@ const renderAirspaces = (mapInstance, airspaces) => {
       interactive: false
     });
 
-    const isSecondaryTMA = (name === 'HK TMA Secondary'); // Placeholder for secondary HK TMA if any
-
-    // Phase 31: Default visibility profile.
-    // ON:  TMA sectors (not SP2), CTR, FIZ, ATZ.
-    // OFF: TMA São Paulo 2 (secondary overlay) — too noisy at startup.
-    const defaultVisible = (type === 'TMA' && !isSecondaryTMA) || (type === 'CTR') || (type === 'FIZ') || (type === 'ATZ');
+    // Phase 31/40: Default visibility profile.
+    // ON:  TMA sectors, CTR, FIZ, ATZ, FIR, SEC, UCARA.
+    const defaultVisible = (type === 'TMA') || (type === 'CTR') || (type === 'FIZ') || (type === 'ATZ') || (type === 'FIR') || (type === 'SEC') || (type === 'UCARA');
     if (defaultVisible) {
       polygon.addTo(mapInstance);
+      if (type === 'FIR' || type === 'SEC') polygon.bringToBack();
     }
 
     if (type === 'TMA') {
@@ -2706,6 +2735,12 @@ const renderAirspaces = (mapInstance, airspaces) => {
       ctrPolygons[name] = polygon;
     } else if (type === 'FIZ') {
       fizPolygons[name] = polygon;
+    } else if (type === 'FIR') {
+      firPolygons[name] = polygon;
+    } else if (type === 'SEC') {
+      sectorPolygons[name] = polygon;
+    } else if (type === 'UCARA') {
+      ucaraPolygons[name] = polygon;
     } else {
       atzPolygons[name] = polygon;
     }
@@ -2752,7 +2787,7 @@ const renderAirspaces = (mapInstance, airspaces) => {
     `TMA outer boundary: ${tmaOuterLayer ? 'yes' : 'no'}.`
   );
 
-  return { tmaOuterLayer, tmaSectors, ctrPolygons, fizPolygons, atzPolygons };
+  return { tmaOuterLayer, tmaSectors, ctrPolygons, fizPolygons, atzPolygons, firPolygons, sectorPolygons, ucaraPolygons };
 };
 
 

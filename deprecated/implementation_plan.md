@@ -1221,13 +1221,21 @@ Integrate the Special Aircraft Routes (REA) and Helicopter Routes (REH) as inter
 2. **Admin Access**: Authenticated editing for instructors, read-only for students.
 3. **State Syncing (main.js)**: Fetch saved procedures and lock UI for students.
 
-## 48. Phase 41: Engine Migration & Native Magnetic Alignment
-*ATCOs rely on radar screens oriented to Magnetic North. Migrate from Leaflet.js to MapLibre GL JS to support 22° magnetic tilt and WebGL performance.*
+## 49. Phase 42: Hong Kong FIR & Sector Integration (DONE)
+1. **Regional Setup**: Centered the map on Hong Kong and updated magnetic declination constants.
+2. **Airspace Modeling**: Implemented the HK FIR, overlapping ACC/FIS sectors (Southern Sector), and Central FIS (beneath TMA).
+3. **UCARA**: Integrated Uncontrolled Airspace Reporting Areas with dedicated amber styling.
 
-1. **Core Engine Swap (`MapCore.js`)**
-   - Uninstall Leaflet, install MapLibre. Implement 22° bearing.
-2. **Layer Translation (`MapLayers.js`)**
-   - Re-implement all layers using GeoJSON sources and WebGL styling.
+## 50. Phase 43: EuroScope Sector Data Extraction (DONE)
+1. **SCT Parsing**: Created a specialized parser (`scripts/parse_sct.js`) to extract data from industry-standard EuroScope `.sct` files.
+2. **Bulk Fix Import**: Successfully extracted 884 high-precision waypoints and 21 NAVAIDs for the HK region, significantly increasing the fidelity of the environment.
+3. **Coordinate Normalization**: Implemented DD.MM.SS.SSS to Decimal Degree conversion logic.
+
+## 51. Phase 44: Airway Network Extraction (FUTURE)
+1. **Airway Parser**: Expand the SCT parser to read the `[AIRWAY]` section.
+2. **Dynamic Routing**: Render the high-altitude route network as thin, selectable lines on the map.
+3. **Route Telemetry**: Display magnetic bearing and distance (NM) for each airway segment.
+
 
 
 

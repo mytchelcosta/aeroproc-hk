@@ -473,13 +473,24 @@ const _wireAirspaceToggles = (airspaceLayers) => {
     { id: 'chk-atz-hk', name: 'HK ATZ' }
   ];
 
+  const FIR_MAP = [
+    { id: 'chk-fir-hk', name: 'HONG KONG FIR' }
+  ];
+
+  const SECTOR_MAP = [
+    { id: 'chk-fir-sector-south-fis', name: 'HK South FIS' },
+    { id: 'chk-fir-sector-south-acc', name: 'HK South ACC' },
+    { id: 'chk-fir-sector-central-fis', name: 'HK FIS Beneath TMA' }
+  ];
+
+  const UCARA_MAP = [
+    { id: 'chk-ucara-1', name: 'UCARA (i)' },
+    { id: 'chk-ucara-2', name: 'UCARA (ii)' }
+  ];
+
   // TMA Outer & SP2
   document.getElementById('chk-tma-outer')?.addEventListener('change', (e) => {
     const poly = airspaceLayers?.tmaOuterLayer;
-    if (poly) e.target.checked ? poly.addTo(_map) : _map.removeLayer(poly);
-  });
-  document.getElementById('chk-tma-sp2')?.addEventListener('change', (e) => {
-    const poly = airspaceLayers?.tmaSectors?.['São Paulo 2 TMA'];
     if (poly) e.target.checked ? poly.addTo(_map) : _map.removeLayer(poly);
   });
 
@@ -563,12 +574,50 @@ const _wireAirspaceToggles = (airspaceLayers) => {
     });
   });
 
-  // VFR Corridors (Phase 39)
-  document.getElementById('chk-vfr-rea')?.addEventListener('change', (e) => {
-    renderREA(_map, e.target.checked);
+  // FIRs
+  FIR_MAP.forEach(({ id, name }) => {
+    document.getElementById(id)?.addEventListener('change', (e) => {
+      const poly = airspaceLayers?.firPolygons?.[name];
+      if (poly) {
+        if (e.target.checked) {
+          poly.addTo(_map);
+          poly.bringToBack();
+        } else {
+          _map.removeLayer(poly);
+        }
+      }
+    });
   });
-  document.getElementById('chk-vfr-reh')?.addEventListener('change', (e) => {
-    renderREH(_map, e.target.checked);
+
+  // Sectors (Both SEC and FIZ types used as functional sectors)
+  SECTOR_MAP.forEach(({ id, name }) => {
+    document.getElementById(id)?.addEventListener('change', (e) => {
+      // Look in both sectorPolygons (ACC) and fizPolygons (FIS)
+      const poly = airspaceLayers?.sectorPolygons?.[name] || airspaceLayers?.fizPolygons?.[name];
+      if (poly) {
+        if (e.target.checked) {
+          poly.addTo(_map);
+          poly.bringToBack();
+        } else {
+          _map.removeLayer(poly);
+        }
+      }
+    });
+  });
+
+  // UCARA
+  UCARA_MAP.forEach(({ id, name }) => {
+    document.getElementById(id)?.addEventListener('change', (e) => {
+      const poly = airspaceLayers?.ucaraPolygons?.[name];
+      if (poly) {
+        if (e.target.checked) {
+          poly.addTo(_map);
+          poly.bringToBack();
+        } else {
+          _map.removeLayer(poly);
+        }
+      }
+    });
   });
 };
 

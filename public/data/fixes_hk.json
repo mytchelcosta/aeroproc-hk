@@ -1,36 +1,5306 @@
 [
-  { "ident": "VHHH", "lat": 22.3089, "lon": 113.9146, "tipo": "ICAO" },
-  { "ident": "PORPA", "lat": 22.33586, "lon": 114.02119, "tipo": "ICAO" },
-  { "ident": "TD", "lat": 22.24789, "lon": 114.29314, "tipo": "VOR/DME" },
-  { "ident": "SHELY", "lat": 22.09074, "lon": 114.65387, "tipo": "ICAO" },
-  { "ident": "LAKES", "lat": 21.97814, "lon": 114.91072, "tipo": "ICAO" },
-  { "ident": "OCEAN", "lat": 21.81194, "lon": 114.81333, "tipo": "ICAO" },
-  { "ident": "RAMEN", "lat": 22.16089, "lon": 114.08608, "tipo": "ICAO" },
-  { "ident": "BREAM", "lat": 21.77944, "lon": 114.05778, "tipo": "ICAO" },
-  { "ident": "TITAN", "lat": 21.67428, "lon": 114.05070, "tipo": "ICAO" },
-  { "ident": "PECAN", "lat": 21.43894, "lon": 114.03490, "tipo": "ICAO" },
-  { "ident": "ATENA", "lat": 22.41107, "lon": 114.38663, "tipo": "ICAO" },
-  { "ident": "BEKOL", "lat": 22.54333, "lon": 114.13333, "tipo": "ICAO" },
-  { "ident": "SIERA", "lat": 21.98667, "lon": 113.55333, "tipo": "ICAO" },
-  { "ident": "BORDA", "lat": 21.69233, "lon": 113.40806, "tipo": "ICAO" },
-  { "ident": "ROCCA", "lat": 21.53206, "lon": 113.58096, "tipo": "ICAO" },
-  { "ident": "CANTO", "lat": 21.65073, "lon": 113.70697, "tipo": "ICAO" },
-  { "ident": "MURRY", "lat": 21.75788, "lon": 113.81166, "tipo": "ICAO" },
-  { "ident": "SILVA", "lat": 21.85125, "lon": 113.90302, "tipo": "ICAO" },
-  { "ident": "LIMES", "lat": 22.10711, "lon": 113.77572, "tipo": "ICAO" },
-  { "ident": "BETTY", "lat": 21.48634, "lon": 114.55887, "tipo": "ICAO" },
-  { "ident": "MANGO", "lat": 21.61361, "lon": 114.51472, "tipo": "ICAO" },
-  { "ident": "GUAVA", "lat": 22.16003, "lon": 114.06008, "tipo": "ICAO" },
-  { "ident": "SOKOE", "lat": 22.07811, "lon": 113.84392, "tipo": "ICAO" },
-  { "ident": "TUTBA", "lat": 22.23384, "lon": 113.71248, "tipo": "ICAO" },
-  { "ident": "VH701", "lat": 22.28080, "lon": 113.75597, "tipo": "ICAO" },
-  { "ident": "VH702", "lat": 22.29724, "lon": 113.80684, "tipo": "ICAO" },
-  { "ident": "RW07L", "lat": 22.32159, "lon": 113.88229, "tipo": "RWY" },
-  { "ident": "VH726", "lat": 22.34341, "lon": 113.95006, "tipo": "ICAO" },
-  { "ident": "VH727", "lat": 22.43851, "lon": 114.02755, "tipo": "ICAO" },
-  { "ident": "VH754", "lat": 22.45675, "lon": 114.16964, "tipo": "ICAO" },
-  { "ident": "SAMPU", "lat": 22.42755, "lon": 114.26136, "tipo": "ICAO" },
-  { "ident": "ABBEY", "lat": 22.26972, "lon": 114.92387, "tipo": "ICAO" },
-  { "ident": "MUSEL", "lat": 22.26500, "lon": 114.78115, "tipo": "ICAO" },
-  { "ident": "TAMAR", "lat": 22.25583, "lon": 114.51028, "tipo": "ICAO" }
+  {
+    "ident": "10VOR",
+    "lat": 22.343061,
+    "lon": 113.999069,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "12VOR",
+    "lat": 23.514625,
+    "lon": 116.469344,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "18LOC",
+    "lat": 22.678803,
+    "lon": 113.7715,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "24LO2",
+    "lat": 22.687744,
+    "lon": 113.766594,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "24LO3",
+    "lat": 22.5923,
+    "lon": 113.836383,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "24LO4",
+    "lat": 22.590592,
+    "lon": 113.819864,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "24LOC",
+    "lat": 22.686236,
+    "lon": 113.7849,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "36LOC",
+    "lat": 22.704122,
+    "lon": 113.775089,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "40DM2",
+    "lat": 22.275664,
+    "lon": 113.834317,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "40DME",
+    "lat": 22.289939,
+    "lon": 113.832933,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "41LOC",
+    "lat": 22.566975,
+    "lon": 113.850311,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "50VOR",
+    "lat": 23.594039,
+    "lon": 116.541647,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "A",
+    "lat": 23.388333,
+    "lon": 113.236667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ABBEY",
+    "lat": 22.269722,
+    "lon": 114.923867,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ADBIN",
+    "lat": 21.968056,
+    "lon": 112.821111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ADLAD",
+    "lat": 22.511317,
+    "lon": 114.331269,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "AGOMU",
+    "lat": 22.504214,
+    "lon": 114.374961,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "AGVOS",
+    "lat": 23.066667,
+    "lon": 113.081667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "AKEKU",
+    "lat": 21.571758,
+    "lon": 117.052667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "AKOTA",
+    "lat": 16.461944,
+    "lon": 117.206667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ALAPI",
+    "lat": 22.164689,
+    "lon": 114.203636,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ALDOM",
+    "lat": 19.835925,
+    "lon": 114.374006,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ALLEY",
+    "lat": 21.086431,
+    "lon": 113.785972,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ALPHA",
+    "lat": 22.27,
+    "lon": 115.143333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ANRUX",
+    "lat": 22.451592,
+    "lon": 114.2116,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ARGON",
+    "lat": 22.197933,
+    "lon": 113.729908,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ASOBA",
+    "lat": 17.372778,
+    "lon": 114.570278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ATENA",
+    "lat": 22.411069,
+    "lon": 114.386633,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ATIKO",
+    "lat": 21.808211,
+    "lon": 113.540567,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "AVPAM",
+    "lat": 23.208333,
+    "lon": 111.826667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BAKER",
+    "lat": 21.217222,
+    "lon": 114.651944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BAOSH",
+    "lat": 17,
+    "lon": 113.308333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BEBEM",
+    "lat": 22.95,
+    "lon": 116.360556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BEKOL",
+    "lat": 22.543333,
+    "lon": 114.133333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BESDA",
+    "lat": 22.034197,
+    "lon": 116.779169,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BETTY",
+    "lat": 21.486339,
+    "lon": 114.558867,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BIGEX",
+    "lat": 22.219542,
+    "lon": 114.030056,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BIGRO",
+    "lat": 21.57,
+    "lon": 111.826667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BILAT",
+    "lat": 23.8675,
+    "lon": 114.146389,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BIMIX",
+    "lat": 22.023231,
+    "lon": 116.331647,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BINUS",
+    "lat": 23.841111,
+    "lon": 117.403889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BIPOP",
+    "lat": 23.349444,
+    "lon": 111.148611,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BISON",
+    "lat": 22.485392,
+    "lon": 114.207989,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BOKAG",
+    "lat": 22.529625,
+    "lon": 114.224183,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BOKAT",
+    "lat": 22.037778,
+    "lon": 113,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BORDA",
+    "lat": 21.692325,
+    "lon": 113.408058,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BREAM",
+    "lat": 21.779444,
+    "lon": 114.057778,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "BUMDI",
+    "lat": 22.361006,
+    "lon": 114.314614,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CAMRI",
+    "lat": 22.029511,
+    "lon": 114.074647,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CANTO",
+    "lat": 21.650731,
+    "lon": 113.706969,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CANUP",
+    "lat": 22.417372,
+    "lon": 114.229556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CARSO",
+    "lat": 19,
+    "lon": 114.710486,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CD04",
+    "lat": 23.387753,
+    "lon": 116.354069,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CD07C",
+    "lat": 22.261853,
+    "lon": 113.743881,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CD22",
+    "lat": 23.707972,
+    "lon": 116.645592,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CD25C",
+    "lat": 22.419092,
+    "lon": 114.237197,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CEDAR",
+    "lat": 22.270153,
+    "lon": 113.7717,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CF15",
+    "lat": 22.881667,
+    "lon": 113.675,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CF16",
+    "lat": 22.875,
+    "lon": 113.66,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CF33",
+    "lat": 22.491667,
+    "lon": 113.89,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CF34",
+    "lat": 22.486667,
+    "lon": 113.876667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CH50",
+    "lat": 21.8817,
+    "lon": 114.849997,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CHAKO",
+    "lat": 22.172361,
+    "lon": 113.937861,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CHALI",
+    "lat": 21.295833,
+    "lon": 113.611389,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CI01",
+    "lat": 23.040539,
+    "lon": 113.192981,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CI02L",
+    "lat": 23.035981,
+    "lon": 113.213858,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CI02R",
+    "lat": 23.034722,
+    "lon": 113.217511,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CI04Y",
+    "lat": 23.385897,
+    "lon": 116.352383,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CI19",
+    "lat": 23.675044,
+    "lon": 113.364133,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CI20L",
+    "lat": 23.669372,
+    "lon": 113.388903,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CI20R",
+    "lat": 23.670328,
+    "lon": 113.385078,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CI22Y",
+    "lat": 23.707008,
+    "lon": 116.644586,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CL07C",
+    "lat": 22.265256,
+    "lon": 113.756542,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CL16",
+    "lat": 22.284386,
+    "lon": 113.641103,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CL16X",
+    "lat": 22.276169,
+    "lon": 113.634914,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "COLEY",
+    "lat": 22.111397,
+    "lon": 114.310453,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "COMBI",
+    "lat": 21.493639,
+    "lon": 113.462306,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CONGA",
+    "lat": 21.734028,
+    "lon": 116.784972,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "COTON",
+    "lat": 21.156714,
+    "lon": 113.183622,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CYBER",
+    "lat": 20.847122,
+    "lon": 114.552933,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D001D",
+    "lat": 23.471722,
+    "lon": 113.291603,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D001O",
+    "lat": 22.628747,
+    "lon": 113.87905,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D002S",
+    "lat": 22.844478,
+    "lon": 113.560369,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D006P",
+    "lat": 23.865672,
+    "lon": 116.423142,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D009J",
+    "lat": 23.18765,
+    "lon": 113.212044,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D014T",
+    "lat": 22.860425,
+    "lon": 113.637072,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D016I",
+    "lat": 22.282381,
+    "lon": 113.633433,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D016L",
+    "lat": 23.574464,
+    "lon": 113.336917,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D016Z",
+    "lat": 23.790231,
+    "lon": 113.395389,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D022M",
+    "lat": 23.391644,
+    "lon": 113.509944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D022N",
+    "lat": 23.356275,
+    "lon": 113.496172,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D031J",
+    "lat": 23.555606,
+    "lon": 113.402528,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D041F",
+    "lat": 22.330456,
+    "lon": 113.683667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D041G",
+    "lat": 22.329142,
+    "lon": 113.682561,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D044O",
+    "lat": 23.783981,
+    "lon": 116.581028,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D048D",
+    "lat": 22.379003,
+    "lon": 114.026578,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D052V",
+    "lat": 23.83,
+    "lon": 113.89,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D061E",
+    "lat": 23.196667,
+    "lon": 113.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D061N",
+    "lat": 23.266867,
+    "lon": 113.626722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D061Y",
+    "lat": 23.365117,
+    "lon": 113.805725,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D062O",
+    "lat": 23.726661,
+    "lon": 116.635011,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D065B",
+    "lat": 22.508053,
+    "lon": 113.927389,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D065F",
+    "lat": 22.5384,
+    "lon": 113.991561,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D065L",
+    "lat": 22.583875,
+    "lon": 114.087869,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D065P",
+    "lat": 23.723272,
+    "lon": 116.656861,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D065U",
+    "lat": 23.766458,
+    "lon": 116.750553,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D068G",
+    "lat": 22.579242,
+    "lon": 113.676831,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D085Q",
+    "lat": 22.375803,
+    "lon": 114.27625,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D086W",
+    "lat": 22.751836,
+    "lon": 114.445217,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D093V",
+    "lat": 23.068333,
+    "lon": 112.883333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D097T",
+    "lat": 23.561667,
+    "lon": 113.95,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D104B",
+    "lat": 23.014011,
+    "lon": 113.228875,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D104C",
+    "lat": 23.010878,
+    "lon": 113.244781,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D104D",
+    "lat": 23.008439,
+    "lon": 113.257147,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D106O",
+    "lat": 22.470761,
+    "lon": 113.823575,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D126U",
+    "lat": 22.050158,
+    "lon": 113.92355,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D146F",
+    "lat": 22.575506,
+    "lon": 113.861589,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D15",
+    "lat": 22.316258,
+    "lon": 113.932511,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D153I",
+    "lat": 22.577992,
+    "lon": 114.112908,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D155A",
+    "lat": 22.611711,
+    "lon": 113.825758,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D155Z",
+    "lat": 22.144078,
+    "lon": 113.773581,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D156L",
+    "lat": 23.408792,
+    "lon": 113.683847,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D156M",
+    "lat": 23.401308,
+    "lon": 113.687889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D156R",
+    "lat": 23.323333,
+    "lon": 113.73,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D157W",
+    "lat": 22.810547,
+    "lon": 113.5882,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D167N",
+    "lat": 22.862269,
+    "lon": 113.916322,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D171G",
+    "lat": 22.014489,
+    "lon": 113.625372,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D181E",
+    "lat": 23.318294,
+    "lon": 113.306414,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D181G",
+    "lat": 23.284572,
+    "lon": 113.309306,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D181N",
+    "lat": 22.017392,
+    "lon": 113.621631,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D182E",
+    "lat": 22.051942,
+    "lon": 113.599342,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D182P",
+    "lat": 21.867986,
+    "lon": 113.602781,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D183W",
+    "lat": 21.853067,
+    "lon": 113.607667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D184G",
+    "lat": 22.135,
+    "lon": 113.611667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D184Y",
+    "lat": 23.780575,
+    "lon": 113.399461,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D185Y",
+    "lat": 23.780886,
+    "lon": 113.3917,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D189Y",
+    "lat": 23.783369,
+    "lon": 113.360744,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D194P",
+    "lat": 23.408333,
+    "lon": 113.183333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D195G",
+    "lat": 22.136775,
+    "lon": 113.588047,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D196E",
+    "lat": 23.324533,
+    "lon": 113.269356,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D196K",
+    "lat": 23.227172,
+    "lon": 113.2431,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D196Q",
+    "lat": 23.398019,
+    "lon": 113.181658,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D198M",
+    "lat": 23.386131,
+    "lon": 116.352683,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D198R",
+    "lat": 23.30625,
+    "lon": 116.332822,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D202I",
+    "lat": 23.010222,
+    "lon": 113.361056,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D210J",
+    "lat": 22.568031,
+    "lon": 113.953017,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D210M",
+    "lat": 22.516328,
+    "lon": 113.923469,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D211F",
+    "lat": 23.279833,
+    "lon": 113.225022,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D220N",
+    "lat": 22.347083,
+    "lon": 113.406697,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D221Y",
+    "lat": 22.047858,
+    "lon": 113.609464,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D225V",
+    "lat": 22.440117,
+    "lon": 113.778819,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D245B",
+    "lat": 22.479958,
+    "lon": 113.868056,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D245D",
+    "lat": 22.466281,
+    "lon": 113.8392,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D245R",
+    "lat": 22.363547,
+    "lon": 113.622956,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D245V",
+    "lat": 22.3341,
+    "lon": 113.554489,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D254C",
+    "lat": 22.303872,
+    "lon": 113.875828,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D255I",
+    "lat": 23.623619,
+    "lon": 113.085672,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D260E",
+    "lat": 22.360086,
+    "lon": 113.796147,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D275F",
+    "lat": 22.341083,
+    "lon": 113.874267,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D275K",
+    "lat": 22.343919,
+    "lon": 113.784425,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D276F",
+    "lat": 23.028333,
+    "lon": 113.1,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D281L",
+    "lat": 23.121667,
+    "lon": 113.64,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D292X",
+    "lat": 22.357325,
+    "lon": 113.623681,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D298W",
+    "lat": 23.315,
+    "lon": 113.053333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D301V",
+    "lat": 22.885614,
+    "lon": 113.687428,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D303U",
+    "lat": 22.892072,
+    "lon": 113.702672,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D306U",
+    "lat": 22.902408,
+    "lon": 113.722272,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D309S",
+    "lat": 22.903342,
+    "lon": 113.753647,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D331T",
+    "lat": 23.875,
+    "lon": 113.398333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D334N",
+    "lat": 22.454958,
+    "lon": 114.169628,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D335A",
+    "lat": 22.665336,
+    "lon": 113.796347,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D339Y",
+    "lat": 23.397533,
+    "lon": 113.013583,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D341D",
+    "lat": 22.690144,
+    "lon": 113.790375,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D347H",
+    "lat": 22.376667,
+    "lon": 113.575,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D356H",
+    "lat": 22.380694,
+    "lon": 114.275606,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "D363Z",
+    "lat": 22.708773,
+    "lon": 114.030271,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DAGBU",
+    "lat": 20.549442,
+    "lon": 112.152797,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DAKIG",
+    "lat": 21.848028,
+    "lon": 114.442592,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DAKTO",
+    "lat": 20.891914,
+    "lon": 115.187661,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DALOL",
+    "lat": 21.743583,
+    "lon": 114.845928,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DASON",
+    "lat": 21.056464,
+    "lon": 112.877886,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DBDNG",
+    "lat": 23.828333,
+    "lon": 113.626667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DE02L",
+    "lat": 23.408936,
+    "lon": 113.314322,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DE02R",
+    "lat": 23.402803,
+    "lon": 113.316697,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DE07C",
+    "lat": 22.322522,
+    "lon": 113.933986,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DE20L",
+    "lat": 23.369511,
+    "lon": 113.307703,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DE20R",
+    "lat": 23.375644,
+    "lon": 113.305331,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DE25C",
+    "lat": 22.309519,
+    "lon": 113.893628,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DEDEE",
+    "lat": 22.386861,
+    "lon": 114.017686,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DELT4",
+    "lat": 21.333333,
+    "lon": 114.533333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DELTA",
+    "lat": 21.516667,
+    "lon": 113.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DER01",
+    "lat": 23.408483,
+    "lon": 113.292019,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DER04",
+    "lat": 23.564447,
+    "lon": 116.514656,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DER16",
+    "lat": 22.623881,
+    "lon": 113.801619,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DER19",
+    "lat": 23.376944,
+    "lon": 113.283506,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DER22",
+    "lat": 23.542317,
+    "lon": 116.494511,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DER34",
+    "lat": 22.654461,
+    "lon": 113.784853,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DOCTA",
+    "lat": 21.947069,
+    "lon": 114.009272,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DOM14",
+    "lat": 22.0465,
+    "lon": 114.724167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DOM25",
+    "lat": 21.879,
+    "lon": 114.849667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DOSUT",
+    "lat": 17.033333,
+    "lon": 113.68,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DOTFL",
+    "lat": 21.863864,
+    "lon": 115.785494,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DOTMI",
+    "lat": 22.718333,
+    "lon": 116.168333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DULOP",
+    "lat": 18.236667,
+    "lon": 114.543333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DUMEP",
+    "lat": 21.743417,
+    "lon": 115.213853,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DUMOL",
+    "lat": 19,
+    "lon": 114.446667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "EATON",
+    "lat": 21.123444,
+    "lon": 115.716972,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "EGEMU",
+    "lat": 17,
+    "lon": 112.283333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ELATO",
+    "lat": 22.333333,
+    "lon": 117.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ENBOK",
+    "lat": 18.556667,
+    "lon": 113.491667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ENPET",
+    "lat": 22.292544,
+    "lon": 115.6901,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ENROM",
+    "lat": 21.559167,
+    "lon": 116.2,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ENVAR",
+    "lat": 21.991667,
+    "lon": 117.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "EPD10",
+    "lat": 20.570167,
+    "lon": 113.775167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "EPD14",
+    "lat": 21.559778,
+    "lon": 113.930364,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "EPD25",
+    "lat": 21.807197,
+    "lon": 113.967639,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "EPD50",
+    "lat": 21.394828,
+    "lon": 113.905583,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "EPDOS",
+    "lat": 19,
+    "lon": 113.555,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "EPKAL",
+    "lat": 17.858333,
+    "lon": 112.955,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FATUT",
+    "lat": 22.192333,
+    "lon": 113.801,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FD04",
+    "lat": 23.441589,
+    "lon": 116.402947,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FD07C",
+    "lat": 22.278119,
+    "lon": 113.7949,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FD22",
+    "lat": 23.655494,
+    "lon": 116.597686,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FD25C",
+    "lat": 22.381286,
+    "lon": 114.117197,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FD34",
+    "lat": 22.043831,
+    "lon": 113.631656,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FF07R",
+    "lat": 22.264697,
+    "lon": 113.800364,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FF25C",
+    "lat": 22.380992,
+    "lon": 114.116331,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FF25L",
+    "lat": 22.373639,
+    "lon": 114.136475,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI01",
+    "lat": 23.280769,
+    "lon": 113.257547,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI02L",
+    "lat": 23.230722,
+    "lon": 113.266244,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI02R",
+    "lat": 23.224592,
+    "lon": 113.268603,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI04",
+    "lat": 23.441153,
+    "lon": 116.402433,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI15",
+    "lat": 22.803969,
+    "lon": 113.720264,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI16",
+    "lat": 22.760767,
+    "lon": 113.726506,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI19",
+    "lat": 23.605281,
+    "lon": 113.345228,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI20L",
+    "lat": 23.531475,
+    "lon": 113.351511,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI20R",
+    "lat": 23.535667,
+    "lon": 113.348589,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI22",
+    "lat": 23.654514,
+    "lon": 116.5967,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI25C",
+    "lat": 22.342064,
+    "lon": 113.994706,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI25L",
+    "lat": 22.328203,
+    "lon": 113.997992,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI33",
+    "lat": 22.544594,
+    "lon": 113.862503,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI33Z",
+    "lat": 22.529711,
+    "lon": 113.870733,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI34",
+    "lat": 22.542892,
+    "lon": 113.845989,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FI34W",
+    "lat": 22.575594,
+    "lon": 113.828108,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FISHA",
+    "lat": 22.282678,
+    "lon": 115.336558,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FL07C",
+    "lat": 22.278972,
+    "lon": 113.798978,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FL16",
+    "lat": 22.2433,
+    "lon": 113.610161,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FOGNG",
+    "lat": 23.863333,
+    "lon": 113.488333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FOVOG",
+    "lat": 22.192556,
+    "lon": 113.682861,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FOXTT",
+    "lat": 21.76,
+    "lon": 113.366667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FUSU",
+    "lat": 23.053333,
+    "lon": 113.508333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GAMBA",
+    "lat": 21.318922,
+    "lon": 112.926725,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG404",
+    "lat": 23.041111,
+    "lon": 113.193333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG406",
+    "lat": 23.036389,
+    "lon": 113.213889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG407",
+    "lat": 23.035556,
+    "lon": 113.218056,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG408",
+    "lat": 23.013611,
+    "lon": 113.3125,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG409",
+    "lat": 23.058889,
+    "lon": 113.115833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG412",
+    "lat": 23.523611,
+    "lon": 113.389167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG413",
+    "lat": 23.577222,
+    "lon": 113.3375,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG414",
+    "lat": 23.608056,
+    "lon": 113.3925,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG416",
+    "lat": 23.386944,
+    "lon": 113.24,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG417",
+    "lat": 23.625278,
+    "lon": 113.055278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG418",
+    "lat": 23.509444,
+    "lon": 113.319167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG419",
+    "lat": 23.535278,
+    "lon": 113.616667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG421",
+    "lat": 23.198056,
+    "lon": 113.144167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG422",
+    "lat": 23.153889,
+    "lon": 113.350278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG423",
+    "lat": 23.347778,
+    "lon": 113.402778,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG424",
+    "lat": 23.486389,
+    "lon": 113.203889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG426",
+    "lat": 23.435278,
+    "lon": 113.426111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG427",
+    "lat": 23.308611,
+    "lon": 113.572222,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG428",
+    "lat": 23.751389,
+    "lon": 113.537778,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG431",
+    "lat": 23.425278,
+    "lon": 113.675,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG432",
+    "lat": 23.296389,
+    "lon": 113.064722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG433",
+    "lat": 23.168611,
+    "lon": 113.474444,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG442",
+    "lat": 23.831667,
+    "lon": 113.893611,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG443",
+    "lat": 23.069722,
+    "lon": 112.725278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG444",
+    "lat": 23.221389,
+    "lon": 113.685,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG504",
+    "lat": 23.762222,
+    "lon": 113.387778,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG506",
+    "lat": 23.757222,
+    "lon": 113.408889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG507",
+    "lat": 23.756389,
+    "lon": 113.4125,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG508",
+    "lat": 23.790278,
+    "lon": 113.268333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG509",
+    "lat": 23.734167,
+    "lon": 113.507222,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG511",
+    "lat": 23.293333,
+    "lon": 113.309167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG512",
+    "lat": 23.275833,
+    "lon": 113.223333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG513",
+    "lat": 23.250833,
+    "lon": 113.31,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG514",
+    "lat": 23.398333,
+    "lon": 113.185833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG516",
+    "lat": 23.233056,
+    "lon": 113.371389,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG517",
+    "lat": 23.263056,
+    "lon": 113.440556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG518",
+    "lat": 23.341389,
+    "lon": 112.958889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG519",
+    "lat": 23.356111,
+    "lon": 113.654167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG521",
+    "lat": 23.884722,
+    "lon": 113.421111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG522",
+    "lat": 23.695278,
+    "lon": 113.6725,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG523",
+    "lat": 23.646667,
+    "lon": 113.483889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG524",
+    "lat": 23.651667,
+    "lon": 113.856111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG526",
+    "lat": 23.86,
+    "lon": 113.995,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG529",
+    "lat": 23.408056,
+    "lon": 113.1875,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG531",
+    "lat": 23.590833,
+    "lon": 112.879722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG542",
+    "lat": 23.728611,
+    "lon": 113.907222,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG544",
+    "lat": 23.066389,
+    "lon": 113.115833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG564",
+    "lat": 23.701389,
+    "lon": 113.249722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG566",
+    "lat": 23.674722,
+    "lon": 113.363889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG567",
+    "lat": 23.669722,
+    "lon": 113.385,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG568",
+    "lat": 23.668889,
+    "lon": 113.388611,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG601",
+    "lat": 23.611111,
+    "lon": 113.270833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG602",
+    "lat": 23.709444,
+    "lon": 113.396389,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG603",
+    "lat": 23.590278,
+    "lon": 113.334167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG612",
+    "lat": 23.523611,
+    "lon": 113.389167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG701",
+    "lat": 23.358611,
+    "lon": 113.278611,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG702",
+    "lat": 23.398333,
+    "lon": 113.188611,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG703",
+    "lat": 23.870278,
+    "lon": 113.305556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG704",
+    "lat": 23.863333,
+    "lon": 113.488333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG706",
+    "lat": 23.489167,
+    "lon": 113.266944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG708",
+    "lat": 23.828333,
+    "lon": 113.626667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG820",
+    "lat": 23.723333,
+    "lon": 113.544167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GG821",
+    "lat": 23.640556,
+    "lon": 113.510278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GIVIV",
+    "lat": 20.953889,
+    "lon": 111.055278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GOBBI",
+    "lat": 21.135597,
+    "lon": 113.527225,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GODEN",
+    "lat": 20.576486,
+    "lon": 114.309022,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GOLF",
+    "lat": 22.215425,
+    "lon": 113.904197,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GONAT",
+    "lat": 22.542306,
+    "lon": 114.257517,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GOODI",
+    "lat": 22.069411,
+    "lon": 113.996831,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GRUPA",
+    "lat": 20.845556,
+    "lon": 115.949722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GUAVA",
+    "lat": 22.160028,
+    "lon": 114.060083,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GUBLO",
+    "lat": 22.708333,
+    "lon": 114.033333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GURIN",
+    "lat": 21.851139,
+    "lon": 113,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HAMOK",
+    "lat": 22.440172,
+    "lon": 114.300794,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HASAN",
+    "lat": 22.171833,
+    "lon": 113.889139,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HAZEL",
+    "lat": 22.024025,
+    "lon": 113.682397,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH301",
+    "lat": 22.324725,
+    "lon": 113.986558,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH302",
+    "lat": 22.333453,
+    "lon": 113.967933,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH303",
+    "lat": 22.347228,
+    "lon": 113.961897,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH311",
+    "lat": 22.247872,
+    "lon": 114.086869,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH322",
+    "lat": 22.252467,
+    "lon": 114.086911,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH332",
+    "lat": 22.256158,
+    "lon": 114.086944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH341",
+    "lat": 22.323653,
+    "lon": 114.072183,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH342",
+    "lat": 22.286808,
+    "lon": 114.087225,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH355",
+    "lat": 22.329436,
+    "lon": 114.070897,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH356",
+    "lat": 22.289603,
+    "lon": 114.08725,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH363",
+    "lat": 22.324911,
+    "lon": 114.069267,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH364",
+    "lat": 22.282367,
+    "lon": 114.087183,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH381",
+    "lat": 22.150583,
+    "lon": 114.25185,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH382",
+    "lat": 22.189739,
+    "lon": 114.434553,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH384",
+    "lat": 22.386531,
+    "lon": 114.354953,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH393",
+    "lat": 22.328842,
+    "lon": 114.270906,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH411",
+    "lat": 22.2857,
+    "lon": 113.865367,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH412",
+    "lat": 22.253033,
+    "lon": 113.813597,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH413",
+    "lat": 22.196917,
+    "lon": 113.811492,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH414",
+    "lat": 22.162364,
+    "lon": 113.852683,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH421",
+    "lat": 22.258647,
+    "lon": 113.735947,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH422",
+    "lat": 22.216258,
+    "lon": 113.707614,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH423",
+    "lat": 22.123917,
+    "lon": 113.749833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH471",
+    "lat": 22.124614,
+    "lon": 114.059244,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH472",
+    "lat": 22.097636,
+    "lon": 114.218169,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH477",
+    "lat": 21.958278,
+    "lon": 114.215019,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH478",
+    "lat": 21.874747,
+    "lon": 114.213142,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH481",
+    "lat": 22.189753,
+    "lon": 114.024889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH482",
+    "lat": 22.287578,
+    "lon": 114.122942,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH484",
+    "lat": 22.039781,
+    "lon": 113.933867,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH485",
+    "lat": 22.072194,
+    "lon": 114.009964,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH486",
+    "lat": 22.115644,
+    "lon": 114.112181,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH487",
+    "lat": 22.254858,
+    "lon": 114.212944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH511",
+    "lat": 21.892289,
+    "lon": 114.192219,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH512",
+    "lat": 22.022722,
+    "lon": 114.532417,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH622",
+    "lat": 21.953894,
+    "lon": 114.445497,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH623",
+    "lat": 21.859511,
+    "lon": 114.209061,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH631",
+    "lat": 22.129603,
+    "lon": 114.127397,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH632",
+    "lat": 22.0417,
+    "lon": 114.17445,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH633",
+    "lat": 21.884375,
+    "lon": 114.256519,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH634",
+    "lat": 21.962272,
+    "lon": 114.215908,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH635",
+    "lat": 21.857844,
+    "lon": 114.145608,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH730",
+    "lat": 22.284075,
+    "lon": 113.814767,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH741",
+    "lat": 22.499628,
+    "lon": 114.187469,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH742",
+    "lat": 22.313028,
+    "lon": 114.365225,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH743",
+    "lat": 22.166347,
+    "lon": 114.218397,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH744",
+    "lat": 22.023253,
+    "lon": 113.938706,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH747",
+    "lat": 22.33345,
+    "lon": 113.967933,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH748",
+    "lat": 22.46135,
+    "lon": 114.087256,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH806",
+    "lat": 22.471836,
+    "lon": 114.249656,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH813",
+    "lat": 22.380478,
+    "lon": 114.160225,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH814",
+    "lat": 22.382947,
+    "lon": 114.167994,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH815",
+    "lat": 22.385856,
+    "lon": 114.177028,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH821",
+    "lat": 22.298578,
+    "lon": 113.8597,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH822",
+    "lat": 22.366361,
+    "lon": 113.828822,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH827",
+    "lat": 22.477653,
+    "lon": 114.285997,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH832",
+    "lat": 22.393367,
+    "lon": 114.154553,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH834",
+    "lat": 22.395739,
+    "lon": 114.161981,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH835",
+    "lat": 22.398758,
+    "lon": 114.171386,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH841",
+    "lat": 22.285706,
+    "lon": 113.865428,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH844",
+    "lat": 22.287789,
+    "lon": 114.270858,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH845",
+    "lat": 22.311689,
+    "lon": 114.352222,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH846",
+    "lat": 22.253036,
+    "lon": 113.813594,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH848",
+    "lat": 22.196914,
+    "lon": 113.811489,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH849",
+    "lat": 22.163703,
+    "lon": 113.851086,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH851",
+    "lat": 22.350642,
+    "lon": 114.0214,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH852",
+    "lat": 22.342992,
+    "lon": 113.997594,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH861",
+    "lat": 22.288033,
+    "lon": 113.872667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH862",
+    "lat": 22.269869,
+    "lon": 113.840408,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH865",
+    "lat": 22.164892,
+    "lon": 113.913758,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH867",
+    "lat": 22.307531,
+    "lon": 113.887456,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH871",
+    "lat": 22.284347,
+    "lon": 114.094711,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH872",
+    "lat": 22.306914,
+    "lon": 114.0962,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH873",
+    "lat": 22.340025,
+    "lon": 114.034128,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH874",
+    "lat": 22.330936,
+    "lon": 114.005867,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH941",
+    "lat": 22.293878,
+    "lon": 114.036767,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH942",
+    "lat": 22.287258,
+    "lon": 114.028897,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH955",
+    "lat": 22.299681,
+    "lon": 114.035764,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH956",
+    "lat": 22.290086,
+    "lon": 114.024436,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH963",
+    "lat": 22.284692,
+    "lon": 114.023389,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH964",
+    "lat": 22.282875,
+    "lon": 114.021319,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH981",
+    "lat": 22.298244,
+    "lon": 114.049628,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH982",
+    "lat": 22.208586,
+    "lon": 113.902256,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH985",
+    "lat": 22.223506,
+    "lon": 113.887206,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HH987",
+    "lat": 22.348056,
+    "lon": 113.872358,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HOCKY",
+    "lat": 20.597042,
+    "lon": 114.574578,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HOROT",
+    "lat": 22.277778,
+    "lon": 114.099111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ID1FL",
+    "lat": 20.570022,
+    "lon": 113.782506,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ID2FL",
+    "lat": 20.570022,
+    "lon": 113.782506,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IDM10",
+    "lat": 23.522425,
+    "lon": 113.388614,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IDO25",
+    "lat": 21.836164,
+    "lon": 113.854786,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IDO30",
+    "lat": 21.759464,
+    "lon": 113.819847,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IDO50",
+    "lat": 21.4526,
+    "lon": 113.680456,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IDOSI",
+    "lat": 19,
+    "lon": 112.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IDUMA",
+    "lat": 22.896389,
+    "lon": 113.951667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IGAGA",
+    "lat": 23.164444,
+    "lon": 114.453611,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IGLEG",
+    "lat": 18.904336,
+    "lon": 112.427764,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IKATA",
+    "lat": 23.765,
+    "lon": 117.136111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IKELA",
+    "lat": 18.661667,
+    "lon": 112.245,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "INDUS",
+    "lat": 22.044722,
+    "lon": 113.600278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IOD14",
+    "lat": 21.578167,
+    "lon": 113.8365,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ISBAN",
+    "lat": 20.826203,
+    "lon": 114.286975,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "JULIETT",
+    "lat": 22.331667,
+    "lon": 114.481667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "KAPLI",
+    "lat": 21.166667,
+    "lon": 117.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "KEVAR",
+    "lat": 22.625,
+    "lon": 113.81,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "KIBAS",
+    "lat": 22.002306,
+    "lon": 113.233333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "KILOG",
+    "lat": 21.874167,
+    "lon": 114.693611,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LAKES",
+    "lat": 21.978139,
+    "lon": 114.910722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LAMMA",
+    "lat": 22.282114,
+    "lon": 114.086264,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LANDA",
+    "lat": 21.613122,
+    "lon": 113.045206,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LAPUG",
+    "lat": 22.994722,
+    "lon": 117.380556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LARIT",
+    "lat": 21.894825,
+    "lon": 115.268489,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LATOP",
+    "lat": 22.281667,
+    "lon": 113.643333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LAXET",
+    "lat": 20.937936,
+    "lon": 114.001422,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LEGOD",
+    "lat": 20.942156,
+    "lon": 114.895581,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LEKEN",
+    "lat": 21.883628,
+    "lon": 114.912486,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LELIM",
+    "lat": 22.94,
+    "lon": 117.311667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LENBU",
+    "lat": 21.247128,
+    "lon": 115.39525,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LEVKE",
+    "lat": 22.2495,
+    "lon": 114.078528,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LIKBI",
+    "lat": 22.41205,
+    "lon": 114.258917,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LIMA",
+    "lat": 22.152569,
+    "lon": 114.385461,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LIMES",
+    "lat": 22.107111,
+    "lon": 113.775722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LIMSU",
+    "lat": 22.740858,
+    "lon": 117.193839,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LINGI",
+    "lat": 22.421564,
+    "lon": 114.042806,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LINSI",
+    "lat": 22.221667,
+    "lon": 113.466667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LKC35",
+    "lat": 21.861792,
+    "lon": 113.589336,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LKC44",
+    "lat": 21.66,
+    "lon": 113.775,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LOC27",
+    "lat": 23.813086,
+    "lon": 113.423844,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LOC28",
+    "lat": 23.817156,
+    "lon": 113.429064,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LOTUS",
+    "lat": 22.388406,
+    "lon": 114.184889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LOVTA",
+    "lat": 21.748056,
+    "lon": 112.570278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LUBMO",
+    "lat": 21.965344,
+    "lon": 114.531383,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LUDLA",
+    "lat": 22.227997,
+    "lon": 114.074653,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LUKBU",
+    "lat": 22.378922,
+    "lon": 113.88375,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LUSVI",
+    "lat": 22.212908,
+    "lon": 114.071417,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MADRU",
+    "lat": 21.162583,
+    "lon": 117.163336,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MAG30",
+    "lat": 22.227372,
+    "lon": 114.56975,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MAG50",
+    "lat": 22.231603,
+    "lon": 114.929575,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MAGOG",
+    "lat": 22.296111,
+    "lon": 115.825,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MALKA",
+    "lat": 22.737111,
+    "lon": 117.011586,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MANGO",
+    "lat": 21.613611,
+    "lon": 114.514722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MAPLE",
+    "lat": 21.374117,
+    "lon": 113.095228,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MAVRA",
+    "lat": 17.777778,
+    "lon": 116.501944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC311",
+    "lat": 22.221808,
+    "lon": 113.982272,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC312",
+    "lat": 22.137969,
+    "lon": 114.133992,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC313",
+    "lat": 22.055108,
+    "lon": 113.993528,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC314",
+    "lat": 22.278431,
+    "lon": 114.0408,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC315",
+    "lat": 22.189192,
+    "lon": 114.179875,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC411",
+    "lat": 22.361444,
+    "lon": 113.793772,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC417",
+    "lat": 22.356244,
+    "lon": 113.422258,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC418",
+    "lat": 22.349842,
+    "lon": 113.621383,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC419",
+    "lat": 22.440381,
+    "lon": 113.779858,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC420",
+    "lat": 22.342303,
+    "lon": 113.695442,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC501",
+    "lat": 22.000833,
+    "lon": 113.646044,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC502",
+    "lat": 22.045489,
+    "lon": 113.013997,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC508",
+    "lat": 22.207164,
+    "lon": 113.583267,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC509",
+    "lat": 22.242994,
+    "lon": 113.610464,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC510",
+    "lat": 22.283925,
+    "lon": 113.641558,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC511",
+    "lat": 22.363675,
+    "lon": 113.616219,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC512",
+    "lat": 22.363681,
+    "lon": 113.562614,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC513",
+    "lat": 22.019431,
+    "lon": 113.622233,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC514",
+    "lat": 22.114497,
+    "lon": 113.549117,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC516",
+    "lat": 22.213333,
+    "lon": 113.473333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC601",
+    "lat": 22.328764,
+    "lon": 113.945444,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC608",
+    "lat": 22.187339,
+    "lon": 113.577431,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC609",
+    "lat": 22.043075,
+    "lon": 113.630519,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC610",
+    "lat": 21.875406,
+    "lon": 113.693375,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC611",
+    "lat": 21.66,
+    "lon": 113.775,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC612",
+    "lat": 21.845256,
+    "lon": 113.602275,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC613",
+    "lat": 21.905789,
+    "lon": 113.579256,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC614",
+    "lat": 21.970075,
+    "lon": 113.600886,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC615",
+    "lat": 22.303361,
+    "lon": 113.840769,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC800",
+    "lat": 22.323541,
+    "lon": 113.628837,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC802",
+    "lat": 22.291954,
+    "lon": 113.638763,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC806",
+    "lat": 22.249481,
+    "lon": 113.623757,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC808",
+    "lat": 22.236797,
+    "lon": 113.605872,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC810",
+    "lat": 22.222246,
+    "lon": 113.585367,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC812",
+    "lat": 22.192281,
+    "lon": 113.575606,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC820",
+    "lat": 22.120153,
+    "lon": 113.602168,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MC822",
+    "lat": 22.079218,
+    "lon": 113.617228,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MCC80",
+    "lat": 22.280874,
+    "lon": 113.59806,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MCC82",
+    "lat": 22.200964,
+    "lon": 113.602787,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MCC84",
+    "lat": 22.040233,
+    "lon": 113.495392,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MD07C",
+    "lat": 22.302486,
+    "lon": 113.87145,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MD22",
+    "lat": 23.565864,
+    "lon": 116.515983,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MD25C",
+    "lat": 22.326681,
+    "lon": 113.948089,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MEBKI",
+    "lat": 21.742431,
+    "lon": 115.581733,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MEPUT",
+    "lat": 21.633056,
+    "lon": 115.755556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MIKE",
+    "lat": 21.296667,
+    "lon": 113.26,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MIPAG",
+    "lat": 22.921667,
+    "lon": 113.741667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MIRRS",
+    "lat": 22.40475,
+    "lon": 114.235917,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ML07C",
+    "lat": 22.305383,
+    "lon": 113.881006,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ML07R",
+    "lat": 22.2921,
+    "lon": 113.885256,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ML15",
+    "lat": 22.660897,
+    "lon": 113.798794,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ML16",
+    "lat": 22.662408,
+    "lon": 113.780494,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ML33",
+    "lat": 22.617642,
+    "lon": 113.8225,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ML34",
+    "lat": 22.615931,
+    "lon": 113.805975,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MM13",
+    "lat": 22.331539,
+    "lon": 114.165247,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MM31",
+    "lat": 22.284567,
+    "lon": 114.238275,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MONTY",
+    "lat": 22.168406,
+    "lon": 114.321022,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MORTU",
+    "lat": 19.710286,
+    "lon": 114.384975,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MULET",
+    "lat": 21.583875,
+    "lon": 113.797742,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MUMOT",
+    "lat": 19.028611,
+    "lon": 117.789722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MURRY",
+    "lat": 21.757881,
+    "lon": 113.811658,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MUSEL",
+    "lat": 22.264997,
+    "lon": 114.781147,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MYWAY",
+    "lat": 20.196194,
+    "lon": 112.718806,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NEDLE",
+    "lat": 22.387208,
+    "lon": 114.699297,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NIXUS",
+    "lat": 22.489458,
+    "lon": 114.172139,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NLG28",
+    "lat": 22.11425,
+    "lon": 113.789833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOBAD",
+    "lat": 20.245486,
+    "lon": 115.509428,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOLIB",
+    "lat": 22.427486,
+    "lon": 114.010233,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOM14",
+    "lat": 21.936694,
+    "lon": 114.680983,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOM15",
+    "lat": 21.865583,
+    "lon": 114.843308,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOM24",
+    "lat": 21.790386,
+    "lon": 114.579675,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOM25",
+    "lat": 21.682811,
+    "lon": 114.716564,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOM30",
+    "lat": 21.891231,
+    "lon": 114.436458,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOM50",
+    "lat": 21.671803,
+    "lon": 114.706353,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOM100",
+    "lat": 20.509964,
+    "lon": 115.995806,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOMAN",
+    "lat": 20,
+    "lon": 116.671667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOMAR",
+    "lat": 23.508333,
+    "lon": 113.856667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOMFL",
+    "lat": 21.507653,
+    "lon": 115.652514,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NOPER",
+    "lat": 20.846681,
+    "lon": 116.100547,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NUDPI",
+    "lat": 21.90525,
+    "lon": 115.624503,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NUSLA",
+    "lat": 23.411667,
+    "lon": 113.515,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OBLAN",
+    "lat": 21.805556,
+    "lon": 112.806667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OCEAN",
+    "lat": 21.811944,
+    "lon": 114.813333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OLDID",
+    "lat": 23,
+    "lon": 117.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OM13",
+    "lat": 22.326836,
+    "lon": 114.092403,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OM31",
+    "lat": 22.237972,
+    "lon": 114.288789,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OSCAR",
+    "lat": 21.851761,
+    "lon": 114.240669,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OSUMO",
+    "lat": 20.553675,
+    "lon": 115.542236,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OTKUM",
+    "lat": 22.0595,
+    "lon": 114.082181,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OVGOT",
+    "lat": 22.783611,
+    "lon": 114.75,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OW452",
+    "lat": 23.239722,
+    "lon": 116.313333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OW453",
+    "lat": 23.386389,
+    "lon": 116.352778,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OW454",
+    "lat": 23.447222,
+    "lon": 116.274167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OW552",
+    "lat": 23.7075,
+    "lon": 116.645,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OW556",
+    "lat": 23.768333,
+    "lon": 116.566111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OW562",
+    "lat": 23.856111,
+    "lon": 116.421944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OW565",
+    "lat": 23.720833,
+    "lon": 116.6575,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OW566",
+    "lat": 23.737778,
+    "lon": 116.698611,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "OW567",
+    "lat": 23.766111,
+    "lon": 116.748611,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PAPA",
+    "lat": 21.9775,
+    "lon": 113.656111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PEARL",
+    "lat": 22.051306,
+    "lon": 113.79325,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PEBEL",
+    "lat": 22.378869,
+    "lon": 114.246772,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PECAN",
+    "lat": 21.438942,
+    "lon": 114.0349,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PEDSU",
+    "lat": 21.113289,
+    "lon": 116.795833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PLOVE",
+    "lat": 22.418417,
+    "lon": 114.23275,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PONTI",
+    "lat": 22.371208,
+    "lon": 114.462731,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PORPA",
+    "lat": 22.335861,
+    "lon": 114.021194,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PORSH",
+    "lat": 22.29455,
+    "lon": 114.084322,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "POU27",
+    "lat": 23.468333,
+    "lon": 113.246667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "POU30",
+    "lat": 23.481881,
+    "lon": 112.973842,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "POU37",
+    "lat": 23.578333,
+    "lon": 112.928333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "POVAM",
+    "lat": 21.248519,
+    "lon": 115.351983,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "POVEG",
+    "lat": 22.295356,
+    "lon": 113.801006,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PRAWN",
+    "lat": 22.268167,
+    "lon": 113.811139,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "QUBEC",
+    "lat": 22.100472,
+    "lon": 113.67925,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "R288",
+    "lat": 22.331417,
+    "lon": 114.165025,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RAGSO",
+    "lat": 20.758981,
+    "lon": 111.982419,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RAMEN",
+    "lat": 22.160894,
+    "lon": 114.086081,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RASSE",
+    "lat": 21.792917,
+    "lon": 115.330306,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RIVER",
+    "lat": 22.402097,
+    "lon": 114.181731,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RIVMI",
+    "lat": 22.4011,
+    "lon": 114.319244,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ROBBE",
+    "lat": 22.299917,
+    "lon": 114.086328,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ROBIN",
+    "lat": 21.045833,
+    "lon": 114.268333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ROCCA",
+    "lat": 21.532061,
+    "lon": 113.580956,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ROMEO",
+    "lat": 21.872222,
+    "lon": 113.458333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ROVER",
+    "lat": 22.343217,
+    "lon": 114.027533,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RSZ41",
+    "lat": 22.517778,
+    "lon": 113.817222,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RUMSY",
+    "lat": 22.082483,
+    "lon": 113.804664,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RUNLI",
+    "lat": 21.449922,
+    "lon": 113.680833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RUNSU",
+    "lat": 22.423044,
+    "lon": 114.198214,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RUSBI",
+    "lat": 20.7826,
+    "lon": 115.691092,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RUSUG",
+    "lat": 22.291606,
+    "lon": 114.086711,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RVH01",
+    "lat": 22.239978,
+    "lon": 114.424483,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RVH02",
+    "lat": 22.309928,
+    "lon": 114.173897,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RW07C",
+    "lat": 22.311272,
+    "lon": 113.899067,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RW07L",
+    "lat": 22.321589,
+    "lon": 113.882294,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RW07R",
+    "lat": 22.296675,
+    "lon": 113.899442,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RW16",
+    "lat": 22.160642,
+    "lon": 113.587261,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RW25C",
+    "lat": 22.320236,
+    "lon": 113.926883,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RW25L",
+    "lat": 22.307431,
+    "lon": 113.932819,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "RW25R",
+    "lat": 22.331792,
+    "lon": 113.913956,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SAB14",
+    "lat": 21.732833,
+    "lon": 114.5205,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SABNO",
+    "lat": 18.985,
+    "lon": 115.845,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SABOG",
+    "lat": 22.354628,
+    "lon": 114.256408,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SAGNI",
+    "lat": 22.396286,
+    "lon": 114.114633,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SAMED",
+    "lat": 22.078611,
+    "lon": 114.442175,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SAMMI",
+    "lat": 22.466667,
+    "lon": 115.961667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SAMON",
+    "lat": 21.906592,
+    "lon": 114.209153,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SAMPU",
+    "lat": 22.427553,
+    "lon": 114.261364,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SANKU",
+    "lat": 21.522603,
+    "lon": 116.344536,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SAPAX",
+    "lat": 21.655511,
+    "lon": 114.213228,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SAPUT",
+    "lat": 23.906111,
+    "lon": 117.033889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SAREX",
+    "lat": 22.881667,
+    "lon": 113.483333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SB2FL",
+    "lat": 20.566272,
+    "lon": 114.246822,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SBC25",
+    "lat": 21.80625,
+    "lon": 114.084711,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SBC30",
+    "lat": 21.723589,
+    "lon": 114.095603,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SBC50",
+    "lat": 21.392942,
+    "lon": 114.139053,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SBD30",
+    "lat": 21.778172,
+    "lon": 114.282661,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SBD50",
+    "lat": 21.483711,
+    "lon": 114.4502,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SEGPO",
+    "lat": 21.959103,
+    "lon": 114.355164,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SHELY",
+    "lat": 22.090736,
+    "lon": 114.653872,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SHK34",
+    "lat": 22.751933,
+    "lon": 114.440203,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SIERA",
+    "lat": 21.986667,
+    "lon": 113.553333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SIK25",
+    "lat": 21.866253,
+    "lon": 113.7923,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SIK50",
+    "lat": 21.512628,
+    "lon": 113.555722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SIKFL",
+    "lat": 20.804386,
+    "lon": 113.085983,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SIKOU",
+    "lat": 20.843333,
+    "lon": 111.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SILVA",
+    "lat": 21.85125,
+    "lon": 113.903022,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SKATE",
+    "lat": 21.531942,
+    "lon": 115.144428,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SMT30",
+    "lat": 22.354381,
+    "lon": 113.437925,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SOKOE",
+    "lat": 22.078111,
+    "lon": 113.843917,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SONNY",
+    "lat": 21.017683,
+    "lon": 115.055225,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SOSLU",
+    "lat": 21.645564,
+    "lon": 114.088442,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SOUSA",
+    "lat": 22.019556,
+    "lon": 116.191056,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "STELA",
+    "lat": 22.198136,
+    "lon": 113.730308,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SUDVA",
+    "lat": 22.07365,
+    "lon": 114.359408,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SUGAP",
+    "lat": 21.932622,
+    "lon": 114.033789,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SUKER",
+    "lat": 19.675967,
+    "lon": 114.653297,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SULAS",
+    "lat": 22.916111,
+    "lon": 114.221111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SULUX",
+    "lat": 20.348419,
+    "lon": 115.409217,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SUMDO",
+    "lat": 22.900556,
+    "lon": 115.881667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SUPAD",
+    "lat": 22.001664,
+    "lon": 114.1252,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SURFA",
+    "lat": 19.314161,
+    "lon": 112.736436,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ001",
+    "lat": 22.763333,
+    "lon": 113.74,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ002",
+    "lat": 22.796667,
+    "lon": 113.721667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ003",
+    "lat": 22.796667,
+    "lon": 113.866667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ004",
+    "lat": 22.828333,
+    "lon": 113.988333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ005",
+    "lat": 22.84,
+    "lon": 113.785,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ011",
+    "lat": 22.793333,
+    "lon": 113.646667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ012",
+    "lat": 22.7675,
+    "lon": 113.672778,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ013",
+    "lat": 22.716111,
+    "lon": 113.586944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ021",
+    "lat": 22.688333,
+    "lon": 113.751667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ051",
+    "lat": 22.593333,
+    "lon": 114.103333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ052",
+    "lat": 22.533333,
+    "lon": 113.976667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ061",
+    "lat": 22.746667,
+    "lon": 113.513333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ062",
+    "lat": 22.331667,
+    "lon": 113.55,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ063",
+    "lat": 22.445,
+    "lon": 113.79,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ101",
+    "lat": 22.493333,
+    "lon": 113.89,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ102",
+    "lat": 22.553333,
+    "lon": 114.018333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ103",
+    "lat": 22.751667,
+    "lon": 114.443333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ111",
+    "lat": 22.466667,
+    "lon": 113.836667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ112",
+    "lat": 22.468333,
+    "lon": 113.588333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ113",
+    "lat": 22.378333,
+    "lon": 113.505,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ151",
+    "lat": 22.74,
+    "lon": 114.325,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ152",
+    "lat": 22.693333,
+    "lon": 113.888333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ153",
+    "lat": 22.841667,
+    "lon": 113.806667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ154",
+    "lat": 22.921667,
+    "lon": 113.761667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ161",
+    "lat": 22.456944,
+    "lon": 113.385,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ163",
+    "lat": 22.606111,
+    "lon": 113.565833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ166",
+    "lat": 22.833333,
+    "lon": 113.573333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ301",
+    "lat": 22.225833,
+    "lon": 113.288889,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ302",
+    "lat": 22.298611,
+    "lon": 113.216389,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ303",
+    "lat": 22.385833,
+    "lon": 113.165278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ304",
+    "lat": 22.482222,
+    "lon": 113.139167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ305",
+    "lat": 22.736944,
+    "lon": 113.479167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ306",
+    "lat": 22.578889,
+    "lon": 113.080556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ307",
+    "lat": 22.488611,
+    "lon": 113.079722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ308",
+    "lat": 22.391389,
+    "lon": 113.101389,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ309",
+    "lat": 22.301111,
+    "lon": 113.145278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ310",
+    "lat": 22.221667,
+    "lon": 113.209167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ312",
+    "lat": 22.113611,
+    "lon": 113.11,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ313",
+    "lat": 22.164722,
+    "lon": 113.234167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ314",
+    "lat": 22.5425,
+    "lon": 113.657222,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ413",
+    "lat": 22.578333,
+    "lon": 113.713333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ414",
+    "lat": 22.48,
+    "lon": 113.735,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ415",
+    "lat": 22.486667,
+    "lon": 113.833333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ461",
+    "lat": 22.608889,
+    "lon": 113.474444,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ462",
+    "lat": 22.734444,
+    "lon": 113.57,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ920",
+    "lat": 22.533889,
+    "lon": 113.850833,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ921",
+    "lat": 22.486389,
+    "lon": 113.834444,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ923",
+    "lat": 22.478889,
+    "lon": 113.818333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ924",
+    "lat": 22.468333,
+    "lon": 113.796111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZ925",
+    "lat": 22.413333,
+    "lon": 113.690556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SZA34",
+    "lat": 22.441944,
+    "lon": 113.74,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TAMAR",
+    "lat": 22.255833,
+    "lon": 114.510278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TAMOT",
+    "lat": 22.358333,
+    "lon": 113.866667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TAN17",
+    "lat": 23.398333,
+    "lon": 113.188333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TAN32",
+    "lat": 23.141667,
+    "lon": 113.125,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TANGO",
+    "lat": 22.19,
+    "lon": 113.67,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TAPPO",
+    "lat": 21.322392,
+    "lon": 114.24295,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TEDAP",
+    "lat": 22.409981,
+    "lon": 114.270333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TEDUR",
+    "lat": 22.188547,
+    "lon": 114.397572,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TEGUB",
+    "lat": 22.405078,
+    "lon": 114.081858,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TEPID",
+    "lat": 23.535,
+    "lon": 113.385,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TITAN",
+    "lat": 21.674278,
+    "lon": 114.0507,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TOFEE",
+    "lat": 19.306108,
+    "lon": 115.294022,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TOLAK",
+    "lat": 23.091111,
+    "lon": 117.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TOMUD",
+    "lat": 21.8575,
+    "lon": 112.547222,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TONIC",
+    "lat": 22.2133,
+    "lon": 113.722736,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TOPUN",
+    "lat": 22.381714,
+    "lon": 114.069208,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TORUB",
+    "lat": 22.374394,
+    "lon": 114.2463,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TROUT",
+    "lat": 21.798611,
+    "lon": 114.270278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TUBBY",
+    "lat": 22.507058,
+    "lon": 116.673458,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TUNNA",
+    "lat": 21.790278,
+    "lon": 113.965,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TUTBA",
+    "lat": 22.233839,
+    "lon": 113.712478,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "UBDOB",
+    "lat": 23.361667,
+    "lon": 114.625,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "UBLIM",
+    "lat": 22.8875,
+    "lon": 113.67,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "UDUTI",
+    "lat": 21.85,
+    "lon": 111.933333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "UNTUL",
+    "lat": 20.317272,
+    "lon": 116.027253,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VANPU",
+    "lat": 22.066097,
+    "lon": 113.801069,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VEDMU",
+    "lat": 22.137228,
+    "lon": 113.918939,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VEDVO",
+    "lat": 22.077275,
+    "lon": 114.261958,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VEMSO",
+    "lat": 22.240294,
+    "lon": 114.314522,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VENGO",
+    "lat": 21.987825,
+    "lon": 115.269017,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VEPIK",
+    "lat": 22.275372,
+    "lon": 113.805603,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH505",
+    "lat": 22.406711,
+    "lon": 114.147189,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH506",
+    "lat": 22.343608,
+    "lon": 114.042297,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH507",
+    "lat": 22.351961,
+    "lon": 114.018397,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH508",
+    "lat": 22.357744,
+    "lon": 113.994592,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH509",
+    "lat": 22.349983,
+    "lon": 113.970464,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH510",
+    "lat": 22.395658,
+    "lon": 114.112681,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH512",
+    "lat": 22.3812,
+    "lon": 114.116564,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH513",
+    "lat": 22.370292,
+    "lon": 114.082567,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH514",
+    "lat": 22.353917,
+    "lon": 114.031578,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH515",
+    "lat": 22.414964,
+    "lon": 114.172978,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH519",
+    "lat": 22.473069,
+    "lon": 114.245097,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH520",
+    "lat": 22.3047,
+    "lon": 113.878689,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH521",
+    "lat": 22.400461,
+    "lon": 113.943231,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH522",
+    "lat": 22.321411,
+    "lon": 113.881744,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH523",
+    "lat": 22.405697,
+    "lon": 113.899692,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH524",
+    "lat": 22.432397,
+    "lon": 113.969408,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH525",
+    "lat": 22.387606,
+    "lon": 113.854514,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH526",
+    "lat": 22.497892,
+    "lon": 114.140875,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH528",
+    "lat": 22.358856,
+    "lon": 113.998047,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH530",
+    "lat": 21.951628,
+    "lon": 113.926728,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH533",
+    "lat": 22.331519,
+    "lon": 114.076867,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH534",
+    "lat": 22.350953,
+    "lon": 114.021283,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH535",
+    "lat": 22.343222,
+    "lon": 113.997508,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH536",
+    "lat": 22.364319,
+    "lon": 114.01505,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH541",
+    "lat": 22.364994,
+    "lon": 114.250433,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH543",
+    "lat": 22.362064,
+    "lon": 114.102728,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH544",
+    "lat": 22.342964,
+    "lon": 114.043244,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH545",
+    "lat": 22.3304,
+    "lon": 114.004167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH547",
+    "lat": 22.054553,
+    "lon": 113.890761,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH701",
+    "lat": 22.2808,
+    "lon": 113.755969,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH702",
+    "lat": 22.297242,
+    "lon": 113.806844,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH703",
+    "lat": 22.406617,
+    "lon": 113.955811,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH704",
+    "lat": 22.361794,
+    "lon": 113.839217,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH705",
+    "lat": 22.312656,
+    "lon": 113.793525,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH706",
+    "lat": 22.287361,
+    "lon": 113.82495,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH707",
+    "lat": 22.292842,
+    "lon": 113.841928,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH708",
+    "lat": 22.296161,
+    "lon": 113.803506,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH710",
+    "lat": 22.266333,
+    "lon": 113.759892,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH711",
+    "lat": 22.284619,
+    "lon": 113.816461,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH715",
+    "lat": 22.305192,
+    "lon": 113.786592,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH716",
+    "lat": 22.273119,
+    "lon": 113.826436,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH717",
+    "lat": 22.2786,
+    "lon": 113.843411,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH720",
+    "lat": 22.25165,
+    "lon": 113.760989,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH721",
+    "lat": 22.270189,
+    "lon": 113.818019,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH726",
+    "lat": 22.343414,
+    "lon": 113.950056,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH727",
+    "lat": 22.438506,
+    "lon": 114.027553,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH730",
+    "lat": 22.283694,
+    "lon": 113.813594,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH753",
+    "lat": 22.426922,
+    "lon": 114.060008,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH754",
+    "lat": 22.456753,
+    "lon": 114.169639,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH991",
+    "lat": 22.293992,
+    "lon": 114.036725,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VH992",
+    "lat": 22.299975,
+    "lon": 114.038567,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VIBOS",
+    "lat": 22.624444,
+    "lon": 113.327778,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VIPAP",
+    "lat": 22.761389,
+    "lon": 114.532222,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "WAVOS",
+    "lat": 22.200417,
+    "lon": 114.067306,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "WHISKEY",
+    "lat": 22.042375,
+    "lon": 114.507411,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "XEMEK",
+    "lat": 21.637825,
+    "lon": 114.995289,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ZUH27",
+    "lat": 22.041861,
+    "lon": 113.008517,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ZUH31",
+    "lat": 22.736639,
+    "lon": 113.479656,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ZUH75",
+    "lat": 21.731756,
+    "lon": 112.228553,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VHHH07C",
+    "lat": 22.311272,
+    "lon": 113.899067,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VHHH07R",
+    "lat": 22.296675,
+    "lon": 113.899442,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VHHH07L",
+    "lat": 22.321589,
+    "lon": 113.882294,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VHHH25L",
+    "lat": 22.307431,
+    "lon": 113.932819,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VHHH25C",
+    "lat": 22.320236,
+    "lon": 113.926883,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VHHH25R",
+    "lat": 22.331792,
+    "lon": 113.913956,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VHHX13",
+    "lat": 22.321764,
+    "lon": 114.196447,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VHHX31",
+    "lat": 22.305261,
+    "lon": 114.214864,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VMMC16",
+    "lat": 22.160642,
+    "lon": 113.587261,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VMMC34",
+    "lat": 22.138183,
+    "lon": 113.595531,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ZGSZ15",
+    "lat": 22.652956,
+    "lon": 113.803147,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ZGSZ33",
+    "lat": 22.625603,
+    "lon": 113.818136,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ATZ",
+    "lat": 22.331868,
+    "lon": 113.913915,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CCC",
+    "lat": 22.212534,
+    "lon": 114.036594,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DTA",
+    "lat": 22.231098,
+    "lon": 113.744594,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GRI",
+    "lat": 22.288786,
+    "lon": 114.110896,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HBR",
+    "lat": 22.287753,
+    "lon": 114.166675,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HKS",
+    "lat": 22.23844,
+    "lon": 114.133623,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ISL",
+    "lat": 22.24009,
+    "lon": 114.072942,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LAN",
+    "lat": 22.251667,
+    "lon": 113.935607,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LMM",
+    "lat": 22.211492,
+    "lon": 114.105391,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MAW",
+    "lat": 22.35028,
+    "lon": 114.039463,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MBY",
+    "lat": 22.510218,
+    "lon": 114.394201,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NEW",
+    "lat": 22.418207,
+    "lon": 114.189293,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "NBD",
+    "lat": 22.503519,
+    "lon": 114.096589,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PCH",
+    "lat": 22.275484,
+    "lon": 114.040997,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PSH",
+    "lat": 22.352006,
+    "lon": 114.315646,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "REP",
+    "lat": 22.226959,
+    "lon": 114.179979,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SKARA",
+    "lat": 22.45098,
+    "lon": 114.056025,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SCU",
+    "lat": 22.312458,
+    "lon": 114.131775,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SOK",
+    "lat": 22.170075,
+    "lon": 113.908672,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SOU",
+    "lat": 22.060026,
+    "lon": 113.906687,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "STL",
+    "lat": 22.219143,
+    "lon": 114.221987,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TOL",
+    "lat": 22.444698,
+    "lon": 114.315732,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TUM",
+    "lat": 22.417888,
+    "lon": 113.997007,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VPK",
+    "lat": 22.275088,
+    "lon": 114.138753,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "WAG",
+    "lat": 22.212122,
+    "lon": 114.295609,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "9PN",
+    "lat": 22.214768,
+    "lon": 114.41718,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ESP",
+    "lat": 22.327734,
+    "lon": 114.24275,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FAN",
+    "lat": 22.19,
+    "lon": 113.85,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FSG",
+    "lat": 22.460913,
+    "lon": 114.109764,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GCC",
+    "lat": 22.358271,
+    "lon": 113.991625,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "KAM",
+    "lat": 22.43318,
+    "lon": 114.048478,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "KDG",
+    "lat": 22.439444,
+    "lon": 114.123056,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LYM",
+    "lat": 22.280638,
+    "lon": 114.244942,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "MWC",
+    "lat": 22.316445,
+    "lon": 114.085011,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PAG",
+    "lat": 22.459904,
+    "lon": 114.014085,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PAK",
+    "lat": 22.307142,
+    "lon": 113.965668,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PPT",
+    "lat": 22.353758,
+    "lon": 113.940809,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SHC",
+    "lat": 22.341847,
+    "lon": 113.893773,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SIL",
+    "lat": 22.284605,
+    "lon": 113.98115,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SOP",
+    "lat": 22.262541,
+    "lon": 114.175515,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SSK",
+    "lat": 22.274544,
+    "lon": 113.87902,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "STP",
+    "lat": 22.388465,
+    "lon": 114.20791,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TCP",
+    "lat": 22.267884,
+    "lon": 113.92824,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TPX",
+    "lat": 22.340321,
+    "lon": 114.022348,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "TPZ",
+    "lat": 22.340506,
+    "lon": 114.051971,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "WLC",
+    "lat": 22.243902,
+    "lon": 113.831738,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HENGA",
+    "lat": 22.65,
+    "lon": 114.2,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PINGSHAN",
+    "lat": 22.691667,
+    "lon": 114.35,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "AOTOU",
+    "lat": 22.716667,
+    "lon": 114.531944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "DAPENG",
+    "lat": 22.45,
+    "lon": 114.5,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "SESAN",
+    "lat": 22.513889,
+    "lon": 114.840278,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HOTEL",
+    "lat": 22.383333,
+    "lon": 114.908333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "UNIFORM",
+    "lat": 22.15,
+    "lon": 113.678333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "VICTORWHISKEY",
+    "lat": 21.833333,
+    "lon": 113.916667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "URBOR",
+    "lat": 22.598333,
+    "lon": 113.72,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LAXUS",
+    "lat": 22.403333,
+    "lon": 113.798333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "PEXEL",
+    "lat": 22.421667,
+    "lon": 113.653333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HVW01",
+    "lat": 22.061944,
+    "lon": 113.744722,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HVC02",
+    "lat": 22.08,
+    "lon": 113.697778,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GOGRE",
+    "lat": 22.192556,
+    "lon": 113.575111,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CCBUOY",
+    "lat": 22.206667,
+    "lon": 114.003333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CCSOUTH",
+    "lat": 22.15,
+    "lon": 114.03,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FANLAU",
+    "lat": 22.19,
+    "lon": 113.85,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "GREENI",
+    "lat": 22.288889,
+    "lon": 114.105556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HVB01",
+    "lat": 22.175556,
+    "lon": 113.724167,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HVB02",
+    "lat": 22.159722,
+    "lon": 113.809444,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HVB03",
+    "lat": 22.159444,
+    "lon": 113.861944,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HVB04",
+    "lat": 22.15,
+    "lon": 113.902222,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "HVC03",
+    "lat": 22.079444,
+    "lon": 113.735556,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "LIGHTHOUSE",
+    "lat": 22.078333,
+    "lon": 113.803333,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "WAYPOINTTWO",
+    "lat": 22.083333,
+    "lon": 113.886667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "ZEXEK",
+    "lat": 22.173083,
+    "lon": 114.009694,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "FIDLA",
+    "lat": 22.235008,
+    "lon": 114.062469,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "CUSDO",
+    "lat": 22.27885,
+    "lon": 114.095444,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "WALIN",
+    "lat": 22.094472,
+    "lon": 113.978667,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "KEMTE",
+    "lat": 22.095711,
+    "lon": 114.114039,
+    "tipo": "ICAO"
+  },
+  {
+    "ident": "IONIC",
+    "lat": 22.267917,
+    "lon": 114.087203,
+    "tipo": "ICAO"
+  }
 ]

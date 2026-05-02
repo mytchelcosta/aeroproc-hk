@@ -38,7 +38,7 @@ const convertDMSToDecimal = (degrees, minutes, seconds, direction) => {
   const decimal = degrees + minutes / 60 + seconds / 3600;
 
   // In the decimal coordinate system, South latitudes and West longitudes
-  // are negative numbers (e.g., São Paulo is at roughly -23.43°, -46.47°).
+  // are negative numbers (e.g., Hong Kong is at roughly 22.3°, 114.1°).
   return (dir === 'S' || dir === 'W') ? -decimal : decimal;
 };
 
