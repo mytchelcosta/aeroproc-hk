@@ -11,12 +11,21 @@
 //   2. airplanes.live
 //   3. adsb.fi
 //
-// Aircraft are colour-coded by which of the three major SP
-// airports they are associated with, determined by proximity:
-//   SBSP (Congonhas)   → orange
-//   SBGR (Guarulhos)   → soft yellow
-//   SBKP (Viracopos)   → green
-//   Other / overflight → grey
+// Aircraft are colour-coded by their relationship to VHHH using
+// three categories (Phase 6 spec — strict VHHH-centric scheme):
+//
+//   Yellow ('hk-near') — origin OR destination is VHHH or VHHX,
+//                        AND altitude < 25 000 ft (below FL250),
+//                        AND distance to VHHH ≤ 50 NM.
+//                        These are the close-in, low-altitude HK
+//                        arrivals/departures actively in the TMA.
+//   White  ('hk-far')  — origin OR destination is VHHH or VHHX,
+//                        AND (altitude ≥ 25 000 ft OR distance to VHHH > 50 NM).
+//                        Cruising HK traffic and outbound climbs.
+//   Grey   ('other')   — every other aircraft (origin/dest is neither
+//                        VHHH nor VHHX, or route data has not yet been
+//                        resolved by adsbdb.com — defaults to 'other'
+//                        until the lookup completes).
 //
 // Public API (all exported below):
 //   initLiveTraffic(mapInstance)  — call once at app startup
@@ -26,7 +35,7 @@
 //   isLiveTrafficEnabled()        — returns boolean state
 // ============================================================
 import { i18n } from '../utils/i18n.js';
-import { trueToMagnetic } from '../utils/Helpers.js';
+import { calculateDistance, trueToMagnetic } from '../utils/Helpers.js';
 
 
 // ── Reference centre point (VHHH — Hong Kong Intl) ───────────
@@ -52,28 +61,19 @@ const _SOURCES = [
   }
 ];
 
-// ── Airport proximity data ────────────────────────────────────
-// Each aircraft is coloured by the nearest major HK airport within
-// _PROX_NM nautical miles. Free ADS-B feeds don't reliably carry
-// departure/destination fields, so proximity is the best heuristic.
-//
-// Radius of 35 NM covers the full approach and departure corridors
-// for all three airports without overcounting high-altitude overflights
-// that happen to pass nearby.
-const _HK_AIRPORTS = {
-  VHHH: { lat: 22.3089, lon: 113.9146 },   // Hong Kong Intl
-  VMMC: { lat: 22.1495, lon: 113.5915 },   // Macau Intl
-  ZGSZ: { lat: 22.6393, lon: 113.8107 }    // Shenzhen Bao'an
-};
-const _PROX_NM = 35;   // maximum distance to associate an aircraft with an airport
+// ── Phase 6 classification thresholds ─────────────────────────
+// VHHH-centric scheme: distance is measured from each aircraft to
+// the VHHH reference point above (`_CENTRE_LAT`, `_CENTRE_LON`).
+// Origin/destination must be either of the two HK fields below.
+const _HK_AIRFIELDS    = ['VHHH', 'VHHX'];   // VHHH = Chek Lap Kok, VHHX = Kai Tak / HK Heliport
+const _NEAR_DIST_NM    = 50;                 // ≤ this from VHHH counts as "near"
+const _LOW_ALT_FT      = 25000;              // < this is below FL250 ("low")
 
-// ── Airport → fill colour ─────────────────────────────────────
+// ── Classification → fill colour (Phase 6) ───────────────────
 const _COLOUR = {
-  VHHH:  '#ffd84a',   // soft yellow     — Hong Kong traffic
-  VMMC:  '#e07b39',   // orange/brownish — Macau traffic
-  ZGSZ:  '#22c55e',   // green           — Shenzhen traffic
-  other: '#94a3b8',   // grey            — overflights / other aerodromes
-  ground:'#6b7280'    // dark grey       — surface movement
+  'hk-near': '#ffd84a',   // soft yellow — HK traffic, low + close to VHHH
+  'hk-far':  '#ffffff',   // white       — HK traffic, high or far from VHHH
+  'other':   '#94a3b8'    // grey        — non-HK / unknown route
 };
 
 // ── Polling interval ──────────────────────────────────────────
@@ -119,6 +119,63 @@ const _markerMap = new Map();
 // 'null' means the fetch is still in-flight (avoid duplicate requests).
 const _routeCache    = new Map();   // callsign → { orig, dest } | null (pending)
 const _routeFetching = new Set();   // callsigns whose fetch is currently in-flight
+
+
+// ── Phase 7: Wake-Turbulence Category lookup table ────────────
+// Maps an ICAO aircraft type designator (e.g. 'B777', 'A320', 'C172') to a
+// single-letter wake-turbulence category as published by ICAO Doc 8643:
+//   S = Super  (A380-only — extra category beyond Heavy)
+//   H = Heavy  (MTOW ≥ 136 000 kg)
+//   M = Medium (7 000 kg < MTOW < 136 000 kg)
+//   L = Light  (MTOW ≤ 7 000 kg)
+// The data lives in `public/data/wtc.json` as a flat object. We fetch it once
+// on module init and cache the parsed object here. While the fetch is in
+// flight, lookups silently return null and the tooltip omits the WTC letter.
+let _wtcMap = null;        // populated object once fetch resolves
+let _wtcLoading = false;   // guard so we never fire two parallel fetches
+
+
+// Fetches `wtc.json` once and stores the parsed object in `_wtcMap`. Called
+// from `initLiveTraffic` so the data is ready by the time the user enables
+// the Live Traffic layer. Failure is non-fatal — we just leave `_wtcMap` null
+// and tooltips will display the type code without a WTC letter.
+const _loadWtcMap = () => {
+  if (_wtcMap || _wtcLoading) return;
+  _wtcLoading = true;
+
+  const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL)
+    ? import.meta.env.BASE_URL
+    : './';
+
+  fetch(`${baseUrl}data/wtc.json`, { cache: 'force-cache' })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (data && typeof data === 'object') {
+        _wtcMap = data;
+        console.log(`[LiveTraffic] WTC table loaded: ${Object.keys(data).length} ICAO types.`);
+        _rebuildAllTooltips();   // refresh any aircraft already on the map
+      } else {
+        console.warn('[LiveTraffic] WTC table fetch returned no data — WTC letters will be hidden.');
+      }
+    })
+    .catch((err) => {
+      console.warn(`[LiveTraffic] WTC table fetch failed (${err.message}) — WTC letters will be hidden.`);
+    })
+    .finally(() => { _wtcLoading = false; });
+};
+
+
+// Phase 7: Returns the WTC HTML span for an ICAO aircraft type, or '' if the
+// type is unknown / table not yet loaded. The span is colour-coded via the
+// `.ac-wtc-S/H/M/L` CSS classes so each category reads at a glance.
+//
+// 'icaoType' — the ICAO designator from `ac.acType` (e.g. 'B777')
+const _wtcLetterHtml = (icaoType) => {
+  if (!_wtcMap || !icaoType) return '';
+  const letter = _wtcMap[icaoType];
+  if (!letter) return '';
+  return `<span class="ac-wtc ac-wtc-${_safeEscape(letter)}">${_safeEscape(letter)}</span>`;
+};
 
 
 // ── Private: normalise raw API aircraft object ───────────────
@@ -204,45 +261,47 @@ const _fetchRouteAsync = (callsign) => {
 };
 
 
-// ── Private: classify an aircraft by its associated SP airport ──
-// Classification priority (Phase 16 spec):
+// ── Private: classify an aircraft (Phase 6 — VHHH-centric scheme) ──
+// Three mutually exclusive buckets, decided in this order:
 //
-//   1. ground — aircraft is on the surface.
-//   2. Route data available (adsbdb.com lookup complete):
-//      Check if origin OR destination is VHHH/VMMC/ZGSZ. First match wins.
-//      If neither is an HK major airport → 'other' (grey).
-//   3. Route data pending (fetch still in-flight):
-//      Fall back to proximity heuristic — nearest airport within _PROX_NM.
-//      When the route arrives on a future poll cycle the colour updates.
+//   1. If origin OR destination is VHHH or VHHX (the two HK fields)
+//        a. AND altitude is below FL250 (< 25 000 ft)
+//           AND distance from VHHH is ≤ 50 NM         → 'hk-near' (yellow)
+//        b. otherwise (cruising high or further out)  → 'hk-far'  (white)
+//   2. Otherwise (no HK endpoint, OR route still
+//      pending from adsbdb.com)                       → 'other'   (grey)
+//
+// Distance is measured great-circle from the aircraft's current
+// lat/lon to the VHHH reference (`_CENTRE_LAT`, `_CENTRE_LON`)
+// using the shared `calculateDistance` helper, so the metric is
+// identical to the one the Measuring Vector tool reports.
+//
+// Aircraft on the ground inherit the same scheme: a VHHH-bound
+// flight taxiing at Chek Lap Kok will read as 'hk-near' (alt 0,
+// dist ~0 NM), while a parked overflight diversion at a non-HK
+// field will read as 'other'. There is no longer a dedicated
+// 'ground' colour — the spec is strict about three categories.
 //
 // 'ac' — normalised aircraft object from _normalise()
-// Returns: 'ground' | 'SBSP' | 'SBGR' | 'SBKP' | 'other'
+// Returns: 'hk-near' | 'hk-far' | 'other'
 const _classifyAirport = (ac) => {
-  if (ac.onGround) return 'ground';
-
-  // ── Route-based classification (primary) ─────────────────────
+  // Route is fetched asynchronously by `_fetchRouteAsync`. While the
+  // lookup is in flight (or the callsign is unknown to adsbdb.com),
+  // `_routeCache.get` returns undefined and we fall through to 'other'.
   const route = _routeCache.get(ac.callsign);
-  if (route) {
-    // Route is known — use O&D, not position.
-    for (const icao of ['VHHH', 'VMMC', 'ZGSZ']) {
-      if (route.orig === icao || route.dest === icao) return icao;
-    }
-    return 'other';   // route known but neither endpoint is an SP major airport
-  }
+  const hasHkEndpoint =
+    !!route &&
+    (_HK_AIRFIELDS.includes(route.orig) || _HK_AIRFIELDS.includes(route.dest));
 
-  // ── Proximity fallback (route fetch still in-flight) ─────────
-  let nearest     = null;
-  let nearestDist = Infinity;
+  if (!hasHkEndpoint) return 'other';
 
-  for (const [icao, pos] of Object.entries(_HK_AIRPORTS)) {
-    const dist = _haversineNM(ac.lat, ac.lon, pos.lat, pos.lon);
-    if (dist < _PROX_NM && dist < nearestDist) {
-      nearest     = icao;
-      nearestDist = dist;
-    }
-  }
+  // From here on the aircraft is HK-bound or HK-departing.
+  // Decide between 'hk-near' (low + close) and 'hk-far' (high or distant).
+  const distToVHHH = calculateDistance(ac.lat, ac.lon, _CENTRE_LAT, _CENTRE_LON);
+  const isLowAlt   = ac.altFt < _LOW_ALT_FT;
+  const isClose    = distToVHHH <= _NEAR_DIST_NM;
 
-  return nearest || 'other';
+  return (isLowAlt && isClose) ? 'hk-near' : 'hk-far';
 };
 
 
@@ -295,7 +354,15 @@ const _buildTooltipHtml = (ac, airport) => {
   const route   = _routeCache.get(ac.callsign);
   const orig    = _safeEscape(route?.orig) || '----';
   const dest    = _safeEscape(route?.dest) || '----';
-  const typeStr = ac.acType ? `<span class="ac-type">${_safeEscape(ac.acType)}</span> ` : '';
+  // Phase 7: append a colour-coded wake-turbulence letter (S/H/M/L) next to the
+  // ICAO type whenever we have one. The letter comes from the `wtc.json` lookup
+  // and lives inside the same `.ac-type` span so it visually belongs to the type
+  // block, not the route block. Empty string when type is unknown or WTC table
+  // hasn't loaded yet — graceful degradation, no missing-data placeholder shown.
+  const wtcHtml = _wtcLetterHtml(ac.acType);
+  const typeStr = ac.acType
+    ? `<span class="ac-type">${_safeEscape(ac.acType)}${wtcHtml}</span> `
+    : '';
 
   // Build each of the four label lines conditionally.
   // Phase 33: each line can be individually hidden via _labelState toggles.
@@ -321,7 +388,7 @@ const _buildTooltipHtml = (ac, airport) => {
 // larger for airborne.
 //
 // 'ac'      — normalised aircraft object (needs .track + .onGround)
-// 'airport' — classification key into _COLOUR ('SBSP'|'SBGR'|'SBKP'|'other'|'ground')
+// 'airport' — classification key into _COLOUR ('hk-near' | 'hk-far' | 'other')
 const _buildIcon = (ac, airport) => {
   const colour = _COLOUR[airport] || '#ffffff';
   const sz     = ac.onGround ? 18 : 26;
@@ -590,6 +657,13 @@ const _applyDeclutter = () => {
 const initLiveTraffic = (mapInstance) => {
   _map   = mapInstance;
   _layer = L.layerGroup();
+
+  // Phase 7: warm the WTC lookup table now so it's ready by the time the user
+  // enables the Live Traffic layer. The fetch is non-blocking — if it fails or
+  // is still in flight when tooltips first render, the WTC letter is simply
+  // omitted until the next `_rebuildAllTooltips` cycle.
+  _loadWtcMap();
+
   console.log('[LiveTraffic] Module initialised.');
 };
 

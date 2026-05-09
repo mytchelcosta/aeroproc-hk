@@ -157,15 +157,30 @@ const setVectorSnapProvider = (fn) => { _snapProvider = fn; };
 
 // Unified snapping logic supporting Shift override and external providers.
 // The provider is expected to return: { isAircraft: boolean, id?: string, lat, lon, ... }
+//
+// Phase 7: snap radii are now split.
+//   • Aircraft:        1.0 NM — kept generous because aircraft icons are large
+//                                and live targets move; we want easy capture.
+//   • Static features: 0.4 NM — was 1.0 NM and felt "magnetic", grabbing fixes
+//                                the user wasn't aiming at. The smaller static
+//                                hitbox keeps fix/navaid/airport snapping
+//                                deliberate while the aircraft hitbox stays
+//                                forgiving for live targets.
+// Snapping to airspace polygons was never supported and remains so — the
+// external provider only returns NAVAID / FIX / aerodrome candidates.
+const _STATIC_SNAP_NM = 0.4;
+const _AIRCRAFT_SNAP_NM = 1.0;
+
 const _getSnap = (latlng, originalEvent) => {
   if (originalEvent && originalEvent.shiftKey) return null;
 
-  // 1. Check Aircraft (highest priority, 1 NM)
-  const ac = getNearestAircraft(latlng, 1);
+  // 1. Check Aircraft (highest priority — generous radius for live targets).
+  const ac = getNearestAircraft(latlng, _AIRCRAFT_SNAP_NM);
   if (ac) return { isAircraft: true, id: ac.id, lat: ac.lat, lon: ac.lon };
 
-  // 2. Check external provider (NAVAIDs, FIXes, Airports)
-  if (_snapProvider) return _snapProvider(latlng, 1);
+  // 2. Check external provider (NAVAIDs, FIXes, Airports) — tighter radius so
+  //    nearby static features don't hijack a click that wasn't aimed at one.
+  if (_snapProvider) return _snapProvider(latlng, _STATIC_SNAP_NM);
 
   return null;
 };

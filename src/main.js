@@ -299,14 +299,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   // document.getElementById('btn-mv-tool') — no callback needed.
   initMeasuringVector();
 
-  // Phase 34: Wire the global snap provider so the Measuring Vector tool can snap
-  // to NAVAIDs, FIXes, and Airports with proper hierarchy (1 NM radius).
-  setVectorSnapProvider((latlng, maxNm = 1) => {
+  // Phase 34 / Phase 7: Wire the global snap provider so the Measuring Vector
+  // tool can snap to NAVAIDs, FIXes, and Airports.
+  //
+  // Phase 7 changes:
+  //   • Visibility-aware: each candidate is rejected if its layer is currently
+  //     toggled OFF on the map. Hidden NAVAIDs / fixes / airport tiers are no
+  //     longer "ghost-snappable" — they only attract the cursor when actually
+  //     drawn. We test visibility with `_map.hasLayer(...)`, which is the
+  //     authoritative source (the toolbar checkboxes call addTo / removeLayer
+  //     directly, so the map's own state is always the truth).
+  //   • Aerodromes are split into three tiers in the search index
+  //     (`tier: 'major' | 'regional' | 'heliport'`) and each tier maps to a
+  //     different LayerGroup. We pick the right LayerGroup for the entry's tier
+  //     before testing visibility.
+  //   • Airspaces remain excluded — the search index never holds airspace
+  //     entries (see SearchManager.buildSearchIndex), so the layer filter
+  //     below already rules them out by construction.
+  //   • The MeasuringVector caller now passes 0.4 NM for static targets
+  //     (was 1.0 NM) — the previous radius felt too "magnetic". Aircraft
+  //     keep their generous 1.0 NM hitbox via getNearestAircraft.
+  setVectorSnapProvider((latlng, maxNm = 0.4) => {
+    // Resolve the correct LayerGroup for one search-index entry. Returns null
+    // when no layer is known, in which case the entry is treated as hidden.
+    const _layerForEntry = (entry) => {
+      if (entry.layer === 'navaid')    return _navaidLayer;
+      if (entry.layer === 'fix')       return _waypointLayer;
+      if (entry.layer === 'aerodrome') {
+        if (entry.tier === 'major')    return _majorLayer;
+        if (entry.tier === 'regional') return _regionalLayer;
+        if (entry.tier === 'heliport') return _heliportLayer;
+      }
+      return null;
+    };
+
+    // An entry is snappable only if its parent LayerGroup is currently on the
+    // map. `_map.hasLayer` is cheap (a Set lookup) so calling it once per
+    // candidate inside the loop is fine even with thousands of fixes.
+    const _isVisible = (entry) => {
+      const layer = _layerForEntry(entry);
+      return !!layer && !!_map && _map.hasLayer(layer);
+    };
+
     let bestNavaid = null, bestNavaidDist = maxNm;
-    let bestFix = null, bestFixDist = maxNm;
-    let bestApt = null, bestAptDist = maxNm;
+    let bestFix    = null, bestFixDist    = maxNm;
+    let bestApt    = null, bestAptDist    = maxNm;
 
     getSearchIndex().forEach(entry => {
+      if (!_isVisible(entry)) return;   // hidden layer → not snappable
       const d = calculateDistance(latlng.lat, latlng.lng, entry.lat, entry.lon);
       if (d < maxNm) {
         if (entry.layer === 'navaid' && d < bestNavaidDist) { bestNavaid = entry; bestNavaidDist = d; }
@@ -316,9 +356,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     if (bestNavaid) return { isAircraft: false, lat: bestNavaid.lat, lon: bestNavaid.lon, type: 'NAVAID', id: bestNavaid.ident };
-    if (bestFix) return { isAircraft: false, lat: bestFix.lat, lon: bestFix.lon, type: 'FIX', id: bestFix.ident };
-    if (bestApt) return { isAircraft: false, lat: bestApt.lat, lon: bestApt.lon, type: 'APT', id: bestApt.ident };
-    
+    if (bestFix)    return { isAircraft: false, lat: bestFix.lat,    lon: bestFix.lon,    type: 'FIX',    id: bestFix.ident };
+    if (bestApt)    return { isAircraft: false, lat: bestApt.lat,    lon: bestApt.lon,    type: 'APT',    id: bestApt.ident };
+
     return null;
   });
 

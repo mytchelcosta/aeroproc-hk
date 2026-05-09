@@ -2566,6 +2566,152 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
 
 
 
+// ── Phase 7: Airspace hover-tooltip helper ───────────────────────────────────
+// Builds and binds a delayed-show tooltip that fires when the cursor rests
+// over an airspace **border** (not the fill) for `_AIRSPACE_HOVER_DELAY_MS`
+// milliseconds. Each airspace owns its own timer + tooltip object so
+// overlapping airspaces don't fight each other.
+//
+// Why border-only? Hong Kong airspace polygons heavily overlap (TMA + FIR +
+// sectors all cover the same ground). Hovering over the fills triggered every
+// underlying polygon at once — chaotic. Restricting interaction to the stroke
+// gives the user a clear, deliberate target for each airspace.
+//
+// How border-only is implemented:
+//   1. The visible polygon stays `interactive: false` (no events from fill).
+//   2. We draw a sibling "hit polyline" (`L.polyline`) along the same vertex
+//      ring, with a wide stroke (8 px) and a near-invisible paint
+//      (`color: 'rgba(0,0,0,0.001)'`) so the SVG has visible-painted hit area
+//      without showing on screen. CSS class `airspace-border-hit` also forces
+//      `pointer-events: stroke` as a belt-and-suspenders fallback in case
+//      Leaflet's default hit-test doesn't latch on.
+//   3. The polyline is added to / removed from the map in lock-step with the
+//      polygon via the polygon's own 'add' / 'remove' events, so the toolbar
+//      visibility checkboxes still drive everything through the polygon
+//      reference (no public API change for callers).
+//
+// Tooltip behaviour:
+//   • `mouseover` on the hit polyline starts a 2-second timer.
+//   • `mousemove` updates the latest cursor latlng so the tooltip can render
+//     at the cursor's *current* position when the timer fires (not at the
+//     position captured when hover began).
+//   • `mouseout` cancels the pending timer and removes any open tooltip.
+//   • While visible, mousemove also keeps the tooltip glued to the cursor.
+//
+// 'mapInstance' — the Leaflet map (needed to add/remove the tooltip overlay)
+// 'polygon'     — the visible L.polygon (stays non-interactive)
+// 'name'        — display name, e.g. "HK TMA"
+// 'type'        — classification, e.g. "TMA"
+// 'coordinates' — array of [lat, lon] vertices (used to draw the hit polyline)
+const _AIRSPACE_HOVER_DELAY_MS = 2000;
+
+// Streamlined tooltip body: Name, Type, Class, Vertical Boundaries.
+//
+// Phase 7 (data integration): `airspaces_aip.json` now carries real `class`
+// and `limits` values per airspace (e.g. `"C"`, `"A/C/G"`, `"SFC - 4500 FT"`,
+// `"SFC - UNL"`). We render those directly. The `—` em-dash fallback remains
+// in place for any record that's missing a field, so the tooltip is robust if
+// a future airspace is added without complete metadata.
+const _buildAirspaceTooltipHtml = (name, type, airspaceClass, limits) => {
+  const PLACEHOLDER = '—';
+  const classStr  = (airspaceClass && String(airspaceClass).trim()) || PLACEHOLDER;
+  const limitsStr = (limits && String(limits).trim())              || PLACEHOLDER;
+  return (
+    `<span class="ah-name">${name}</span>` +
+    `<span class="ah-row"><span class="ah-key">Type:</span>${type}</span>` +
+    `<span class="ah-row"><span class="ah-key">Class:</span>${classStr}</span>` +
+    `<span class="ah-row"><span class="ah-key">Vertical Boundaries:</span>${limitsStr}</span>`
+  );
+};
+
+const _attachAirspaceHoverTooltip = (mapInstance, polygon, name, type, coordinates, airspaceClass, limits) => {
+  // Pre-compute the tooltip body once — name/type/class/limits are immutable
+  // at runtime. The two new args (`airspaceClass`, `limits`) come straight
+  // from the airspaces_aip.json record; either may be undefined for older
+  // entries, and the builder renders `—` in that case.
+  const html = _buildAirspaceTooltipHtml(name, type, airspaceClass, limits);
+
+  // Build the invisible "hit polyline" that traces the polygon border.
+  // We close the ring (push the first point at the end) so the user can hover
+  // along the entire boundary, not just the open edge between first and last
+  // vertices. Coordinates come in as [lat, lon] pairs, which is the same
+  // shape L.polyline expects.
+  const ring = coordinates.slice();
+  if (ring.length > 0) {
+    const first = ring[0];
+    const last  = ring[ring.length - 1];
+    if (first[0] !== last[0] || first[1] !== last[1]) ring.push([first[0], first[1]]);
+  }
+
+  const borderHit = L.polyline(ring, {
+    color:        'rgba(0,0,0,0.001)',  // near-zero paint so SVG hit-tests but nothing shows
+    weight:       8,                     // generous hit area along the stroke
+    opacity:      1,                     // we already use a transparent colour above
+    interactive:  true,
+    bubblingMouseEvents: true,           // clicks still bubble to the map (MV tool flow)
+    className:    'airspace-border-hit'
+  });
+
+  // Per-airspace state. `_timer` is the dwell handle; `_tooltip` is the
+  // currently-open L.tooltip overlay (null when hidden); `_lastLatLng` is the
+  // most recent cursor position seen on the border (used both for first show
+  // and for follow-the-cursor while visible).
+  let _timer       = null;
+  let _tooltip     = null;
+  let _lastLatLng  = null;
+
+  const _hideTooltip = () => {
+    if (_tooltip) {
+      mapInstance.removeLayer(_tooltip);
+      _tooltip = null;
+    }
+  };
+
+  borderHit.on('mouseover', (e) => {
+    _lastLatLng = e.latlng;
+    if (_timer) clearTimeout(_timer);
+    _timer = setTimeout(() => {
+      _timer = null;
+      if (_tooltip) return;   // already open from a previous hover cycle
+      _tooltip = L.tooltip({
+        sticky:    false,
+        direction: 'top',
+        opacity:   1,
+        className: 'airspace-hover-tooltip',
+        offset:    [0, -8]
+      })
+        .setLatLng(_lastLatLng)
+        .setContent(html)
+        .addTo(mapInstance);
+    }, _AIRSPACE_HOVER_DELAY_MS);
+  });
+
+  borderHit.on('mousemove', (e) => {
+    _lastLatLng = e.latlng;
+    // While the tooltip is visible, keep it glued to the cursor so the spec's
+    // "renders exactly next to the current mouse position" holds even after
+    // the user moves along the border.
+    if (_tooltip) _tooltip.setLatLng(_lastLatLng);
+  });
+
+  borderHit.on('mouseout', () => {
+    if (_timer) { clearTimeout(_timer); _timer = null; }
+    _hideTooltip();
+  });
+
+  // Mirror polygon visibility on the hit polyline. When the user toggles a
+  // layer off in the toolbar, the polygon fires 'remove' — cleanup matches.
+  polygon.on('add', () => {
+    if (!mapInstance.hasLayer(borderHit)) borderHit.addTo(mapInstance);
+  });
+  polygon.on('remove', () => {
+    if (_timer) { clearTimeout(_timer); _timer = null; }
+    _hideTooltip();
+    if (mapInstance.hasLayer(borderHit)) mapInstance.removeLayer(borderHit);
+  });
+};
+
+
 // Renders all airspace polygons from the pre-parsed airspaces_aip.json data.
 // Returns an object with references for each polygon so main.js can wire the
 // Airspaces sub-panel checkboxes to addTo/removeLayer calls:
@@ -2584,7 +2730,11 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
 // Per Phase 10.5: no cursor-following tooltips — names shown via click popup only.
 //
 // 'mapInstance' — the Leaflet map returned by initMap()
-// 'airspaces'   — array of { name, type, coordinates } from loadAirspaces()
+// 'airspaces'   — array of { name, type, coordinates, class, limits }
+//                 from loadAirspaces(). `class` (e.g. "C", "A/C/G") and
+//                 `limits` (e.g. "SFC - 4500 FT") come from the AIP and feed
+//                 the hover tooltip — both are optional and will fall back
+//                 to a `—` placeholder if a record omits them.
 const renderAirspaces = (mapInstance, airspaces) => {
   if (!mapInstance) {
     console.error('[MapLayers] renderAirspaces: No map instance provided.');
@@ -2621,7 +2771,11 @@ const renderAirspaces = (mapInstance, airspaces) => {
 
 
   airspaces.forEach((airspace) => {
-    const { name, type, coordinates } = airspace;
+    // Phase 7 data integration: `class` and `limits` are pulled from the
+    // updated `airspaces_aip.json` schema. Both are optional — older or
+    // future records without them will simply render the `—` placeholder
+    // inside the hover tooltip body.
+    const { name, type, coordinates, class: airspaceClass, limits } = airspace;
 
     if (!Array.isArray(coordinates) || coordinates.length < 3) {
       console.warn(`[MapLayers] renderAirspaces: "${name}" has fewer than 3 coordinates. Skipping.`);
@@ -2688,6 +2842,11 @@ const renderAirspaces = (mapInstance, airspaces) => {
       dashArray   = '2,2';
     }
 
+    // Phase 7 (border-only follow-up): the visible polygon is back to
+    // `interactive: false` — fills no longer fire events. Hover detection is
+    // delegated to a sibling "hit polyline" along the border, created inside
+    // `_attachAirspaceHoverTooltip`. This eliminates the chaos of multiple
+    // overlapping polygons all firing mouseover from the same fill area.
     const polygon = L.polygon(coordinates, {
       color:       strokeColor,
       fillColor:   fillColor,
@@ -2696,6 +2855,14 @@ const renderAirspaces = (mapInstance, airspaces) => {
       dashArray:   dashArray,
       interactive: false
     });
+
+    // Phase 7: hover-tooltip wiring.
+    // Helper sets up a non-interactive sibling polyline that catches mouseover
+    // along the border only, with a 2 s dwell delay before showing the tooltip.
+    // Tooltip body shows Name / Type / Class / Vertical Boundaries — Class and
+    // Vertical Boundaries now come from the AIP-enriched `class` and `limits`
+    // fields on the JSON record (see destructure above).
+    _attachAirspaceHoverTooltip(mapInstance, polygon, name, type, coordinates, airspaceClass, limits);
 
     // Phase 31/40: Default visibility profile.
     // ON:  TMA sectors, CTR, FIZ, ATZ, FIR, SEC, UCARA.
