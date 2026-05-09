@@ -89,6 +89,30 @@ let _originSnapTarget = null;
 // by setOriginAtCursor() / setFinalAtCursor() when the user presses O or F.
 let _lastCursorLatLng = null;
 
+// Tracks whether the dedicated 'mvPane' has been created on the map yet.
+// The pane sits at z-index 2000 (above markerPane=600 and tooltipPane=650),
+// guaranteeing MV labels render above aircraft symbols AND aircraft callsign
+// tooltips. Using a custom pane (rather than reusing tooltipPane) avoids the
+// label-displacement regression that occurred when MV markers were placed in
+// tooltipPane — that pane uses a different zoom-animation pathway than
+// markerPane, which broke marker positioning during/after zoom.
+let _mvPaneInitialized = false;
+
+
+// Lazily creates the dedicated 'mvPane' on the given map the first time a
+// measurement is finalized. Subsequent calls are no-ops.
+//
+// 'mapInstance' — the Leaflet map
+const _ensureMvPane = (mapInstance) => {
+  if (_mvPaneInitialized || !mapInstance) return;
+  if (!mapInstance.getPane('mvPane')) {
+    const pane = mapInstance.createPane('mvPane');
+    pane.style.zIndex       = '2000';   // above tooltipPane (650) and markerPane (600)
+    pane.style.pointerEvents = 'auto';  // keep right-click + drag interactivity intact
+  }
+  _mvPaneInitialized = true;
+};
+
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -406,11 +430,16 @@ const _handleMouseMove = (latlng, originalEvent, mapInstance) => {
 // Returns { line1, line2, line3 } where line3 (ETA) is null when no aircraft speed
 // is available (map-point-to-map-point vectors never have ETA).
 //
-// ETA speed source precedence (Phase 33 spec):
+// ETA speed source precedence:
 //   Case B — both endpoints on aircraft: use ORIGIN aircraft GS.
 //   Case C — origin on aircraft, dest is a point: use ORIGIN aircraft GS.
 //   Case A — origin is a point, dest on aircraft: use DEST aircraft GS.
 //   No aircraft → no ETA.
+//
+// Label format is intentionally terse — plain values, no unit/prefix text:
+//   line1: "17.0"    (NM distance; ▶ prefix when tracking an aircraft)
+//   line2: "060°"    (magnetic bearing)
+//   line3: "03:48"   (ETA minutes:seconds, only when tracking an aircraft with known GS)
 //
 // 'originLatLng'    — Leaflet LatLng of the start point
 // 'destLatLng'      — Leaflet LatLng of the end point
@@ -420,10 +449,8 @@ const _buildLabelContent = (originLatLng, destLatLng, originTargetHex, destTarge
   const distNm  = calculateDistance(originLatLng.lat, originLatLng.lng, destLatLng.lat, destLatLng.lng);
   const trueBrg = calculateTrueBearing(originLatLng.lat, originLatLng.lng, destLatLng.lat, destLatLng.lng);
   const magBrg  = trueToMagnetic(trueBrg);
-  const isTracking = originTargetHex !== null || destTargetHex !== null;
-
-  const line1 = `${isTracking ? '▶ ' : ''}${distNm.toFixed(1)} NM`;
-  const line2 = `BRG ${String(Math.round(magBrg)).padStart(3, '0')}°`;
+  const line1 = `${distNm.toFixed(1)}`;
+  const line2 = `${String(Math.round(magBrg)).padStart(3, '0')}°`;
 
   // Determine which aircraft (if any) provides the speed for ETA.
   const originAc = originTargetHex ? getAircraftData(originTargetHex) : null;
@@ -437,31 +464,81 @@ const _buildLabelContent = (originLatLng, destLatLng, originTargetHex, destTarge
     const etaMin = (distNm / speedKts) * 60;
     const mins   = Math.floor(etaMin);
     const secs   = Math.round((etaMin - mins) * 60);
-    line3 = `ETA ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    line3 = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   }
 
   return { line1, line2, line3 };
 };
 
 
-// Builds a Leaflet DivIcon for a finalized measurement label.
-// The icon stacks content vertically: distance, bearing, optional ETA.
-// iconAnchor [-8, 40] floats the label above-right of the endpoint, keeping it
-// clear of the aircraft's own callsign tooltip which appears to the right.
+// Returns true when two Leaflet LatLng objects are within ~11m of each other.
+// Used to detect vectors that share the same destination so their labels can be fanned out.
+const _isSameLatLng = (a, b) =>
+  Math.abs(a.lat - b.lat) < 0.0001 && Math.abs(a.lng - b.lng) < 0.0001;
+
+
+// Computes the Leaflet iconAnchor [x, y] that places the label box at a fixed
+// pixel offset outward from the endpoint, in the direction of the vector.
+// Returning to native iconAnchor positioning (instead of the previously-tried
+// inline CSS `transform: translate(calc(...))` on .mv-lbl-inner) avoids a
+// class of bugs where the inner-div transform desynced from Leaflet's own
+// marker positioning during zoom animation, sending labels into the corners.
 //
-// 'content' — object from _buildLabelContent() with { line1, line2, line3 }
-const _buildLabelIcon = (content) => {
+// Approximate label box footprint is used here — it's good enough because
+// the anchor only needs to be roughly half-a-box-width away from the endpoint
+// in the bearing direction; small text-width variations don't visibly drift.
+//
+// 'originLatLng'    — vector start point
+// 'destLatLng'      — vector end point (where the label marker is placed)
+// 'offsetIndex'     — 0-based stacking index for co-destination labels
+// 'isTrackingDest'  — when true, widens the gap to clear the 18px aircraft glyph
+const _computeLabelAnchor = (originLatLng, destLatLng, offsetIndex, isTrackingDest) => {
+  const trueBrg = calculateTrueBearing(originLatLng.lat, originLatLng.lng, destLatLng.lat, destLatLng.lng);
+  const brgRad  = (trueBrg * Math.PI) / 180;
+  // Screen-space unit vector: dx = east (+1), dy = south (+1 because screen Y grows down).
+  const dx = Math.sin(brgRad);
+  const dy = -Math.cos(brgRad);
+
+  // Approximate label box dimensions and gap from the endpoint marker.
+  // 14px gap clears the ~18px aircraft symbol without visual detachment;
+  // 6px is the tight hug used for plain map-point destinations.
+  const W = 40, H = 36;
+  const M = isTrackingDest ? 14 : 6;
+
+  // iconAnchor formula: pixel (ax, ay) of the icon div sits at the lat/lon point.
+  // Setting ax = W/2 - dx*(W/2+M) centres the label box just beyond the endpoint
+  // in the outward bearing direction.
+  const ax = Math.round(W / 2 - dx * (W / 2 + M));
+  // Stack subsequent co-destination labels vertically (Y-axis only), away from
+  // the origin direction, so they form a tidy column instead of crossing the line.
+  const ay = Math.round(H / 2 - dy * (H / 2 + M)) - (offsetIndex * 38);
+  return [ax, ay];
+};
+
+
+// Builds a Leaflet DivIcon for a finalized measurement label.
+// The icon stacks three value lines vertically (distance, bearing, optional ETA).
+// Positioning is done via Leaflet's native `iconAnchor` so the label always
+// stays glued to the marker's projected screen position across zoom animations.
+//
+// 'content'         — object from _buildLabelContent() with { line1, line2, line3 }
+// 'originLatLng'    — vector start point (needed for bearing-based anchor calc)
+// 'destLatLng'      — vector end point (label is placed here)
+// 'offsetIndex'     — 0-based stacking index for co-destination labels (default 0)
+// 'isTrackingDest'  — true when the destination is locked to a live aircraft
+const _buildLabelIcon = (content, originLatLng, destLatLng, offsetIndex = 0, isTrackingDest = false) => {
   const { line1, line2, line3 } = content;
-  const etaHtml = line3 ? `<span class="mv-lbl-eta">${line3}</span>` : '';
+  const etaHtml = line3 ? `<span class="mv-lbl-val">${line3}</span>` : '';
+  const anchor  = _computeLabelAnchor(originLatLng, destLatLng, offsetIndex, isTrackingDest);
   return L.divIcon({
     className:  'mv-measurement-label',
     html: `<div class="mv-lbl-inner">
-      <span class="mv-lbl-dist">${line1}</span>
-      <span class="mv-lbl-brg">${line2}</span>
+      <span class="mv-lbl-val">${line1}</span>
+      <span class="mv-lbl-val">${line2}</span>
       ${etaHtml}
     </div>`,
     iconSize:   [0, 0],
-    iconAnchor: [80, -5]   // floats the label below and to the left of the endpoint
+    iconAnchor: anchor
   });
 };
 
@@ -477,7 +554,15 @@ const _redrawVector = (entry) => {
   // Rebuild the multi-line label with fresh telemetry and reposition it at the destination.
   const newContent = _buildLabelContent(entry.originLatLng, entry.destLatLng, entry.originTargetHex, entry.destTargetHex);
   entry.labelMarker.setLatLng(entry.destLatLng);
-  entry.labelMarker.setIcon(_buildLabelIcon(newContent));
+  entry.labelMarker.setIcon(_buildLabelIcon(newContent, entry.originLatLng, entry.destLatLng, entry.offsetIndex || 0, entry.destTargetHex !== null));
+
+  // setIcon() destroys and recreates the DOM element, stripping any CSS classes that
+  // were added after the marker was first rendered. Re-apply mv-selected if this
+  // vector is still the active selection so the label stays red after a redraw.
+  if (entry.id === _selectedVectorId) {
+    const el = entry.labelMarker.getElement();
+    if (el) el.classList.add('mv-selected');
+  }
 };
 
 
@@ -501,7 +586,15 @@ const _finalizeVector = (mapInstance, originLatLng, destLatLng, originSnapTarget
   const originTargetHex = originSnapTarget ? originSnapTarget.id : null;
   const destTargetHex   = destSnapTarget   ? destSnapTarget.id   : null;
 
-  // Build the structured multi-line label. The '▶' prefix in line1 signals follow mode.
+  // Count how many existing vectors share the same destination so this label
+  // can be fanned out along the vector's outward path to avoid overlap.
+  const offsetIndex = _vectors.filter((v) => _isSameLatLng(v.destLatLng, destLatLng)).length;
+
+  // Make sure the dedicated mvPane (z-index 2000) exists on the map so the
+  // label marker can be promoted into it.
+  _ensureMvPane(mapInstance);
+
+  // Build the structured multi-line label.
   const labelContent = _buildLabelContent(originLatLng, destLatLng, originTargetHex, destTargetHex);
 
   // Permanent solid polyline — slightly thinner than before so it is less intrusive.
@@ -514,10 +607,13 @@ const _finalizeVector = (mapInstance, originLatLng, destLatLng, originSnapTarget
 
   // Label placed at the destination point so it anchors visually to the endpoint.
   const labelMarker = L.marker(destLatLng, {
-    icon: _buildLabelIcon(labelContent),
-    interactive:  true,    // interactive so right-click shows the context menu
-    draggable:    true,    // allows the user to re-snap the endpoint to a new location
-    zIndexOffset: -50
+    icon: _buildLabelIcon(labelContent, originLatLng, destLatLng, offsetIndex, destTargetHex !== null),
+    interactive: true,    // interactive so right-click shows the context menu
+    draggable:   true,    // allows the user to re-snap the endpoint to a new location
+    pane:        'mvPane' // dedicated pane at z-index 2000 — sits above aircraft
+                          // glyphs (markerPane=600) AND aircraft callsign tooltips
+                          // (tooltipPane=650) without inheriting tooltipPane's
+                          // zoom-animation quirks that previously broke positioning.
   }).addTo(mapInstance);
 
   // Store originLatLng and destLatLng in the entry so _redrawVector can update them.
@@ -528,7 +624,8 @@ const _finalizeVector = (mapInstance, originLatLng, destLatLng, originSnapTarget
     originLatLng,             // L.LatLng — start point (updated by follow mode if originTargetHex is set)
     destLatLng,               // L.LatLng — end point   (updated by follow mode if destTargetHex is set)
     originTargetHex,          // string hex id of the origin-tracked aircraft, or null
-    destTargetHex             // string hex id of the dest-tracked aircraft, or null
+    destTargetHex,            // string hex id of the dest-tracked aircraft, or null
+    offsetIndex               // stacking index for labels at the same destination
   };
   _vectors.push(vectorEntry);
 
@@ -628,6 +725,7 @@ const _cleanupGhostLine = (mapInstance) => {
 
 // Selects a vector by id — highlights it red to signal "active/selected".
 // Deselects any previously selected vector first so only one can be active at a time.
+// Both the polyline and the label text turn red together for clear visual pairing.
 //
 // 'id' — integer id of the vector to select
 const _selectVector = (id) => {
@@ -639,6 +737,11 @@ const _selectVector = (id) => {
 
   // Red line + slightly thicker weight visually distinguishes the selected vector.
   entry.line.setStyle({ color: '#ff3333', weight: 2 });
+
+  // Toggle the mv-selected class on the label marker's DOM element so the CSS
+  // can also turn the label text red, keeping line and label visually in sync.
+  const el = entry.labelMarker.getElement();
+  if (el) el.classList.add('mv-selected');
 };
 
 
@@ -647,7 +750,11 @@ const _selectVector = (id) => {
 const _deselectAll = () => {
   if (_selectedVectorId === null) return;
   const entry = _vectors.find((v) => v.id === _selectedVectorId);
-  if (entry) entry.line.setStyle({ color: '#ff9800', weight: 1.5 });
+  if (entry) {
+    entry.line.setStyle({ color: '#ff9800', weight: 1.5 });
+    const el = entry.labelMarker.getElement();
+    if (el) el.classList.remove('mv-selected');
+  }
   _selectedVectorId = null;
 };
 
@@ -823,12 +930,39 @@ const setFinalAtCursor = (mapInstance) => {
 };
 
 
+// Public alias for the internal _deselectAll helper. Exposed so main.js can
+// clear the red selection when the user clicks an empty area of the map while
+// the measuring vector tool is OFF — without this, the only way to deselect
+// is to click another vector or to enable the tool and click empty space.
+const deselectAllVectors = () => _deselectAll();
+
+
+// Cycles the selection through all finalized vectors in creation order.
+// If nothing is selected, selects the first vector.
+// If the last vector is selected, wraps back to the first.
+// Designed to be triggered by the 'C' keyboard shortcut (wired in main.js).
+const cycleSelectedVector = () => {
+  if (_vectors.length === 0) return;
+
+  if (_selectedVectorId === null) {
+    _selectVector(_vectors[0].id);
+    return;
+  }
+
+  const idx     = _vectors.findIndex((v) => v.id === _selectedVectorId);
+  const nextIdx = (idx + 1) % _vectors.length;
+  _selectVector(_vectors[nextIdx].id);
+};
+
+
 export {
   initMeasuringVector,
   enableMeasuringVector,
   disableMeasuringVector,
   clearAllVectors,
   clearSelectedVector,
+  cycleSelectedVector,
+  deselectAllVectors,
   handleMVClick,
   isMeasuringVectorActive,
   updateCursorLatLng,

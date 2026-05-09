@@ -2427,6 +2427,27 @@ html, body {
     transform: translateY(-50%) translateX(0);
 }
 
+/* The scroll wrapper uses overflow-y: auto, which clips children that extend
+   outside its bounding box. The first and last buttons' tooltips are vertically
+   centred with translateY(-50%), causing the top/bottom half to be clipped.
+   Override to anchor the first tooltip to the top edge and the last to the bottom
+   edge so the entire box stays within the scroll wrapper. */
+.map-tool-btn:first-of-type .map-tool-tooltip {
+    top:       0;
+    transform: translateX(4px);
+}
+.map-tool-btn:first-of-type:hover .map-tool-tooltip {
+    transform: translateX(0);
+}
+.map-tool-btn:last-of-type .map-tool-tooltip {
+    top:       auto;
+    bottom:    0;
+    transform: translateX(4px);
+}
+.map-tool-btn:last-of-type:hover .map-tool-tooltip {
+    transform: translateX(0);
+}
+
 /* Tooltip title — bold, slightly brighter. */
 .tooltip-title {
     font-family:    'JetBrains Mono', monospace;
@@ -2564,30 +2585,32 @@ kbd {
     cursor:         pointer;
 }
 
-/* Inner container: stacks the three label lines vertically with a left accent bar. */
+/* Inner container: stacks the three label lines vertically.
+   Background is intentionally near-transparent so map data underneath stays
+   visible; legibility comes from the per-character text-shadow on each span. */
 .mv-lbl-inner {
     display:         flex;
     flex-direction:  column;
     gap:             1px;
-    padding:         3px 8px 3px 6px;
-    background:      rgba(30, 15, 0, 0.65);
+    padding:         3px 8px;
+    background:      rgba(30, 15, 0, 0.20);
     border-radius:   4px;
-    border-left:     2px solid rgba(255, 152, 0, 0.65);
 }
 
 .mv-measurement-label:hover .mv-lbl-inner {
-    background:  rgba(50, 30, 0, 0.80);
+    background:  rgba(50, 30, 0, 0.35);
     box-shadow:  0 0 8px rgba(255, 152, 0, 0.25);
 }
 
-/* Shared monospace base for all three lines. */
+/* Shared monospace base for all three lines. The text-shadow is kept tight
+   (1px drop instead of an 8px halo) — the previous halo bled into a dark
+   vertical stripe along the left-aligned text, creating a fake "brown bar"
+   illusion that read as a persistent border even when the box was transparent. */
 .mv-lbl-inner span {
     font-family:    'JetBrains Mono', monospace;
     font-size:      calc(9px * var(--map-label-scale, 1));
     letter-spacing: 0.03em;
-    text-shadow:
-        0 0 4px rgba(0, 0, 0, 1),
-        0 0 8px rgba(0, 0, 0, 0.8);
+    text-shadow:    0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 /* Line 1: Distance — brightest and slightly larger. */
@@ -2597,16 +2620,34 @@ kbd {
     color:       rgba(255, 152, 0, 0.95);
 }            
                      
-/* Line 2: Bearing — dimmer amber. */      
+/* Line 2: Bearing — dimmer amber. */
 .mv-lbl-brg {
     font-weight: 600;
-    color:       rgba(255, 200, 100, 0.82);                                
-}            
-                     
+    color:       rgba(255, 200, 100, 0.82);
+}
+
 /* Line 3: ETA — green to visually separate timing from geometry values. */
 .mv-lbl-eta {
     font-weight: 600;
     color:       rgba(74, 222, 128, 0.90);
+}
+
+/* Unified value span used for all three label lines (Phase 5 simplified format).
+   Replaces the distinct mv-lbl-dist / mv-lbl-brg / mv-lbl-eta colour scheme
+   with a single consistent amber tone — terse plain values only. */
+.mv-lbl-val {
+    font-weight: 600;
+    color:       rgba(255, 175, 80, 0.90);
+}
+
+/* When a vector is selected (red line), its label box also flips to red so
+   the two elements read as a single cohesive selection rather than mismatched states.
+   Triggered by the mv-selected class toggled on the label marker DOM element. */
+.mv-measurement-label.mv-selected .mv-lbl-inner {
+    background: rgba(40, 0, 0, 0.20);
+}
+.mv-measurement-label.mv-selected .mv-lbl-val {
+    color: rgba(255, 80, 80, 0.95);
 }
 
 /* PHASE 33 — AIRCRAFT LABEL 4TH LINE (TRACK) */

@@ -68,6 +68,8 @@ import { initMeasuringVector,
          disableMeasuringVector,
          clearAllVectors,
          clearSelectedVector,
+         cycleSelectedVector,
+         deselectAllVectors,
          updateCursorLatLng,
          setOriginAtCursor,
          setFinalAtCursor,
@@ -526,12 +528,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Global deselection: clicking an empty area of the map clears any red
+  // measuring-vector selection — but ONLY when the MV tool is inactive.
+  // When the tool is active, blank-area clicks place origin/destination nodes
+  // (handled inside MeasuringVector.js) and must not also drop the selection.
+  _map.on('click', () => {
+    if (!isMeasuringVectorActive()) deselectAllVectors();
+  });
+
   // Global keyboard shortcuts.
   //   ESC = Stop any active drawing/notation tool
   //   O = place/reset MV origin at cursor
   //   F = finalize MV vector at cursor
   //   X = clear ALL measuring vectors
   //   Z = clear only the currently selected (red) measuring vector
+  //   C = cycle selection through all finalized measuring vectors
   // Skip when the user is typing in an input, textarea, or select field.
   document.addEventListener('keydown', (e) => {
     const tag = e.target.tagName.toUpperCase();
@@ -545,6 +556,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearAllVectors(_map);
     } else if (e.key === 'z' || e.key === 'Z') {
       clearSelectedVector(_map);
+    } else if (e.key === 'c' || e.key === 'C') {
+      cycleSelectedVector();
     }
   });
 

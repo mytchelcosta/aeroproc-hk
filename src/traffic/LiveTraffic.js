@@ -26,6 +26,7 @@
 //   isLiveTrafficEnabled()        — returns boolean state
 // ============================================================
 import { i18n } from '../utils/i18n.js';
+import { trueToMagnetic } from '../utils/Helpers.js';
 
 
 // ── Reference centre point (VHHH — Hong Kong Intl) ───────────
@@ -285,7 +286,12 @@ const _buildTooltipHtml = (ac, airport) => {
   const altStr  = _formatAlt(ac.altFt, ac.onGround);
   const arrow   = _vsArrow(ac.vsFpm);
   const gsStr   = `${Math.round(ac.gsKts)} ${i18n.t('ui.panels.traffic.units.kt')}`;
-  const trkStr  = `${String(Math.round(ac.track)).padStart(3, '0')}°`;
+  // ADS-B `ac.track` is True North; convert to Magnetic for parity with the
+  // Measuring Vector tool, which displays bearings in the same magnetic frame.
+  // The aircraft icon's rotation continues to use `ac.track` (True) — that's
+  // correct because the rotation is applied directly in screen space relative
+  // to the map's geographic-north orientation, not a controller's compass rose.
+  const trkStr  = `${String(Math.round(trueToMagnetic(ac.track))).padStart(3, '0')}°`;
   const route   = _routeCache.get(ac.callsign);
   const orig    = _safeEscape(route?.orig) || '----';
   const dest    = _safeEscape(route?.dest) || '----';

@@ -2427,68 +2427,45 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
     }
 
     if (result.layer === 'navaid') {
-      const isVor   = VOR_TYPES.has(result.type);
-      const svgSize = isVor ? 24 : 20;
-      // The SVG is centred on the lat/lon anchor via translate(-50%, -Npx).
-      // Using a px offset (half the SVG height) instead of -50% on the outer wrapper
-      // so the name label below the icon does not shift the icon off-anchor.
-      const anchorOffsetPx = svgSize / 2;
+      // Use the same .navaid-icon-inner / .navaid-label-inline HTML structure as
+      // renderNavaids() so the highlight's geometry perfectly eclipses the base
+      // marker when both are visible, rather than rendering as two distinct objects.
+      // The glow is added via a drop-shadow filter on the SVG itself.
+      // Only the ident is shown in the permanent label (same as the base marker);
+      // the full name appears in the tooltip on hover.
+      const isVor      = VOR_TYPES.has(result.type);
+      const labelClass = isVor ? 'navaid-label-inline--vor' : 'navaid-label-inline--ndb';
 
-      // Name + ident label shown directly on the map below the icon so the navaid
-      // is identifiable even without hovering to open the tooltip.
-      const nameLabel = result.name
-        ? `<div style="` +
-          `font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;` +
-          `color:${color};white-space:nowrap;text-align:center;margin-top:3px;` +
-          `text-shadow:` +
-          `-1px -1px 0 rgba(0,0,0,0.95),` +
-          ` 1px -1px 0 rgba(0,0,0,0.95),` +
-          `-1px  1px 0 rgba(0,0,0,0.95),` +
-          ` 1px  1px 0 rgba(0,0,0,0.95),` +
-          ` 0 0 6px rgba(0,0,0,0.8);">` +
-          `${_safeEscape(result.ident)}&nbsp;` +
-          `<span style="opacity:0.7;font-weight:400;">${_safeEscape(result.name)}</span>` +
-          `</div>`
-        : `<div style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;` +
-          `color:${color};white-space:nowrap;text-align:center;margin-top:3px;` +
-          `text-shadow:-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9);">` +
-          `${_safeEscape(result.ident)}</div>`;
-
+      let svgHtml;
       if (isVor) {
-        // VOR/DME: hexagon outline with centre dot and glowing stroke, same geometry
-        // as renderNavaids() but with the highlight colour injected instead of #46a0ff.
-        const svg =
-          `<svg viewBox="-14 -14 28 28" width="${svgSize}" height="${svgSize}" xmlns="http://www.w3.org/2000/svg" ` +
-          `style="overflow:visible;pointer-events:none;display:block;">` +
-          `<polygon points="8,0 4,6.93 -4,6.93 -8,0 -4,-6.93 4,-6.93" ` +
-          `fill="${color}22" stroke="${color}" stroke-width="2" ` +
-          `style="filter:drop-shadow(0 0 4px ${color}) drop-shadow(0 0 8px ${color}88);"/>` +
-          `<circle r="2.5" fill="${color}"/>` +
-          `</svg>`;
-        return (
-          `<div style="` +
-          `display:flex;flex-direction:column;align-items:center;pointer-events:none;` +
-          `transform:translate(-50%,-${anchorOffsetPx}px);">` +
-          svg + nameLabel +
-          `</div>`
-        );
-      } else {
-        // NDB: filled ring with glowing stroke, same geometry as renderNavaids().
-        const svg =
-          `<svg viewBox="-12 -12 24 24" width="${svgSize}" height="${svgSize}" xmlns="http://www.w3.org/2000/svg" ` +
-          `style="overflow:visible;pointer-events:none;display:block;">` +
-          `<circle r="7" fill="${color}22" stroke="${color}" stroke-width="2" ` +
-          `style="filter:drop-shadow(0 0 4px ${color}) drop-shadow(0 0 8px ${color}88);"/>` +
+        // Hexagon — same viewBox and polygon geometry as renderNavaids() VOR icon.
+        svgHtml =
+          `<svg viewBox="-12 -12 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg"` +
+          ` style="display:block;overflow:visible;` +
+          `filter:drop-shadow(0 0 5px ${color}) drop-shadow(0 0 12px ${color}88);">` +
+          `<polygon points="8,0 4,6.93 -4,6.93 -8,0 -4,-6.93 4,-6.93"` +
+          ` fill="${color}22" stroke="${color}" stroke-width="1.5"/>` +
           `<circle r="2.2" fill="${color}"/>` +
           `</svg>`;
-        return (
-          `<div style="` +
-          `display:flex;flex-direction:column;align-items:center;pointer-events:none;` +
-          `transform:translate(-50%,-${anchorOffsetPx}px);">` +
-          svg + nameLabel +
-          `</div>`
-        );
+      } else {
+        // Filled ring — same viewBox and radii as renderNavaids() NDB icon.
+        svgHtml =
+          `<svg viewBox="-10 -10 20 20" width="12" height="12" xmlns="http://www.w3.org/2000/svg"` +
+          ` style="display:block;overflow:visible;` +
+          `filter:drop-shadow(0 0 5px ${color}) drop-shadow(0 0 12px ${color}88);">` +
+          `<circle r="6" fill="${color}22" stroke="${color}" stroke-width="1.5"/>` +
+          `<circle r="2.2" fill="${color}"/>` +
+          `</svg>`;
       }
+
+      // The inline color override ensures the highlight colour (orange) shows instead
+      // of the default --vor blue / --ndb magenta from the CSS class.
+      return (
+        `<div class="navaid-icon-inner">` +
+        `<span class="navaid-label-inline ${labelClass}" style="color:${color};">${_safeEscape(result.ident)}</span>` +
+        svgHtml +
+        `</div>`
+      );
     }
 
     // Fallback for any future layer types: generic glowing dot.
