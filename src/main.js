@@ -62,6 +62,7 @@ import { initSidebar, buildLayerControls,
          updateViewTab, refreshBuilderSavedList,
          setViewGlobalSearchCallback,
          updateViewGlobalSearchCount,
+         getGlobalSearchCategoryFilter,
          updateTransitionUI }                         from './components/Sidebar.js';
 import { initMeasuringVector,
          enableMeasuringVector,
@@ -647,8 +648,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Phase 9.8: Build the global search index now that all three data sources are loaded.
   // Register the search callback with the sidebar so the View-mode search bar fires it.
+  // Phase 8: also pull the current category-toggle state from the legend chips
+  // (`getGlobalSearchCategoryFilter()` reads them directly from the DOM) and
+  // hand it to the search engine so disabled categories drop out of the result set.
   const searchIndex = buildSearchIndex(waypoints, aerodromes, navaids);
-  setViewGlobalSearchCallback((term) => handleGlobalSearch(_map, term));
+  setViewGlobalSearchCallback((term) => handleGlobalSearch(_map, term, getGlobalSearchCategoryFilter()));
 
   // Phase 10.5: Wire the 3-button right toolbar sub-panels and their layer checkboxes.
   // Must run AFTER all layers are created (majorLayer, navaidLayer, _airspaceLayers, etc.)

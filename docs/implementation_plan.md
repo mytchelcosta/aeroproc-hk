@@ -91,6 +91,23 @@ Establish a professional delivery pipeline.
     - Header doc-comment for `renderAirspaces` updated to reflect the new schema (`{ name, type, coordinates, class, limits }`).
     - Build verified clean (`vite build` → 252.55 kB JS, 76.27 kB CSS, 0 errors).
 
+## Phase 8: Fixes Visualization (Completed)
+- [x] **Incremental Search Highlighting in View Mode**:
+    - **Pass Search Term**: `handleGlobalSearch` in `SearchManager.js` now forwards the already-trimmed/uppercased query string `q` as the third argument to `renderGlobalSearchHighlights(map, results, q)`. Reusing `q` avoids re-running `trim().toUpperCase()` inside the renderer.
+    - **Highlight Substring**: `renderGlobalSearchHighlights(mapInstance, results, term)` in `MapLayers.js` accepts the new `term` parameter and exposes a local `_highlightMatch(rawText)` helper. The helper finds the first case-insensitive occurrence of `term` inside `rawText`, escapes each segment (before / match / after) with `_safeEscape` to keep the XSS guarantee, and stitches them back together with a `<span class="fix-label-highlight">…</span>` around the matched run. With no `term` (empty/undefined) it short-circuits to a fully-escaped plain string — same output shape as `_safeEscape`.
+    - **Apply CSS**: All four label-rendering branches inside `_buildHighlightHtml` now route their ident/name through `_highlightMatch`:
+        - **Fix**: `_floatingLabel(_highlightMatch(result.ident), color)`.
+        - **Aerodrome (heliport tier)**: ident + optional name both highlighted in the H-ring's floating label.
+        - **Aerodrome (major/regional)**: ident + optional name both highlighted in the ✈ circle's floating label.
+        - **NAVAID**: `<span class="navaid-label-inline …">${_highlightMatch(result.ident)}</span>` so the inline label glows on match.
+    - The reused `.fix-label-highlight` CSS class (white text, blue glow) takes precedence over the per-layer ident colour because the child span carries its own `color` rule, while the parent's colour comes from an inline style on the wrapper. Same visual treatment as Builder mode.
+    - Build verified clean (`vite build` → 252.82 kB JS, 76.27 kB CSS, 0 errors).
+- [x] **Advanced Filtering / Category Toggles**:
+    - **UI Update**: The three legend entries inside `.global-search-legend` (Aerodrome / Fix / NAVAID) were promoted from passive `<span>` swatches into clickable `<button class="gsl-chip active" data-category="…" aria-pressed="true">` toggle chips, all defaulting to ON. The chip layout reuses the existing legend row so the search section's vertical footprint is unchanged. New CSS in `main.css`: `.gsl-chip` (transparent button, hover background, focus-visible outline), `.gsl-chip:not(.active)` (opacity 0.45 + line-through label + grayscale dot) so muted categories read at a glance.
+    - **Search Logic Update**: New `getGlobalSearchCategoryFilter()` exported from `Sidebar.js` reads each chip's `.active` class straight from the DOM — single source of truth, no parallel JS state object that could drift. `main.js` now wraps the search callback as `setViewGlobalSearchCallback((term) => handleGlobalSearch(_map, term, getGlobalSearchCategoryFilter()))` so the latest filter is captured on every keystroke. `handleGlobalSearch` accepts an optional third argument `categoryFilter = { aerodrome, fix, navaid }` (defaults to all-on for older callers); the inner scoring loop short-circuits with `if (filter[entry.layer] === false) continue;` before any string compares so muted layers cost nothing.
+    - **Re-fire on Toggle**: `_wireGlobalSearch` in `Sidebar.js` adds a click handler to every `.gsl-chip[data-category]` that flips the `.active` class, mirrors it to `aria-pressed` for screen readers, and calls `_onGlobalSearch(input.value)` so the result set updates instantly without the user re-typing.
+    - Build verified clean (`vite build` → 254.25 kB JS, 76.80 kB CSS, 0 errors).
+
 ---
 
 ## 📈 Advancement Tracking
@@ -103,5 +120,6 @@ Establish a professional delivery pipeline.
 | **Bug Fixes** | 100% | Done |
 | **Traffic Coloring** | 100% | Done |
 | **UI Refinements** | 100% | Done |
+| **Fixes Visualization** | 100% | Done |
 
 *Last Updated: 2026-05-09*

@@ -103,6 +103,15 @@ const _formatSpeedHtml = (condition, value) => {
 // when procedures exist and when the empty placeholder is shown.
 // The result-count badge is hidden until results arrive (set by main.js via
 // updateViewGlobalSearchCount). Its color matches the layer color legend.
+//
+// Phase 8 (advanced filtering):
+// The three legend entries (Aerodrome / Fix / NAVAID) are now clickable
+// toggle chips (`<button class="gsl-chip active" data-category="...">`).
+// All three default to ON. Toggling a chip OFF instantly drops that layer
+// type out of the search-result set — read by `SearchManager.handleGlobalSearch`
+// via `getGlobalSearchCategoryFilter()` below. We re-use the existing legend
+// row as the toggle UI rather than adding a separate row, so the search
+// section keeps its current vertical footprint.
 const _globalSearchHtml = () => `
   <div class="global-search-section" id="global-search-section">
     <div class="global-search-row">
@@ -121,13 +130,48 @@ const _globalSearchHtml = () => `
     <div class="global-search-meta">
       <span class="global-search-count" id="global-search-count" style="display:none;"></span>
       <span class="global-search-legend">
-        <span class="gsl-dot" style="background:#3b9eff;"></span><span data-i18n="sidebar.view.legend.aerodrome">Aerodrome</span>
-        <span class="gsl-dot" style="background:#b06bff;"></span><span data-i18n="sidebar.view.legend.fix">Fix</span>
-        <span class="gsl-dot" style="background:#ff8c00;"></span><span data-i18n="sidebar.view.legend.navaid">NAVAID</span>
+        <button type="button" class="gsl-chip active" data-category="aerodrome"
+                title="${i18n.t('sidebar.view.legend.aerodrome')}"
+                aria-pressed="true">
+          <span class="gsl-dot" style="background:#3b9eff;"></span>
+          <span data-i18n="sidebar.view.legend.aerodrome">${i18n.t('sidebar.view.legend.aerodrome')}</span>
+        </button>
+        <button type="button" class="gsl-chip active" data-category="fix"
+                title="${i18n.t('sidebar.view.legend.fix')}"
+                aria-pressed="true">
+          <span class="gsl-dot" style="background:#b06bff;"></span>
+          <span data-i18n="sidebar.view.legend.fix">${i18n.t('sidebar.view.legend.fix')}</span>
+        </button>
+        <button type="button" class="gsl-chip active" data-category="navaid"
+                title="${i18n.t('sidebar.view.legend.navaid')}"
+                aria-pressed="true">
+          <span class="gsl-dot" style="background:#ff8c00;"></span>
+          <span data-i18n="sidebar.view.legend.navaid">${i18n.t('sidebar.view.legend.navaid')}</span>
+        </button>
       </span>
     </div>
   </div>
 `;
+
+
+// Phase 8: returns the current ON/OFF state of the three category toggle
+// chips inside the global-search legend. Reading from the DOM keeps a single
+// source of truth (the chip's `.active` class) without a parallel JS state
+// object that could drift out of sync. When the chips aren't in the DOM yet
+// (e.g. before View-tab renders), we default everything to ON so the very
+// first search isn't accidentally filtered down to zero results.
+//
+// Returns: { aerodrome: bool, fix: bool, navaid: bool }
+const getGlobalSearchCategoryFilter = () => {
+  const filter = { aerodrome: true, fix: true, navaid: true };
+  const chips = document.querySelectorAll('.gsl-chip[data-category]');
+  if (chips.length === 0) return filter;   // no chips rendered yet → all ON
+  chips.forEach((chip) => {
+    const cat = chip.dataset.category;
+    if (cat in filter) filter[cat] = chip.classList.contains('active');
+  });
+  return filter;
+};
 
 // Wires event listeners to the global search bar after it has been injected
 // into the DOM. Safe to call multiple times — the listeners are re-attached
@@ -161,6 +205,21 @@ const _wireGlobalSearch = () => {
       input.focus();
     });
   }
+
+  // Phase 8: category toggle chips in the legend row. Clicking a chip flips
+  // its `.active` class (and `aria-pressed` for screen readers) and re-fires
+  // the search callback with the current input value, so the result set
+  // updates instantly without the user having to retype the query. The
+  // category state is read by `getGlobalSearchCategoryFilter()` directly
+  // from the DOM, so there's no separate JS object to keep in sync.
+  const chips = document.querySelectorAll('.gsl-chip[data-category]');
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const isOn = chip.classList.toggle('active');
+      chip.setAttribute('aria-pressed', String(isOn));
+      if (_onGlobalSearch) _onGlobalSearch(input.value);
+    });
+  });
 };
 
 // Returns the #tab-content DOM element, logging an error if it's missing.
@@ -1497,5 +1556,6 @@ export {
   refreshBuilderSavedList,
   setViewGlobalSearchCallback,
   updateViewGlobalSearchCount,
+  getGlobalSearchCategoryFilter,
   updateTransitionUI
 };

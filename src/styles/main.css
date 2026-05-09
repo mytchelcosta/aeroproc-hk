@@ -3390,6 +3390,49 @@ kbd {
 }
 
 
+/* PHASE 8 — GLOBAL SEARCH CATEGORY TOGGLE CHIPS
+   Each legend entry (Aerodrome / Fix / NAVAID) is now a clickable button that
+   filters the corresponding layer in/out of the search results. Default state
+   is `.active` (ON); clicking removes the class to dim the chip and signal the
+   layer is muted. Visual treatment kept minimal — a subtle dot/text fade plus
+   a strikethrough on the label — so the row keeps the same compact footprint
+   it had as a plain legend. */
+.gsl-chip {
+    display:       inline-flex;
+    align-items:   center;
+    gap:           4px;
+    background:    transparent;
+    border:        none;
+    padding:       2px 4px;
+    margin:        0;
+    cursor:        pointer;
+    color:         inherit;
+    font:          inherit;
+    border-radius: 4px;
+    transition:    background-color 0.12s ease, opacity 0.12s ease;
+}
+.gsl-chip:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+.gsl-chip:focus-visible {
+    outline:        1px solid var(--color-sid);
+    outline-offset: 1px;
+}
+/* Inactive (toggled OFF) state — the chip stays in place but reads as muted:
+   the colour dot loses its glow, the label fades and gets a strikethrough,
+   so the user can see at a glance which categories are currently filtered out. */
+.gsl-chip:not(.active) {
+    opacity: 0.45;
+}
+.gsl-chip:not(.active) span:last-child {
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+}
+.gsl-chip:not(.active) .gsl-dot {
+    filter: grayscale(0.7);
+}
+
+
 /* ================================================================
    PHASE 9.8 — GLOBAL SEARCH HIGHLIGHT MARKERS
    Pulsing ring DivIcon markers placed at search result locations.

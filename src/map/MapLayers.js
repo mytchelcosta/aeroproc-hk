@@ -2323,7 +2323,13 @@ const clearGlobalSearchHighlights = (mapInstance) => {
 // 'mapInstance' — the Leaflet map
 // 'results'     — filtered array from the global search index:
 //                 [{ ident, name?, type?, freq?, lat, lon, layer, tier? }, ...]
-const renderGlobalSearchHighlights = (mapInstance, results) => {
+// 'term'        — Phase 8: the normalised (uppercase, trimmed) search query
+//                 from SearchManager. When provided, the matching substring
+//                 inside each result's ident/name is wrapped in a
+//                 `.fix-label-highlight` span so the typed characters glow
+//                 inside the map markers (same effect as Builder mode).
+//                 Undefined / empty → no highlighting (labels render plain).
+const renderGlobalSearchHighlights = (mapInstance, results, term) => {
   clearGlobalSearchHighlights(mapInstance);
   if (!mapInstance || !results || results.length === 0) return;
 
@@ -2337,6 +2343,24 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
 
   // VOR-family types — same set used in renderNavaids() for consistency.
   const VOR_TYPES = new Set(['VOR', 'VOR/DME', 'DVOR/DME', 'DME']);
+
+  // Phase 8: wraps the first case-insensitive occurrence of `term` inside
+  // `rawText` with a `.fix-label-highlight` span. Each segment (before /
+  // match / after) is independently HTML-escaped so the safety guarantee is
+  // preserved while the span markup itself remains literal HTML in the
+  // output. When `term` is empty or there's no match, the function returns
+  // a fully-escaped plain string — i.e. the same output as `_safeEscape`.
+  const _highlightMatch = (rawText) => {
+    if (rawText == null || rawText === '') return '';
+    if (!term)                              return _safeEscape(rawText);
+    const haystack = String(rawText);
+    const idx = haystack.toUpperCase().indexOf(term);
+    if (idx === -1) return _safeEscape(haystack);
+    const before = _safeEscape(haystack.slice(0, idx));
+    const match  = _safeEscape(haystack.slice(idx, idx + term.length));
+    const after  = _safeEscape(haystack.slice(idx + term.length));
+    return `${before}<span class="fix-label-highlight">${match}</span>${after}`;
+  };
 
   // Builds the DivIcon inner HTML for a search result.
   // Each type renders the real object's visual representation so the marker is
@@ -2367,13 +2391,15 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
     if (result.layer === 'fix') {
       // RNAV fix: bright filled dot (mirrors Builder's circleMarker highlight) with
       // the ident label below. Dot is 14px tall, so anchor offset = 7px.
+      // Phase 8: ident text now passes through `_highlightMatch` so the typed
+      // characters inside the ident render with the .fix-label-highlight glow.
       const dot =
         `<div style="` +
         `width:14px;height:14px;border-radius:50%;` +
         `background:${color};border:2px solid #ffffff;` +
         `box-shadow:${glow};pointer-events:none;">` +
         `</div>`;
-      const label = _floatingLabel(_safeEscape(result.ident), color);
+      const label = _floatingLabel(_highlightMatch(result.ident), color);
       return (
         `<div style="display:flex;flex-direction:column;align-items:center;` +
         `transform:translate(-50%,-7px);pointer-events:none;">` +
@@ -2385,9 +2411,11 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
     if (result.layer === 'aerodrome') {
       if (result.tier === 'heliport') {
         // Heliport: H-ring icon (20px) + ICAO label below. Anchor offset = 10px.
+        // Phase 8: both the ident and the (optional) name pass through
+        // `_highlightMatch` so a query that lives in either substring lights up.
         const nameText = result.name && result.name !== result.ident
-          ? `${_safeEscape(result.ident)}&nbsp;<span style="opacity:0.7;font-weight:400;">${_safeEscape(result.name)}</span>`
-          : _safeEscape(result.ident);
+          ? `${_highlightMatch(result.ident)}&nbsp;<span style="opacity:0.7;font-weight:400;">${_highlightMatch(result.name)}</span>`
+          : _highlightMatch(result.ident);
         const ring =
           `<div style="` +
           `width:20px;height:20px;border-radius:50%;` +
@@ -2406,9 +2434,11 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
       }
       // Major or Regional airport: ✈ circle (26px) + ICAO + name label below.
       // Anchor offset = 13px (half the 26px circle).
+      // Phase 8: ident + name both pass through `_highlightMatch` for the same
+      // glow-on-match feedback as heliports above.
       const nameText = result.name && result.name !== result.ident
-        ? `${_safeEscape(result.ident)}&nbsp;<span style="opacity:0.7;font-weight:400;">${_safeEscape(result.name)}</span>`
-        : _safeEscape(result.ident);
+        ? `${_highlightMatch(result.ident)}&nbsp;<span style="opacity:0.7;font-weight:400;">${_highlightMatch(result.name)}</span>`
+        : _highlightMatch(result.ident);
       const circle =
         `<div style="` +
         `width:26px;height:26px;border-radius:50%;` +
@@ -2460,9 +2490,11 @@ const renderGlobalSearchHighlights = (mapInstance, results) => {
 
       // The inline color override ensures the highlight colour (orange) shows instead
       // of the default --vor blue / --ndb magenta from the CSS class.
+      // Phase 8: ident passes through `_highlightMatch` so the matching
+      // substring inside the inline navaid label glows with .fix-label-highlight.
       return (
         `<div class="navaid-icon-inner">` +
-        `<span class="navaid-label-inline ${labelClass}" style="color:${color};">${_safeEscape(result.ident)}</span>` +
+        `<span class="navaid-label-inline ${labelClass}" style="color:${color};">${_highlightMatch(result.ident)}</span>` +
         svgHtml +
         `</div>`
       );

@@ -1,6 +1,6 @@
 # Project Status: AeroProc Hong Kong (VHHH)
 
-**Current Status**: 🟢 Phase 7: UI & Interaction Refinements — Completed
+**Current Status**: 🟢 Phase 8: Fixes Visualization — Completed
 **Last Updated**: 2026-05-09
 **Target Area**: Hong Kong FIR (VHHK)
 **Live Site**: [mytchelcosta.github.io/aeroproc-hk/](https://mytchelcosta.github.io/aeroproc-hk/)
@@ -17,6 +17,7 @@ AeroProc HK is a high-fidelity aeronautical visualization tool for the Hong Kong
 - [x] **Measuring Vector UX**: Dynamic label anchoring, label de-clutter, selected-state sync, and z-index fixes.
 - [x] **Traffic Coloring**: VHHH-centric coloring rules (Yellow/White/Grey) and Magnetic track sync.
 - [x] **UI Interaction Refinements**: Airspace border-only hover tooltips using real AIP data and Wake Turbulence indicators for aircraft.
+- [x] **Global Search Refinements**: Incremental substring highlighting and interactive category toggles (chips) for advanced filtering.
 - [ ] **Procedure Migration**: Mapping STARs and SIDs from official AIP HK charts.
 - [ ] **Weather Integration**: Finalizing Cloudflare Worker proxy for real-time METAR/TAF.
 
@@ -28,8 +29,10 @@ AeroProc HK is a high-fidelity aeronautical visualization tool for the Hong Kong
 - **Phase 5: Bug Fixes**: 100% 🟢
 - **Phase 6: Traffic Coloring**: 100% 🟢
 - **Phase 7: UI Refinements**: 100% 🟢
+- **Phase 8: Fixes Visualization**: 100% 🟢
 
 ## 📝 Recent Notes
+- **2026-05-09**: Finished Phase 8. Implemented incremental substring highlighting in global search and interactive category toggles (chips) for advanced filtering.
 - **2026-05-09**: Finished Phase 7. Implemented exact border-only hover tooltips for overlapping airspaces using real AIP classes and boundaries.
 - **2026-05-09**: Finished Phase 6. Aircraft symbol coloring logic revamped for VHHH proximity. Generated lightweight `wtc.json` for ICAO wake turbulence tracking.
 - **2026-05-09**: Finished Phase 5. Resolved Measuring Vector label displacement and Z-index collisions.

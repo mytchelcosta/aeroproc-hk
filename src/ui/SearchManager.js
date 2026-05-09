@@ -44,9 +44,23 @@ export const buildSearchIndex = (waypoints, aerodromes, navaids) => {
 
 /**
  * Handles a global search term submitted from the View-mode search bar.
+ *
+ * Phase 8 (advanced filtering): the optional third argument
+ * `categoryFilter = { aerodrome, fix, navaid }` lets the caller suppress
+ * entire layer types from the result set. Each key is a boolean; when omitted
+ * (or set to true) that layer participates in the search. Defaults to all-on.
+ *
+ * The toggle UI lives in the global-search legend chips; main.js reads the
+ * current chip state via `getGlobalSearchCategoryFilter()` and forwards it
+ * here on every keystroke and on every chip click.
  */
-export const handleGlobalSearch = (map, term) => {
+export const handleGlobalSearch = (map, term, categoryFilter) => {
   clearTimeout(_globalSearchTimer);
+
+  // Default to all-on when no filter is provided so older call sites keep
+  // working unchanged. Each lookup below is short-circuited by `=== false`,
+  // which means missing keys (undefined) are treated as enabled.
+  const filter = categoryFilter || { aerodrome: true, fix: true, navaid: true };
 
   _globalSearchTimer = setTimeout(() => {
     if (!term || !term.trim()) {
@@ -57,17 +71,56 @@ export const handleGlobalSearch = (map, term) => {
 
     const q = term.trim().toUpperCase();
 
-    // Filter: match ident OR name (case-insensitive, substring match).
-    // Cap at 50 results to prevent the map from being overwhelmed with markers.
-    const results = _searchIndex
-      .filter((entry) => {
-        const identMatch = entry.ident.toUpperCase().includes(q);
-        const nameMatch  = entry.name ? entry.name.toUpperCase().includes(q) : false;
-        return identMatch || nameMatch;
-      })
-      .slice(0, 50);
+    // Filter and score matches:
+    // 0 = Exact ident match
+    // 1 = Ident starts with query
+    // 2 = Name starts with query
+    // 3 = Ident contains query
+    // 4 = Name contains query
+    const scoredResults = [];
+    for (const entry of _searchIndex) {
+      // Phase 8: skip entries whose layer is currently toggled OFF in the
+      // legend chips. The check is at the top of the loop so we don't waste
+      // work scoring things we'll never show.
+      if (filter[entry.layer] === false) continue;
 
-    renderGlobalSearchHighlights(map, results);
+      const identUpper = entry.ident.toUpperCase();
+      const nameUpper = entry.name ? entry.name.toUpperCase() : '';
+
+      let score = -1;
+
+      if (identUpper === q) {
+        score = 0;
+      } else if (identUpper.startsWith(q)) {
+        score = 1;
+      } else if (nameUpper.startsWith(q)) {
+        score = 2;
+      } else if (identUpper.includes(q)) {
+        score = 3;
+      } else if (nameUpper.includes(q)) {
+        score = 4;
+      }
+
+      if (score !== -1) {
+        scoredResults.push({ entry, score });
+      }
+    }
+
+    // Sort by score (lower is better), then alphabetically by ident.
+    // Finally, slice the top 50 to prevent map overload.
+    scoredResults.sort((a, b) => {
+      if (a.score !== b.score) return a.score - b.score;
+      return a.entry.ident.localeCompare(b.entry.ident);
+    });
+
+    const results = scoredResults.slice(0, 50).map(s => s.entry);
+
+    // Phase 8: forward the normalised query string (uppercase, trimmed) to the
+    // renderer so each highlight label can wrap the matching substring in a
+    // `.fix-label-highlight` span — same incremental-feedback effect as the
+    // Builder-mode search. We pass `q` (already trimmed/uppercased) rather
+    // than the raw `term` so MapLayers does one less normalisation pass.
+    renderGlobalSearchHighlights(map, results, q);
     updateViewGlobalSearchCount(results.length);
   }, 150);
 };
