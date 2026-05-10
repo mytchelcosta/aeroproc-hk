@@ -872,6 +872,34 @@ html, body {
     pointer-events: none;
 }
 
+/* Phase 13: JSON Save / Load row — two equal-width buttons side by side */
+.json-io-row {
+    display: flex;
+    gap: 8px;
+    margin: 8px 16px 0;
+}
+
+/* Each JSON I/O button — secondary style, monospaced, compact */
+.json-io-btn {
+    flex: 1;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.json-io-btn:hover {
+    border-color: var(--border-bright);
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+}
+
 /* The "Ãƒ—" remove button */
 .seq-remove {
     background: none;

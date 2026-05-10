@@ -210,6 +210,15 @@ Establish a professional delivery pipeline.
 
 ---
 
+## Phase 13: Procedural Builder Persistence (JSON Workflow) (Completed)
+
+- [x] **Save/Load JSON Database Workflow**:
+    - **Compartmentalization**: Created `src/data/ProcedureDB.js` — a standalone I/O layer exposing `exportToJSON(procedures)` and `importFromJSON()`. Deliberately avoids touching localStorage directly so the module can be swapped for an online DB (Firebase/Supabase) later without touching the builder UI logic.
+    - **Export (Save)**: `exportToJSON` serializes the full procedure array in a versioned envelope (`{ version, exportedAt, procedures }`), creates a `Blob({ type: 'application/json' })`, and triggers the native browser download via `URL.createObjectURL` attached to an ephemeral invisible `<a download="aeroproc_procedures.json">` element. The object URL is revoked after a 1-second delay to release memory.
+    - **Import (Load)**: `importFromJSON` creates a hidden `<input type="file" accept=".json">` element and returns a Promise. The file contents are read asynchronously using `File.text()`. A window-focus fallback handles browsers that don't fire `change` on picker dismissal (resolves with `null` instead of rejecting).
+    - **Validation**: `JSON.parse` is wrapped in a dedicated `try/catch` with a plain-English error. Structural validation checks that `data.version` exists and `data.procedures` is an Array before resolving. Caller receives `null` for picker-dismiss, a resolved array for valid files, and a rejected Error for bad files.
+    - **UI Integration**: Two new side-by-side buttons — **"↓ Save to JSON"** and **"↑ Load from JSON"** — added to the Builder main menu (below the "+ New Procedure" button). Callbacks wired via `setJSONCallbacks()` in `Sidebar.js`. `handleSaveJSON` in `main.js` exports `loadAll()`. `handleLoadJSON` confirms replacement with the user, clears all existing procedures from the map and localStorage, then re-saves each imported procedure via `saveProc()` (assigning fresh IDs). Both panels refresh after import.
+    - Build verified clean (`vite build` → 264.50 kB JS, 78.94 kB CSS, 0 errors).
 
 ## 📈 Advancement Tracking
 | Milestone | Progress | Status |
@@ -226,5 +235,6 @@ Establish a professional delivery pipeline.
 | **FIR Fixes Overlay** | 100% | Done |
 | **Ghost Layer Polish** | 100% | Done |
 | **Display Settings Polish** | 100% | Done |
+| **Procedural Builder Persistence** | 100% | Done |
 
-*Last Updated: 2026-05-10*
+*Last Updated: 2026-05-10 — Phase 13 Complete*

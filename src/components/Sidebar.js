@@ -31,6 +31,11 @@ let _viewTabHandler          = null;  // the handler currently attached to that 
 // immediately exposes the creation button — the user must consciously unlock first.
 let _builderLocked = true;
 
+// Phase 13: JSON I/O callbacks registered by main.js.
+// Fired when the user clicks "Save to JSON" or "Load from JSON" in the Builder main menu.
+let _onSaveJSON = null;
+let _onLoadJSON = null;
+
 // Phase 9.8 — Global Viewer Search
 // Callback registered by main.js. Fired on every keystroke in the global search
 // bar (after debounce in main.js handles the timing).
@@ -443,6 +448,14 @@ const showMainMenu = () => {
         <span data-i18n="sidebar.builder.btn_new">New Procedure</span>
       </button>
       ${_builderLocked ? `<div class="lock-hint" data-i18n="sidebar.builder.lock.hint">Unlock to create or edit procedures.</div>` : ''}
+      <div class="json-io-row">
+        <button class="json-io-btn" id="btn-save-json" title="Download all procedures as a JSON file">
+          &#8595; Save to JSON
+        </button>
+        <button class="json-io-btn" id="btn-load-json" title="Import procedures from a JSON file on your computer">
+          &#8593; Load from JSON
+        </button>
+      </div>
       <div id="builder-saved-list"></div>
     </div>
   `);
@@ -456,6 +469,16 @@ const showMainMenu = () => {
   const btn = document.getElementById('btn-new-procedure');
   if (btn && _onNewProcedure && !_builderLocked) {
     btn.addEventListener('click', _onNewProcedure);
+  }
+
+  // Phase 13: wire JSON I/O buttons — always available regardless of lock state.
+  const saveBtn = document.getElementById('btn-save-json');
+  if (saveBtn && _onSaveJSON) {
+    saveBtn.addEventListener('click', _onSaveJSON);
+  }
+  const loadBtn = document.getElementById('btn-load-json');
+  if (loadBtn && _onLoadJSON) {
+    loadBtn.addEventListener('click', _onLoadJSON);
   }
 };
 
@@ -1534,6 +1557,18 @@ const setViewGlobalSearchCallback = (fn) => {
 };
 
 
+// Phase 13: registers the JSON import/export callbacks from main.js.
+// Called once at startup so the "Save to JSON" and "Load from JSON" buttons in
+// the Builder main menu know what to do when clicked.
+//
+// 'onSave' — function() called when the user clicks "Save to JSON"
+// 'onLoad' — function() called when the user clicks "Load from JSON"
+const setJSONCallbacks = (onSave, onLoad) => {
+  _onSaveJSON = onSave;
+  _onLoadJSON = onLoad;
+};
+
+
 // Updates the result-count badge next to the global search input.
 // Called by main.js after each search completes so the UI stays in sync with the
 // highlight markers on the map without Sidebar.js needing to know about the map.
@@ -1596,5 +1631,6 @@ export {
   updateViewGlobalSearchCount,
   updateCategoryChipCounts,
   getGlobalSearchCategoryFilter,
-  updateTransitionUI
+  updateTransitionUI,
+  setJSONCallbacks
 };

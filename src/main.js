@@ -54,6 +54,7 @@ import { initDataStatusModal, showDataStatusModal,
          updateStatusBadge, getWorstStatus,
          processManifest }                            from './components/DataStatusModal.js';
 import { loadAll, saveProc, deleteProc }              from './data/ProcedureDatabase.js';
+import { exportToJSON, importFromJSON }               from './data/ProcedureDB.js';
 import { DrawingState }                               from './state/DrawingState.js';
 import { initModal, showRestrictionModal }            from './components/Modal.js';
 import { initSidebar, buildLayerControls,
@@ -64,7 +65,8 @@ import { initSidebar, buildLayerControls,
          setViewGlobalSearchCallback,
          updateViewGlobalSearchCount,
          getGlobalSearchCategoryFilter,
-         updateTransitionUI }                         from './components/Sidebar.js';
+         updateTransitionUI,
+         setJSONCallbacks }                           from './components/Sidebar.js';
 import { initMeasuringVector,
          enableMeasuringVector,
          disableMeasuringVector,
@@ -266,6 +268,110 @@ const _initI18nToggle = () => {
 };
 
 
+// ── PHASE 13: JSON I/O HANDLERS ──────────────────────────────────────────────
+
+
+// Exports all procedures currently in the database to a downloadable JSON file.
+// Always exports everything in localStorage — there is no partial-export option.
+const handleSaveJSON = () => {
+  const all = loadAll();
+  if (all.length === 0) {
+    // Nothing to export — let the user know rather than producing an empty file.
+    window.alert('There are no saved procedures to export.\nCreate and save at least one procedure first.');
+    return;
+  }
+  exportToJSON(all);
+  console.log(`[AeroProc] JSON export triggered for ${all.length} procedure(s).`);
+};
+
+
+// Imports procedures from a user-selected JSON file.
+// The user is asked to confirm before any existing data is affected.
+// On confirm, all current procedures are removed and replaced with those from the file.
+// Each imported procedure is re-saved via saveProc() so it receives a fresh ID and timestamp.
+const handleLoadJSON = async () => {
+  let importedProcs;
+  try {
+    importedProcs = await importFromJSON();
+  } catch (err) {
+    // The file was unreadable or failed validation — show the plain-English error.
+    window.alert(`Could not load the file:\n\n${err.message}`);
+    return;
+  }
+
+  // null means the user dismissed the file picker without selecting anything.
+  if (importedProcs === null) return;
+
+  const currentCount  = loadAll().length;
+  const incomingCount = importedProcs.length;
+
+  if (incomingCount === 0) {
+    window.alert('The selected file contains no procedures.');
+    return;
+  }
+
+  // Confirm before replacing existing data — this cannot be undone.
+  const confirmed = window.confirm(
+    `Load ${incomingCount} procedure${incomingCount !== 1 ? 's' : ''} from file?\n\n` +
+    (currentCount > 0
+      ? `This will REPLACE your current ${currentCount} procedure${currentCount !== 1 ? 's' : ''}. This cannot be undone.`
+      : 'Your database is currently empty — this will add the imported procedures.')
+  );
+  if (!confirmed) return;
+
+  // ── Step 1: Remove all existing procedures from the map and the database ──
+  Object.keys(_savedProcLayers).forEach((id) => {
+    const entry = _savedProcLayers[id];
+    if (entry) {
+      _map.removeLayer(entry.layer);
+      if (entry.measureLayer && _map.hasLayer(entry.measureLayer)) {
+        _map.removeLayer(entry.measureLayer);
+      }
+    }
+  });
+  _savedProcLayers = {};
+
+  // Wipe localStorage by calling deleteProc for every existing procedure.
+  loadAll().forEach((p) => deleteProc(p.id));
+
+  // ── Step 2: Save and render each imported procedure ───────────────────────
+  let successCount = 0;
+  importedProcs.forEach((proc) => {
+    // saveProc handles backward-compat normalization for old schema shapes.
+    const saved = saveProc({
+      name:    proc.name    || '(unnamed)',
+      type:    proc.type    || 'SID',
+      airport: proc.airport || '',
+      runway:  proc.runway  || '',
+      lineStyle: {
+        pattern: proc.pattern || proc.lineStyle?.pattern || 'solid',
+        color:   proc.color   || proc.lineStyle?.color   || '#3b9eff'
+      },
+      common_route: proc.common_route || proc.points || [],
+      transitions:  proc.transitions  || []
+    });
+
+    if (!saved) {
+      console.warn(`[AeroProc] Failed to save imported procedure "${proc.name}".`);
+      return;
+    }
+
+    const result = renderSavedProcedure(_map, saved);
+    if (result) {
+      if (!_viewerMeasVisible && result.measureLayer) _map.removeLayer(result.measureLayer);
+      _savedProcLayers[saved.id] = { layer: result.layer, measureLayer: result.measureLayer, visible: true };
+    }
+    successCount++;
+  });
+
+  // ── Step 3: Refresh both sidebar panels so they reflect the new state ─────
+  _refreshViewTab();
+  _refreshBuilderSavedList();
+
+  console.log(`[AeroProc] JSON import complete: ${successCount}/${incomingCount} procedure(s) loaded.`);
+};
+
+
 // ── STARTUP ──────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -298,6 +404,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Step 2: Show the sidebar loading state immediately while data fetches.
   initSidebar(_map);
+
+  // Phase 13: Register JSON I/O callbacks so the Builder main menu buttons
+  // can trigger export and import without Sidebar.js importing from main.js.
+  setJSONCallbacks(handleSaveJSON, handleLoadJSON);
 
   // Step 3: Initialize the restriction modal HTML (injected once into <body>).
   initModal();
