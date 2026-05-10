@@ -23,6 +23,8 @@ let _builderSavedListEl      = null;  // the #builder-saved-list element being l
 let _builderSavedListHandler = null;  // the handler currently attached to that element
 let _viewTabEl               = null;  // the #tab-content element being listened to
 let _viewTabHandler          = null;  // the handler currently attached to that element
+let _sequenceListWrapperEl   = null;  // the #sequence-list-wrapper element being listened to
+let _sequenceListHandler     = null;  // the handler currently attached to that element
 
 // Master Lock state. When true, the "+ New Procedure" button is disabled and
 // the user cannot accidentally start a new build session. Toggle with the lock
@@ -877,6 +879,15 @@ const refreshSequenceList = (drawingState, callbacks) => {
   const wrapper = document.getElementById('sequence-list-wrapper');
   if (!wrapper) return;  // drawing panel not visible — harmless no-op
 
+  // Remove any stale listener before mutating the DOM or re-attaching.
+  // Without this, { once: true } listeners were consumed by any click on the wrapper
+  // (even on non-button areas), silently breaking all subsequent button clicks.
+  if (_sequenceListWrapperEl && _sequenceListHandler) {
+    _sequenceListWrapperEl.removeEventListener('click', _sequenceListHandler);
+  }
+  _sequenceListWrapperEl = wrapper;
+  _sequenceListHandler   = null;
+
   const points   = drawingState.points;
   const lastIdx  = points.length - 1;
 
@@ -950,10 +961,12 @@ const refreshSequenceList = (drawingState, callbacks) => {
     <div class="sequence-list">${itemsHtml}</div>
   `;
 
-  // Use a single delegated click listener on the wrapper that handles all four
-  // button types. { once: true } ensures the listener removes itself after firing
-  // so it doesn't accumulate across re-renders.
-  wrapper.addEventListener('click', (e) => {
+  // Persistent delegated click listener — NOT { once: true }.
+  // A { once: true } listener was consumed by any click on the wrapper (even on
+  // empty space), silently breaking all subsequent button clicks until the next
+  // re-render. The module-level _sequenceListHandler reference lets us cleanly
+  // remove the old listener before the next refreshSequenceList call.
+  _sequenceListHandler = (e) => {
     const upBtn     = e.target.closest('[data-move-up]');
     const downBtn   = e.target.closest('[data-move-down]');
     const editBtn   = e.target.closest('[data-edit-index]');
@@ -963,7 +976,8 @@ const refreshSequenceList = (drawingState, callbacks) => {
     if (downBtn   && callbacks.onPointMoveDown) callbacks.onPointMoveDown(parseInt(downBtn.dataset.moveDown, 10));
     if (editBtn   && callbacks.onPointEdit)     callbacks.onPointEdit(parseInt(editBtn.dataset.editIndex, 10));
     if (removeBtn && callbacks.onPointRemove)   callbacks.onPointRemove(parseInt(removeBtn.dataset.removeIndex, 10));
-  }, { once: true });
+  };
+  wrapper.addEventListener('click', _sequenceListHandler);
 
   // Phase 10: always refresh the transition section after the sequence list changes.
   // The convergence-point dropdown must reflect the current live sequence, so this

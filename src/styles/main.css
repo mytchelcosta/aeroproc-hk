@@ -5789,6 +5789,12 @@ details[open] > .subpanel-collapsible-header::before {
     background: #fff;
 }
 
+/* Holding Point toggle label text — matches the compact label style of other form rows */
+.inline-hold-label-text {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
 .inline-hold-fields {
     display: flex;
     flex-direction: column;

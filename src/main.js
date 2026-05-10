@@ -1114,7 +1114,7 @@ const handleEditProcedure = (id) => {
   // Highlight the in-sequence fixes on the waypoint layer so the user can see
   // which points are already part of the procedure while adding more
   if (_waypointLayer) {
-    filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color);
+    filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color, true);
   }
 
   // Open the Drawing Panel with the full sequence already populated
@@ -1534,7 +1534,7 @@ const _afterPointAdded = (rawData) => {
   // Update the waypoint layer highlighting so the newly added fix becomes fully
   // opaque (if it's a real waypoint) and other unrelated fixes stay faded.
   if (_waypointLayer) {
-    filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color);
+    filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color, true);
   }
 };
 
@@ -1556,7 +1556,7 @@ const handlePointRemove = (index) => {
   updateMeasurementLabels(_map, DrawingState);
   updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
   if (_waypointLayer) {
-    filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color);
+    filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color, true);
   }
   refreshSequenceList(DrawingState, _sequenceCallbacks());
 };
@@ -1617,7 +1617,7 @@ const handlePointEdit = (index) => {
       // Rebuild holding markers — the user may have just toggled a holding designation.
       updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
       if (_waypointLayer) {
-        filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color);
+        filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color, true);
       }
       refreshSequenceList(DrawingState, _sequenceCallbacks());
     },
@@ -1760,7 +1760,7 @@ const handleEndTransition = () => {
 
   // Restore waypoint layer highlight for the common-route sequence.
   if (_waypointLayer) {
-    filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color);
+    filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color, true);
   }
 
   // Refresh the sidebar: sequence list + transition UI (back to "Add Transition" form).

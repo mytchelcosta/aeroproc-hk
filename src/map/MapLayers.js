@@ -196,13 +196,14 @@ let _customDropMapHandler = null;
 
 // ── Cross-layer label dedup ───────────────────────────────────────────────
 // Populated by renderNavaids and renderAerodromes with their label positions.
-// renderGhostFixes seeds its _seenLabelCells from this set so ghost fix labels
-// are automatically suppressed wherever a navaid or aerodrome already labels
-// the same ~165 m grid cell — preventing visual overlap between layers.
-const _CROSS_LABEL_QUANT   = 667;  // 1 / 0.0015° ≈ 167 m per cell
-const _crossLabelCellKey   = (lat, lon) =>
-  `${Math.round(lat * _CROSS_LABEL_QUANT)}|${Math.round(lon * _CROSS_LABEL_QUANT)}`;
-let _crossLayerOccupiedCells = new Set();  // reset is not needed — layers render once
+// _applyGhostLabels re-seeds its dedup set from these coords at whatever
+// quantum is appropriate for the current zoom, suppressing ghost fix labels
+// wherever another layer already occupies the same visual grid cell.
+let _crossLayerOccupiedCoords = [];  // [lat, lon] pairs — quantum-agnostic
+
+// Tracks which quantum was last used so _applyGhostLabels can skip the
+// full rebind pass when the zoom level stays within the same quantum tier.
+let _currentLabelQuantum = null;
 
 // ── Ghost snap mode (Builder) ─────────────────────────────────────────────
 // Ghost dots (renderGhostFixes) serve as the click/hover targets in builder
@@ -477,14 +478,21 @@ const _styleFixMarker = (marker, ident, activeMap, isFiltering, term, sequenceCo
     }
 
   } else {
-    // Viewport-visible but not in sequence and not searched — faded permanent label.
+    // Viewport-visible but not in sequence and not searched — faded style.
     // Only reaches this branch in viewport-culling mode (zoom ≥ 10, no search term).
+    // When ghost snap mode is active (suppressMatchLabel true), the ghost layer already
+    // shows permanent labels for all fixes — binding another permanent label here would
+    // create duplicate labels at the same map position. Use a delayed tooltip instead.
     marker.unbindTooltip();
-    marker.bindTooltip(_safeEscape(ident), { permanent: true, direction: 'top', className: 'fix-label', offset: [0, -4] });
+    if (suppressMatchLabel) {
+      _bindDelayedTooltip(marker, ident, { direction: 'top', className: 'fix-tooltip', offset: [0, -4] });
+    } else {
+      marker.bindTooltip(_safeEscape(ident), { permanent: true, direction: 'top', className: 'fix-label', offset: [0, -4] });
+      const newEl = marker.getTooltip()?.getElement();
+      if (newEl) newEl.style.setProperty('opacity', '0.18', 'important');
+    }
     marker.setStyle({ color: marker.defaultStyle?.color || '#7ec8e3', fillColor: marker.defaultStyle?.fillColor || '#7ec8e3', fillOpacity: 0.15, opacity: 0.15, weight: 1 });
     if (marker.setRadius) marker.setRadius(baseRadius);
-    const newEl = marker.getTooltip()?.getElement();
-    if (newEl) newEl.style.setProperty('opacity', '0.18', 'important');
   }
 };
 
@@ -1907,7 +1915,7 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
       console.warn('[MapLayers] Skipping major aerodrome with incomplete data:', aerodrome);
       return;
     }
-    _crossLayerOccupiedCells.add(_crossLabelCellKey(aerodrome.lat, aerodrome.lon));
+    _crossLayerOccupiedCoords.push([aerodrome.lat, aerodrome.lon]);
 
     const isShifted = ['SBSP', 'SBSJ', 'SBKP', 'SBTA'].includes(aerodrome.icao.toUpperCase());
     const iconClass = isShifted ? 'airport-icon shifted-marker' : 'airport-icon';
@@ -2047,7 +2055,7 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
   // Smaller, muted amber airplane so they are clearly secondary to Tier 1.
   regional.forEach((aerodrome) => {
     if (!aerodrome.icao || aerodrome.lat == null || aerodrome.lon == null) return;
-    _crossLayerOccupiedCells.add(_crossLabelCellKey(aerodrome.lat, aerodrome.lon));
+    _crossLayerOccupiedCoords.push([aerodrome.lat, aerodrome.lon]);
 
     const isShifted = ['SBSP', 'SBSJ', 'SBKP', 'SBTA'].includes(aerodrome.icao.toUpperCase());
     const icon = L.divIcon({
@@ -2082,7 +2090,7 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
   // Small green circle with an 'H' inside — aviation-standard heliport symbol.
   heliports.forEach((aerodrome) => {
     if (!aerodrome.icao || aerodrome.lat == null || aerodrome.lon == null) return;
-    _crossLayerOccupiedCells.add(_crossLabelCellKey(aerodrome.lat, aerodrome.lon));
+    _crossLayerOccupiedCoords.push([aerodrome.lat, aerodrome.lon]);
 
     const icon = L.divIcon({
       className: 'heliport-icon',
@@ -2155,7 +2163,7 @@ const renderNavaids = (mapInstance, navaids) => {
       console.warn('[MapLayers] Skipping NAVAID with incomplete data:', navaid);
       return;
     }
-    _crossLayerOccupiedCells.add(_crossLabelCellKey(navaid.lat, navaid.lon));
+    _crossLayerOccupiedCoords.push([navaid.lat, navaid.lon]);
 
     const isVor = VOR_TYPES.has(navaid.type);
 
@@ -3502,6 +3510,39 @@ const _removeGhostHoverGlow = () => {
   }
 };
 
+// Re-evaluates ghost fix label visibility using a zoom-dependent quantum.
+// Low zoom (≤9): coarse 667 quantum (~165 m cells) — avoids label noise.
+// High zoom (≥10): fine 3333 quantum (~30 m cells) — resolves close threshold fixes.
+// Skips the expensive DOM pass if the quantum hasn't changed since last call.
+const _applyGhostLabels = (quantum) => {
+  if (quantum === _currentLabelQuantum) return;
+  _currentLabelQuantum = quantum;
+
+  const cellKey = (lat, lon) =>
+    `${Math.round(lat * quantum)}|${Math.round(lon * quantum)}`;
+
+  // Pre-seed from navaid/aerodrome positions (re-quantized at current zoom level).
+  const seen = new Set(
+    _crossLayerOccupiedCoords.map(([lat, lon]) => cellKey(lat, lon))
+  );
+
+  for (const marker of _ghostMarkers) {
+    marker.unbindTooltip();
+    const fix = marker._fixData;
+    if (!fix) continue;
+    const key = cellKey(fix.lat, fix.lon);
+    if (!seen.has(key)) {
+      seen.add(key);
+      marker.bindTooltip(fix.ident, {
+        permanent: true,
+        direction: 'bottom',
+        className: 'ghost-fix-label',
+        offset:    [0, 12]
+      });
+    }
+  }
+};
+
 const _ensureGhostFixPane = (mapInstance) => {
   if (mapInstance.getPane('ghostFixPane')) return;   // already created — nothing to do
   const pane = mapInstance.createPane('ghostFixPane');
@@ -3537,7 +3578,8 @@ const renderGhostFixes = (mapInstance, waypointData) => {
   }
 
   _ensureGhostFixPane(mapInstance);
-  _ghostMarkers = [];  // reset so re-render (unlikely) doesn't leak stale refs
+  _ghostMarkers = [];         // reset so re-render (unlikely) doesn't leak stale refs
+  _currentLabelQuantum = null; // force full label pass on first zoomend call
 
   const t1Layer = L.layerGroup(); // High Airways
   const t2Layer = L.layerGroup(); // Low Airways
@@ -3558,18 +3600,12 @@ const renderGhostFixes = (mapInstance, waypointData) => {
   // selector could use to detect or hide collisions. The lightest viable
   // approach is a single bucket-dedup pass at render time:
   //
-  //   1. Quantise each fix's coordinates into a ~165 m grid cell
-  //      (0.0015° ≈ 167 m at 22°N).
+  //   1. Quantise each fix's coordinates into a grid cell (quantum is zoom-dependent).
   //   2. The FIRST fix that lands in a given cell gets its label rendered.
   //   3. Subsequent fixes in the same cell render their DOT only — no label.
   //
-  // The dot itself is always shown so the positional reference is preserved;
-  // only the redundant text is suppressed. Cost is one Set lookup per fix.
-  const _LABEL_DEDUP_QUANT      = 667;   // 1 / 0.0015 — multiply lat/lon by this then round
-  // Pre-seed from navaids/aerodromes so ghost labels don't overlap their labels.
-  const _seenLabelCells         = new Set(_crossLayerOccupiedCells);
-  const _labelCellKey           = (lat, lon) =>
-    `${Math.round(lat * _LABEL_DEDUP_QUANT)}|${Math.round(lon * _LABEL_DEDUP_QUANT)}`;
+  // Labels are applied by _applyGhostLabels() rather than inline, so the quantum
+  // can be adjusted on zoomend without re-rendering all markers.
 
   for (const fix of validFixes) {
     const tier = fix.tier || 4;
@@ -3590,33 +3626,10 @@ const renderGhostFixes = (mapInstance, waypointData) => {
       className:           `ghost-fix-marker ghost-fix-t${tier}`
     });
 
-    // ── Phase 12: Label alignment with search-highlight overlay ───────────────
-    // The global CSS reset `* { box-sizing: border-box }` means the highlight
-    // dot div `width:17px;height:17px;border:2px` is 17 px TOTAL (border included).
-    // The wrapper is translated -8.5px upward (half of 17 px). Dot bottom is at
-    // Y + 8.5 px; add margin-top:3px → label text-top = Y + 11.5 px ≈ Y + 12 px.
-    //
-    //     text_top = (-8.5 wrapper translate) + (17 dot, border-box) + (3 margin) ≈ +12
-    //
-    // For the ghost tooltip (direction:'bottom', padding:0), Leaflet places its
-    // top edge at lat/lon Y + offset.y. To pixel-match the highlight text top
-    // we need offset.y = 12. With `line-height: 1.2` pinned for both labels,
-    // the rendered glyph baselines coincide exactly when the highlight overlays
-    // the ghost — resolving the 4-6 px doubling from Phase 11's incorrect calc.
-    //
-    // Skip bindTooltip entirely for fixes whose label cell is already taken
-    // (proximity dedup, see _seenLabelCells above).
-    const cellKey = _labelCellKey(fix.lat, fix.lon);
-    if (!_seenLabelCells.has(cellKey)) {
-      _seenLabelCells.add(cellKey);
-      marker.bindTooltip(fix.ident, {
-        permanent: true,
-        direction: 'bottom',
-        className: 'ghost-fix-label',
-        offset:    [0, 12]
-      });
-    }
-
+    // Store fix data for _applyGhostLabels() to rebind tooltips on zoom changes.
+    // Tooltip label alignment: direction:'bottom' offset:[0,12] matches the highlight
+    // overlay geometry (transform:-8.5px wrapper + 17px dot + 3px margin ≈ +12px top).
+    marker._fixData = fix;
     marker.tier = tier;
     layerMap[tier].addLayer(marker);
 
@@ -3646,9 +3659,13 @@ const renderGhostFixes = (mapInstance, waypointData) => {
   const updateZoomClasses = () => {
     const zoom = mapInstance.getZoom();
     const container = mapInstance.getContainer();
-    
-    // Manage a global class on the map container for CSS-driven decluttering
+
+    // CSS-driven Tier 4 decluttering (unchanged).
     container.classList.toggle('zoom-hide-generic-ghosts', zoom < 9);
+
+    // Zoom-aware label quantum: coarse at low zoom, fine at high zoom so
+    // closely-spaced threshold fixes (VHHH07L/07C/07R etc.) each get a label.
+    _applyGhostLabels(zoom >= 10 ? 3333 : 667);
   };
 
   mapInstance.on('zoomend', updateZoomClasses);

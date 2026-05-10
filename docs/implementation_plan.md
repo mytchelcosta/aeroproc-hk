@@ -321,6 +321,50 @@ Establish a professional delivery pipeline.
 
 ---
 
+## Phase 18: Ghost Fix Label Quantum Fix (Complete)
+
+- [x] **Ghost Fix Labels Missing Near Dense Airports**:
+    - **Root cause (confirmed via code review)**: The cross-layer awareness from Phase 17 is already working. The actual problem is that the `_CROSS_LABEL_QUANT = 667` constant produces ~165m grid cells. At VHHH's zoom level, threshold fixes like `VHHH07L`, `VHHH25R`, `VHHH07R`, `VHHH25L` are only 200–400m apart — multiple legitimate, distinct fixes collapse into the same cell and only the first one gets a label.
+    - **Fix — zoom-dependent quantum**: Zoom-aware `_applyGhostLabels(quantum)` function replaces inline label-binding. `zoomend` calls it with quantum `667` (zoom ≤9) or `3333` (zoom ≥10). Cross-layer dedup uses raw `[lat, lon]` pairs (`_crossLayerOccupiedCoords`) re-quantized per call. `_currentLabelQuantum` guard makes same-tier zooms a no-op.
+
+---
+
+## Phase 19: Builder Bug Fixes & Label Cleanup (Complete)
+
+- [x] **Pencil/Edit Button Non-Functional for Procedure Points**:
+    - Root cause: `{ once: true }` on `refreshSequenceList`'s click listener was consumed by ANY click on the wrapper (even on empty space), silently breaking all subsequent button clicks until the next DOM re-render.
+    - Fix: Added `_sequenceListWrapperEl` / `_sequenceListHandler` module-level tracking vars. `refreshSequenceList` now removes the old listener at the top of every call (before any early returns), then attaches a persistent handler — matching the `_builderSavedListHandler` pattern already used by `refreshBuilderSavedList`.
+- [x] **"Holding Point" Toggle Label Styling**:
+    - Added `.inline-hold-label-text { font-size: 11px; color: var(--text-muted); }` to `main.css`. The `<span class="inline-hold-label-text">` in `showDrawingPanel`'s restriction modal was inheriting the sidebar's default font size; it now matches the compact ALT/SPD label style.
+- [x] **Duplicate Fix Labels (Active Layer Leaking into Builder Mode)**:
+    - Root cause: `_styleFixMarker`'s `else` branch (viewport-visible, zoom ≥10, no search term) bound a faded permanent label, duplicating the ghost layer's own permanent label at the same position.
+    - Fix: `_styleFixMarker` extended — when `suppressMatchLabel` is true, the `else` branch uses `_bindDelayedTooltip` instead of a permanent label. All 5 builder-mode `filterWaypoints` calls in `main.js` now pass `true` as the 5th argument. Ghost layer remains the sole permanent label source in builder mode.
+
+---
+
+## Phase 20: Builder Workflow & Interaction Fixes
+
+- [ ] **Navaids as Valid Procedure Points**:
+    - Navaids (VORs, NDBs) are currently not accepted when selected as procedure points. The snap/click callback likely filters results by `isFix: true` and rejects navaid entries.
+    - Fix: extend the snap callback to also accept `isNavaid: true` entries. In `SearchManager.buildSearchIndex`, ensure navaid entries include `lat` and `lon` fields. In `enableSnapMode` / `enableGhostSnapMode`, accept any result with a valid `{ ident, lat, lon }` regardless of type flag.
+- [ ] **"Create Procedure" vs "Save Procedure" Button Text**:
+    - When editing an existing procedure, the finalize button still reads "Create Procedure" — confusing since the user is saving an edit, not creating new.
+    - Rename the button label dynamically: use **"Save Procedure"** when `DrawingState` has an existing procedure ID (edit flow) and **"Create Procedure"** only for new ones. Detect edit mode via a flag set by `loadProcedureForEdit()`.
+- [ ] **Remove "Save" Button from Point Creation Panel**:
+    - While adding/configuring an individual point, the panel shows three buttons: "Add Point", "Erase", and "Save". The "Save" button here is confusing because it implies saving the whole procedure mid-point.
+    - Remove the "Save" button from the point configuration state. The panel should only show **"Add Point"** (confirm this point and move on) and **"Erase"** (clear this point with confirmation). "Save Procedure" / "Create Procedure" should only appear once the user is done adding all points.
+- [ ] **Lock/Unlock Cycle Empties Procedures List**:
+    - Going from View → Builder shows procedures correctly, but clicking the lock/unlock button causes the list to go empty.
+    - Root cause: `showMainMenu()` re-renders the entire builder DOM on every lock state toggle. If `refreshBuilderSavedList()` is called before the DOM is ready (e.g., `#builder-saved-list` doesn't exist yet in the new locked DOM), it silently no-ops and never re-populates. Fix: ensure `refreshBuilderSavedList()` is called **after** the new DOM is fully rendered on each lock state change, and that it reads from the persistent store (`loadAll()`) rather than an in-memory variable that gets cleared on re-render.
+- [ ] **Eye Symbol Not Hiding Procedure in Builder Mode**:
+    - Clicking the 👁 (toggle visibility) icon on a procedure in the builder list does not hide it from the map.
+    - The `renderSavedProcedure` or the visibility toggle handler in `Sidebar.js` / `main.js` likely does not fire or does not correctly call `map.removeLayer()` for the procedure's layer group. Verify the click event reaches the handler, that the layer reference is correctly stored by procedure ID, and that `map.hasLayer()` is used to guard the remove call.
+- [ ] **Delete Procedure Confirmation Prompt**:
+    - Clicking the ✕ button to delete a procedure removes it immediately with no warning.
+    - Wrap the delete action in a confirmation prompt (e.g., `confirm('Delete procedure \"NAME\"? This cannot be undone.')` or a custom styled modal consistent with the existing Manual Point modal pattern). Only proceed with deletion if the user confirms.
+
+---
+
 ## Phase X: Future Enhancements (Post-MVP)
 
 - [ ] **Builder Airspaces**: Re-integrate Airspace selection options into the Procedural Builder (hidden during Phase 14).
@@ -345,6 +389,9 @@ Establish a professional delivery pipeline.
 | **Procedural Builder Workflow Streamlining** | 100% | Done |
 | **Builder UX Refinements & Highlight Parity** | 100% | Done |
 | **Builder Lock/Unlock UI Overhaul** | 100% | Done |
-| **Builder & Ghost Layer Polish** | 0% | Pending |
+| **Builder & Ghost Layer Polish** | 100% | Done |
+| **Ghost Fix Label Quantum Fix** | 100% | Done |
+| **Builder Bug Fixes & Label Cleanup** | 100% | Done |
+| **Builder Workflow & Interaction Fixes** | 0% | Pending |
 
-*Last Updated: 2026-05-10 — Phase 17 Planned*
+*Last Updated: 2026-05-10 — Phase 20 Planned*

@@ -84,7 +84,8 @@ const _serializePoint = (p) => ({
   isFix:          p.isFix,
   isHolding:      p.isHolding      || false,
   holdingBearing: p.isHolding ? (p.holdingBearing || null) : null,
-  holdingSide:    p.isHolding ? (p.holdingSide    || 'RIGHT') : null
+  holdingSide:    p.isHolding ? (p.holdingSide    || 'RIGHT') : null,
+  holdingOBS:     p.isHolding ? (p.holdingOBS     || null)   : null
 });
 
 
@@ -251,7 +252,7 @@ const DrawingState = {
     const allowed = [
       'levelCondition', 'levelValue',
       'speedCondition', 'speedValue',
-      'isHolding', 'holdingBearing', 'holdingSide'
+      'isHolding', 'holdingBearing', 'holdingSide', 'holdingOBS'
     ];
     allowed.forEach((key) => {
       if (key in changes) this.points[index][key] = changes[key];
