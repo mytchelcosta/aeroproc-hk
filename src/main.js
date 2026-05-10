@@ -43,7 +43,8 @@ import { renderFixes, addThresholdsToLayer,
          updateCommonRouteGhost,
          clearCommonRouteGhost,
          applySymbolScale,
-         setFetchWeatherFn }                        from './map/MapLayers.js';
+         setFetchWeatherFn,
+         renderGhostFixes }                         from './map/MapLayers.js';
 import { fetchWeather }                             from './services/MetarService.js';
 import { loadWaypoints, loadRunwayThresholds,
          loadAerodromes, loadNavaids,
@@ -183,6 +184,12 @@ let _navaidLayer   = null;  // VOR/NDB NAVAIDs (ON by default)
 // Each inner map is { [jsonName]: L.polygon }, toggled via addTo/removeLayer per the
 // Airspaces sub-panel checkboxes and group toggles wired in wireToolbarPanels().
 let _airspaceLayers = null;
+
+// Phase 10 — Ghost Fix Layer.
+// L.layerGroup containing one faint, non-interactive circleMarker per RNAV fix.
+// Placed in ghostFixPane (z-index 390) so the dots always sit below interactive
+// fix markers. Toggled by the "All Fixes (FIR)" checkbox in the Objects panel.
+let _ghostFixLayers = null;
 
 // Tracks whether the user wants RNAV fixes shown in Builder mode.
 // Defaults to true (checked in Objects panel). The tab-switch logic
@@ -613,6 +620,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Step 5: Render the waypoints as circle markers grouped in a LayerGroup.
   _waypointLayer = renderFixes(_map, waypoints);
 
+  // Phase 10: Render the full FIR fix dataset as faint, non-interactive ghost dots.
+  // These dots are always visible in View mode as a positional reference overlay.
+  // They sit in ghostFixPane (z-index 390) — below interactive markers — and have
+  // no labels or click handlers, so they never interfere with the drawing workflow.
+  _ghostFixLayers = renderGhostFixes(_map, waypoints);
+
   // Step 5b: Load the hardcoded runway threshold data and add those markers
   // to the same LayerGroup so thresholds are toggled by the same tab switch.
   // Thresholds are rendered as amber circles, visually distinct from teal fixes.
@@ -627,7 +640,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Regional airports and heliports start hidden; the Objects sub-panel enables them.
   console.log('[AeroProc] Fetching airports...');
   const aerodromes = await loadAerodromes();
-  const aeroLayers = renderAerodromes(_map, aerodromes);
+  const aeroLayers = renderAerodromes(_map, aerodromes, thresholds);
   // Store refs so the Objects sub-panel checkboxes can toggle each tier.
   _majorLayer    = aeroLayers.majorLayer;
   _regionalLayer = aeroLayers.regionalLayer;
@@ -658,13 +671,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Must run AFTER all layers are created (majorLayer, navaidLayer, _airspaceLayers, etc.)
   // so the checkbox handlers have valid polygon references to add/remove.
   wireToolbarPanels(
-    { 
-      waypointLayer: _waypointLayer, 
-      majorLayer: _majorLayer, 
-      regionalLayer: _regionalLayer, 
-      heliportLayer: _heliportLayer, 
-      navaidLayer: _navaidLayer, 
-      airspaceLayers: _airspaceLayers 
+    {
+      waypointLayer:  _waypointLayer,
+      majorLayer:     _majorLayer,
+      regionalLayer:  _regionalLayer,
+      heliportLayer:  _heliportLayer,
+      navaidLayer:    _navaidLayer,
+      airspaceLayers: _airspaceLayers,
+      ghostFixLayers: _ghostFixLayers    // Phase 10.5: tiered ghost FIR fix dots
     },
     { fixesEnabled: _fixesEnabled }
   );

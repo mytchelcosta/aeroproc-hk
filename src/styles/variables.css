@@ -30,12 +30,13 @@
 
     /* Phase 28: Global Scaling — these two variables drive calc() sizing in main.css.
        Slider range is 0.5–2.0. Updated in real-time by the Settings panel in main.js.
-       Default 1.0 = no change from the original hard-coded pixel sizes. */
-    --map-label-scale:  1.0;
-    --map-symbol-scale: 1.0;
+       Phase 12: Defaults raised to improve out-of-the-box readability. */
+    --map-label-scale:  1.2;
+    --map-symbol-scale: 1.4;
 
     /* Phase 29: UI Scale — drives font-sizes in the sidebar and toolbar panels.
        Separate from map-label-scale so users can size the interface independently
-       from the map annotation layer. Range 0.7–1.5. Default 1.0 = no change. */
-    --ui-scale: 1.0;
+       from the map annotation layer. Range 0.7–1.5.
+       Phase 12: Default raised to 1.3 for better interface readability. */
+    --ui-scale: 1.3;
 }

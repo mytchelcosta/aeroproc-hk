@@ -307,6 +307,37 @@ html, body {
     display: none !important;
 }
 
+/* Ghost De-cluttering (Phase 10.5) */
+.zoom-hide-generic-ghosts .ghost-fix-t4    { display: none !important; }
+/* We style ghost labels identically to the _floatingLabel (used by search highlights)
+   so that when a search result overlays a ghost fix, the texts are perfectly superposed.
+   Phase 11: line-height is pinned to 1.2 here AND in _floatingLabel so the rendered
+   glyph baselines match exactly across both label types — without this, browser
+   default line-heights could drift the ghost text 1-2 px off the highlight text. */
+.ghost-fix-label {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #7ec8e3 !important; /* Matches the ghost circle baseColor */
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    text-shadow:
+        -1px -1px 0 rgba(0,0,0,0.95),
+         1px -1px 0 rgba(0,0,0,0.95),
+        -1px  1px 0 rgba(0,0,0,0.95),
+         1px  1px 0 rgba(0,0,0,0.95),
+         0 0 6px rgba(0,0,0,0.8) !important;
+    pointer-events: none !important;
+    opacity: 0.45 !important; /* Matched to ghost marker fillOpacity */
+}
+.ghost-fix-label::before { display: none !important; }
+
 
 /* ================================================================
    FIX LABEL — permanent label shown in Builder/snap mode
@@ -1751,7 +1782,7 @@ html, body {
     white-space:    nowrap;
     /* Phase 29: scale() appended so Symbol Size slider affects airport icons */
     transform:      translate(-50%, -50%) scale(var(--map-symbol-scale));
-    opacity:        0.3;
+    opacity:        0.375;
     transition:     opacity 0.15s;
 }
 
@@ -1814,7 +1845,7 @@ html, body {
     white-space:    nowrap;
     /* Phase 29: scale() appended so Symbol Size slider affects regional airport icons */
     transform:      translate(-50%, -50%) scale(var(--map-symbol-scale));
-    opacity:        0.3;
+    opacity:        0.375;
     transition:     opacity 0.15s;
 }
 
@@ -1871,7 +1902,7 @@ html, body {
     justify-content: center;
     width:           13px;
     height:          13px;
-    background:      rgba(0, 200, 100, 0.14);
+    background:      rgba(0, 200, 100, 0.175);
     border:          1.5px solid rgba(0, 200, 100, 0.60);
     border-radius:   50%;
     transform:       translate(-50%, -50%);
@@ -5042,11 +5073,13 @@ details[open] > .subpanel-collapsible-header::before {
     white-space:  nowrap;
 }
 
-.wx-popup-coords {
+.wx-popup-runways {
     font-family: 'JetBrains Mono', monospace;
     font-size:   10px;
-    color:       var(--text-muted);
+    font-weight: 600;
+    color:       #ffb547; /* Amber - standard for thresholds */
     padding:     2px 14px 8px;
+    letter-spacing: 0.02em;
 }
 
 /* ── Weather body: idle / loading / loaded states ────────────── */

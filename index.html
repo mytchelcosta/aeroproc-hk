@@ -402,7 +402,30 @@
           <input type="checkbox" id="chk-navaids" checked />
           <span data-i18n="ui.panels.objects.chk_navaids">NAVAIDs</span>
         </label>
+        <details class="subpanel-collapsible" open>
+          <summary class="subpanel-collapsible-header">All Fixes (FIR)</summary>
+          <div class="subpanel-nested">
+            <label class="panel-check-row">
+              <input type="checkbox" id="chk-ghost-t1" checked />
+              <span>High Airways</span>
+            </label>
+            <label class="panel-check-row">
+              <input type="checkbox" id="chk-ghost-t2" checked />
+              <span>Low Airways</span>
+            </label>
+            <label class="panel-check-row">
+              <input type="checkbox" id="chk-ghost-t3" checked />
+              <span>Procedures</span>
+            </label>
+            <label class="panel-check-row">
+              <input type="checkbox" id="chk-ghost-t4" />
+              <span>Generic</span>
+            </label>
+
+          </div>
+        </details>
       </div>
+
 
       <!-- ─── Sub-panel: Airspaces ─────────────────────────────────────────────────
            Appears to the LEFT of the toolbar when Button 3 is clicked.
@@ -604,10 +627,10 @@
         <div class="settings-slider-row">
           <div class="settings-slider-header">
             <span class="settings-slider-name" data-i18n="ui.panels.settings.label_size">Label Size</span>
-            <span class="settings-slider-val" id="settings-label-scale-val">1.0</span>
+            <span class="settings-slider-val" id="settings-label-scale-val">1.2</span>
           </div>
           <input type="range" class="settings-slider" id="settings-label-scale"
-                 min="0.5" max="2.0" step="0.1" value="1.0" />
+                 min="0.5" max="2.0" step="0.1" value="1.2" />
           <div class="settings-slider-ticks"><span>0.5×</span><span>2.0×</span></div>
         </div>
 
@@ -615,10 +638,10 @@
         <div class="settings-slider-row">
           <div class="settings-slider-header">
             <span class="settings-slider-name" data-i18n="ui.panels.settings.symbol_size">Symbol Size</span>
-            <span class="settings-slider-val" id="settings-symbol-scale-val">1.0</span>
+            <span class="settings-slider-val" id="settings-symbol-scale-val">1.4</span>
           </div>
           <input type="range" class="settings-slider" id="settings-symbol-scale"
-                 min="0.5" max="2.0" step="0.1" value="1.0" />
+                 min="0.5" max="2.0" step="0.1" value="1.4" />
           <div class="settings-slider-ticks"><span>0.5×</span><span>2.0×</span></div>
         </div>
 
@@ -626,10 +649,10 @@
         <div class="settings-slider-row">
           <div class="settings-slider-header">
             <span class="settings-slider-name" data-i18n="ui.panels.settings.ui_size">Interface Text</span>
-            <span class="settings-slider-val" id="settings-ui-scale-val">1.0</span>
+            <span class="settings-slider-val" id="settings-ui-scale-val">1.3</span>
           </div>
           <input type="range" class="settings-slider" id="settings-ui-scale"
-                 min="0.7" max="1.5" step="0.05" value="1.0" />
+                 min="0.7" max="1.5" step="0.05" value="1.3" />
           <div class="settings-slider-ticks"><span>0.7×</span><span>1.5×</span></div>
         </div>
       </div>

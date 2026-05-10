@@ -345,8 +345,9 @@ export const wireResearchPanel = () => {
  * Wires the toolbar buttons and sub-panel toggles.
  */
 export const wireToolbarPanels = (layers, state) => {
-  const { 
-    waypointLayer, majorLayer, regionalLayer, heliportLayer, navaidLayer, airspaceLayers 
+  const {
+    waypointLayer, majorLayer, regionalLayer, heliportLayer, navaidLayer, airspaceLayers,
+    ghostFixLayers
   } = layers;
 
   // -- Main Toolbar Buttons --
@@ -432,6 +433,24 @@ export const wireToolbarPanels = (layers, state) => {
   });
   document.getElementById('chk-navaids')?.addEventListener('change', (e) => {
     if (navaidLayer) e.target.checked ? navaidLayer.addTo(_map) : _map.removeLayer(navaidLayer);
+  });
+
+  // Toggle tiered ghost fix dots (default ON).
+  document.getElementById('chk-ghost-t1')?.addEventListener('change', (e) => {
+    const l = layers.ghostFixLayers?.t1Layer;
+    if (l) e.target.checked ? l.addTo(_map) : _map.removeLayer(l);
+  });
+  document.getElementById('chk-ghost-t2')?.addEventListener('change', (e) => {
+    const l = layers.ghostFixLayers?.t2Layer;
+    if (l) e.target.checked ? l.addTo(_map) : _map.removeLayer(l);
+  });
+  document.getElementById('chk-ghost-t3')?.addEventListener('change', (e) => {
+    const l = layers.ghostFixLayers?.t3Layer;
+    if (l) e.target.checked ? l.addTo(_map) : _map.removeLayer(l);
+  });
+  document.getElementById('chk-ghost-t4')?.addEventListener('change', (e) => {
+    const l = layers.ghostFixLayers?.t4Layer;
+    if (l) e.target.checked ? l.addTo(_map) : _map.removeLayer(l);
   });
 
   // ── AIRSPACES PANEL WIRING ─────────────────────────────────────────

@@ -139,13 +139,13 @@ Establish a professional delivery pipeline.
     - **Compact value strings**: Wind — `100°/10KT` (no spaces around `/`, no space before `KT`); Temp/Dew — `24°C/20°C`; Gust — `10KTG20`. These eliminate the mid-number wraps seen at 11px.
     - Build verified clean (`vite build` → 257.59 kB JS, 77.80 kB CSS, 0 errors).
 
-## Phase 10: FIR Fixes Overlay (Planned)
+## Phase 10: FIR Fixes Overlay (Completed)
 
-- [ ] **Data Audit & Completion**:
+- [x] **Data Audit & Completion**:
     - **Verify existing dataset**: `public/data/fixes_hk.json` already contains **884 RNAV waypoints** parsed from the `[FIXES]` section (lines 133–1032) of `public/data/Hong-Kong-Sector-File.sct`. That section has 900 entries; the 16-entry gap is due to blank/comment lines. The JSON is therefore essentially complete for the current SCT revision and **no re-extraction is required** unless a newer sector file is dropped in.
     - **Future-proofing script**: `scripts/parse_sct_fixes.js` (to be created) should read `public/data/Hong-Kong-Sector-File.sct`, extract every line in the `[FIXES]` block (stop at the next `[` section header), parse the EuroScope DMS coordinate strings (`N/S DD.MM.SS.sss E/W DDD.MM.SS.sss`) into decimal lat/lon, and write `public/data/fixes_hk.json` as `[{ "ident": "XXXXX", "lat": DD.ddddd, "lon": DDD.ddddd }]`. Run this any time the sector file is updated to keep the JSON in sync.
 
-- [ ] **Ghost Fix Layer (Non-Interactive Background Dots)**:
+- [x] **Ghost Fix Layer (Non-Interactive Background Dots)**:
     - **Design intent**: Every fix in `fixes_hk.json` should be permanently visible on the map as a very faint, greyed-out dot — the same geometric shape as the active (interactive) fix markers but at low opacity and with no mouse events. Because the search-result highlight markers use the same dot geometry and appear in the same screen location, the highlighted markers will visually appear to "activate" a pre-existing ghost dot, creating a convincing pop-in effect with zero extra click targets.
     - **Rendering**: Add a new function `renderGhostFixes(mapInstance, waypointData)` in `MapLayers.js`. For each fix, create a `L.circleMarker` (same radius as the interactive fix markers) with: `color: 'rgba(180,200,210,0.25)'`, `fillColor: 'rgba(180,200,210,0.20)'`, `fillOpacity: 1`, `weight: 0.8`, `interactive: false`, `bubblingMouseEvents: false`. Add all ghost markers to a new dedicated `L.layerGroup` that is assigned to a new Leaflet custom pane named `'ghostFixPane'` (z-index slightly below the existing `waypointPane` so interactive markers always render on top).
     - **No labels**: Ghost markers must not carry any tooltip or DivIcon label. The purpose is purely positional reference — adding labels at this scale would produce illegible noise for the full 884-fix dataset.
@@ -154,7 +154,62 @@ Establish a professional delivery pipeline.
     - **Export**: Export `renderGhostFixes` and the ghost layer group reference from `MapLayers.js` so `main.js` can wire the toolbar toggle.
     - **Build must pass clean.**
 
+## Phase 11: Fixes Label Alignment & De-cluttering (Ghost Layer Polish) (Completed)
+
+- [x] **Visual Alignment / Doubling Fix**:
+    - **Root cause**: The ghost label (Leaflet tooltip with `direction: 'bottom'`, `offset: [0, 7]`) placed its text top at lat/lon Y + 7 px. The search-highlight `_floatingLabel` for a Fix renders an 18 px outer dot (14 px content + 2×2 px border, default content-box sizing) inside a wrapper translated `-7 px`, with the label sitting `margin-top: 3px` beneath the dot — net text top at lat/lon Y + 14 px. Vertical mismatch was therefore exactly 7 px, producing a faint "doubling" halo when the highlight overlaid the ghost.
+    - **Fix**: Bumped the ghost tooltip offset from `[0, 7]` to `[0, 14]` in `renderGhostFixes` (`MapLayers.js`) so the tooltip's top edge lands at lat/lon Y + 14 — pixel-matching the highlight label's text-top.
+    - **Font-metric pinning**: Added explicit `line-height: 1.2` to `.ghost-fix-label` (`main.css`) AND inline on the `_floatingLabel` div in `_buildHighlightHtml` (`MapLayers.js`). Without this, browser default line-heights for `JetBrains Mono` could vary by 1-2 px between the tooltip context and the divIcon context, drifting the glyph baselines apart even after the offset fix. Also added `text-align: center !important` to `.ghost-fix-label` to mirror the highlight's centered alignment.
+    - **Verified shared styles**: font-family, font-size (8 px), font-weight (600), white-space (nowrap), padding (0), margin (0), and text-shadow outline+glow are now identical between both labels — the only intentional differences are color (ghost teal vs highlight per-layer color) and opacity (ghost 0.45 vs highlight 1.0).
+
+- [x] **Proximity De-cluttering**:
+    - **CSS-only investigation**: Pure CSS cannot solve this because the labels live in independent marker DOM nodes — there is no parent–sibling relationship a CSS selector could use to detect cross-marker collisions. `:has()`, `+`, `~`, hover, and `mix-blend-mode` were all considered; none can address screen-space proximity between separately-rendered Leaflet markers.
+    - **Lightest viable JS**: A single bucket-dedup pass in `renderGhostFixes` (`MapLayers.js`) before `bindTooltip`. Each fix's lat/lon is quantised to a ~165 m grid cell (`Math.round(coord * 667)` → `0.0015°` quantum, ≈ 167 m at 22 °N). The first fix that lands in a given cell gets its label rendered; subsequent fixes in the same cell render their dot only — no label. Cost is one `Set` lookup per fix; no zoom-time recomputation, no DOM mutations after render.
+    - **Behavioural guarantee**: The dot itself is always shown so the positional reference is preserved for every fix; only the redundant text in coincident clusters is suppressed. The 165 m threshold catches true duplicates and very-close pairs (which would otherwise produce illegible overlapping 8 px labels) without affecting legitimately-separate fixes.
+    - Build verified clean (`vite build` → 259.74 kB JS, 78.50 kB CSS, 0 errors).
+
 ---
+
+## Phase 12: Display Settings Polish (Completed)
+
+- [x] **Aerodromes Visibility**:
+    - Increased opacity of all aerodrome tiers by 25% (more opaque):
+        - Major airports `.airport-icon-inner`: `0.3` → `0.375`
+        - Regional airports `.airport-icon-inner-regional`: `0.3` → `0.375`
+        - Heliports: RGBA alpha channels scaled ×1.25 (background `0.14→0.175`, border `0.60→0.75`, symbol color `0.80→1.00`)
+- [x] **Sizing Interface Defaults**:
+    - Updated CSS root variables in `variables.css` and HTML slider defaults in `index.html`:
+        - `--map-label-scale`: `1.0` → `1.2`
+        - `--map-symbol-scale`: `1.0` → `1.4`
+        - `--ui-scale`: `1.0` → `1.3`
+- [x] **Fixes Scaling**:
+    - Ghost fix marker radius: `3` → `3.6` px
+    - Ghost fix label font-size: `8px` → `10px` (`.ghost-fix-label` CSS)
+    - Search-highlight fix dot: `14px` → `17px` (border-box)
+    - Highlight wrapper translate: `-7px` → `-8.5px` (re-centred on new dot size)
+    - `_floatingLabel` gains optional `fontSize` parameter (default `'8px'`); fix highlights pass `'10px'` — aerodrome/heliport highlights remain at 8px
+- [x] **Ghost Labels Zoom Persistence**:
+    - Removed `container.classList.toggle('zoom-hide-ghost-labels', zoom < 10)` from `renderGhostFixes`.
+    - Removed the dead CSS rule `.zoom-hide-ghost-labels .ghost-fix-label { display: none }` from `main.css`.
+    - Tier-4 marker hiding (`zoom-hide-generic-ghosts`) preserved for performance.
+- [x] **Airspace Stacking Reorder**:
+    - Added `_ensureAirspacePanes()` and `_getAirspacePaneName()` helpers in `MapLayers.js`.
+    - Created 5 dedicated Leaflet panes at z-indices 201–205 (between tiles at 200 and ghost fixes at 390):
+        1. `airspaceFIRPane` (z=201) — FIR, FIZ, SEC (bottom-most)
+        2. `airspaceTMAPane` (z=202) — TMA + outer boundary
+        3. `airspaceCTRPane` (z=203) — CTR
+        4. `airspaceATZPane` (z=204) — ATZ
+        5. `airspaceUCARAPane` (z=205) — UCARA (top of airspace group)
+    - Each `L.polygon` in `renderAirspaces` now receives `pane: _getAirspacePaneName(type)` so fills are visually below all markers, fixes, and symbols.
+    - Removed the `polygon.bringToBack()` call from the default-visibility block.
+- [x] **Absolute Label Synchronization**:
+    - **Root cause identified**: The global CSS reset `* { box-sizing: border-box }` means the highlight dot `width:17px;height:17px;border:2px` is 17 px TOTAL. Phase 11 incorrectly treated border as additive (assumed 21 px), overestimating the tooltip offset.
+    - **Correct geometry**: `text_top = (-8.5 translate) + (17 dot, border-box) + (3 margin) = +11.5 ≈ +12`
+    - Ghost tooltip offset corrected: `[0, 16]` → `[0, 12]`
+    - Build verified clean (`vite build` → 260.60 kB JS, 78.50 kB CSS, 0 errors).
+
+---
+
 
 ## 📈 Advancement Tracking
 | Milestone | Progress | Status |
@@ -168,6 +223,8 @@ Establish a professional delivery pipeline.
 | **UI Refinements** | 100% | Done |
 | **Fixes Visualization** | 100% | Done |
 | **Weather Card UX Polish** | 100% | Done |
-| **FIR Fixes Overlay** | 0% | 🟡 Planned |
+| **FIR Fixes Overlay** | 100% | Done |
+| **Ghost Layer Polish** | 100% | Done |
+| **Display Settings Polish** | 100% | Done |
 
-*Last Updated: 2026-05-09*
+*Last Updated: 2026-05-10*

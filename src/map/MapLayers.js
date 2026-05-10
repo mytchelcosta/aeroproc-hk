@@ -1508,18 +1508,18 @@ const setFetchWeatherFn = (fn) => {
 // 'lat'  — latitude (decimal degrees)
 // 'lon'  — longitude (decimal degrees)
 // 'customBody' — optional HTML to inject instead of the default button
-const _buildAirportPopupHtml = (icao, name, lat, lon, customBody = null) => {
-  const latStr = lat != null ? lat.toFixed(4) : '—';
-  const lonStr = lon != null ? lon.toFixed(4) : '—';
-
+const _buildAirportPopupHtml = (icao, name, lat, lon, customBody = null, runwaysStr = null) => {
   const bodyHtml = customBody || `<button class="wx-show-btn">🌤 <span data-i18n="map.weather.btn">${i18n.t('map.weather.btn')}</span></button>`;
+
+  // Phase 38: Thresholds displayed in header, coordinates removed per user request.
+  const rwyLine = runwaysStr ? `<div class="wx-popup-runways">RWY ${runwaysStr}</div>` : '';
 
   return `
     <div class="wx-popup-header">
       <span class="wx-icao">${_safeEscape(icao)}</span>
       <span class="wx-airport-name">${_safeEscape(name)}</span>
     </div>
-    <div class="wx-popup-coords">${latStr}, ${lonStr}</div>
+    ${rwyLine}
     <div class="wx-body">
       ${bodyHtml}
     </div>`;
@@ -1792,8 +1792,39 @@ const _buildWeatherCard = (data) => {
 //
 // The 'snapCallback' argument is used when a drawing tool (like Add Waypoint)
 // restricts the map interaction exclusively to selecting fixes for a procedure.
-const renderAerodromes = (mapInstance, aerodromes) => {
+const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
   if (!mapInstance) return;
+
+  // Phase 38: Group thresholds by airport ICAO to display in popups.
+  const rwyMap = new Map();
+  thresholds.forEach(t => {
+    if (!t.airport) return;
+    const rwy = t.ident.split(' ')[1]; // Extract '07L' from 'VHHH 07L'
+    if (!rwy) return;
+    if (!rwyMap.has(t.airport)) rwyMap.set(t.airport, []);
+    rwyMap.get(t.airport).push(rwy);
+  });
+
+  // Helper to format runways like "07L/07C/07R - 25R/25C/25L"
+  const _formatRunways = (icao) => {
+    const list = rwyMap.get(icao);
+    if (!list || list.length === 0) return null;
+    
+    // Sort them. For VHHH: 07C, 07L, 07R, 25C, 25L, 25R
+    list.sort();
+    
+    // Group by first two digits (the heading)
+    const groups = new Map();
+    list.forEach(r => {
+      const head = r.substring(0, 2);
+      if (!groups.has(head)) groups.set(head, []);
+      groups.get(head).push(r);
+    });
+    
+    // Join groups with ' - '
+    const sortedHeads = Array.from(groups.keys()).sort();
+    return sortedHeads.map(h => groups.get(h).join('/')).join(' - ');
+  };
 
   // Safely destructure — fall back to empty arrays if any tier is missing.
   const { major = [], regional = [], heliports = [] } = aerodromes || {};
@@ -1850,7 +1881,7 @@ const renderAerodromes = (mapInstance, aerodromes) => {
 
     // ── Phase 35: Interactive Weather Popup with 2s Hover Delay ──────────────
     const icao = aerodrome.icao.toUpperCase();
-    const popupHtml = _buildAirportPopupHtml(icao, aerodrome.name, aerodrome.lat, aerodrome.lon);
+    const popupHtml = _buildAirportPopupHtml(icao, aerodrome.name, aerodrome.lat, aerodrome.lon, null, _formatRunways(icao));
 
     const popup = L.popup({
       className:    'airport-wx-popup',
@@ -1981,9 +2012,16 @@ const renderAerodromes = (mapInstance, aerodromes) => {
 
     const marker = L.marker([aerodrome.lat, aerodrome.lon], { icon });
     marker.fixData = { ident: aerodrome.icao, name: aerodrome.name, lat: aerodrome.lat, lon: aerodrome.lon, tipo: 'AERODROME', isFix: false };
+    
+    const icao = aerodrome.icao.toUpperCase();
+    const rwys = _formatRunways(icao);
+    const rwyLine = rwys ? `<div style="color:#ffb547;font-size:10px;margin-top:2px;">RWY ${rwys}</div>` : '';
+    
     const tooltipHtml = 
       `<div style="font-family:'JetBrains Mono';font-size:12px;font-weight:bold;">${_safeEscape(aerodrome.icao)}</div>` +
-      `<div style="font-family:Inter;font-size:11px;color:#aaa;">${_safeEscape(aerodrome.name)}</div>`;
+      `<div style="font-family:Inter;font-size:11px;color:#aaa;">${_safeEscape(aerodrome.name)}</div>` +
+      rwyLine;
+
     const ttOffset = isShifted ? [-10, -8] : [0, -8];
     _bindDelayedTooltip(marker, tooltipHtml, { direction: 'top', offset: ttOffset, className: 'fix-tooltip' });
     marker.on('click', _makeAeroClickHandler(marker, aerodrome));
@@ -2529,9 +2567,17 @@ const renderGlobalSearchHighlights = (mapInstance, results, term) => {
     // Shared helper: text label shown below an icon with a black outline so it
     // floats legibly over any map tile without a background box.
     // 'text' — the string(s) to display (already escaped by caller)
-    const _floatingLabel = (text, textColor) =>
+    //
+    // Phase 11: `line-height: 1.2` is pinned explicitly. The ghost-fix label
+    // (rendered via Leaflet tooltip with `.ghost-fix-label`) also pins the
+    // same line-height. Without an explicit value, browser defaults can vary
+    // slightly between fonts and force the highlight glyph baselines off the
+    // ghost glyph baselines by 1-2 px — visible as a faint "doubling" halo
+    // when the highlight overlays the ghost.
+    const _floatingLabel = (text, textColor, fontSize = '8px') =>
       `<div style="` +
-      `font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;` +
+      `font-family:'JetBrains Mono',monospace;font-size:${fontSize};font-weight:600;` +
+      `line-height:1.2;` +
       `color:${textColor};white-space:nowrap;text-align:center;margin-top:3px;` +
       `text-shadow:` +
       `-1px -1px 0 rgba(0,0,0,0.95),` +
@@ -2544,19 +2590,19 @@ const renderGlobalSearchHighlights = (mapInstance, results, term) => {
 
     if (result.layer === 'fix') {
       // RNAV fix: bright filled dot (mirrors Builder's circleMarker highlight) with
-      // the ident label below. Dot is 14px tall, so anchor offset = 7px.
+      // the ident label below. Dot is 17 px border-box; translate -8.5 px centers it.
       // Phase 8: ident text now passes through `_highlightMatch` so the typed
       // characters inside the ident render with the .fix-label-highlight glow.
       const dot =
         `<div style="` +
-        `width:14px;height:14px;border-radius:50%;` +
+        `width:17px;height:17px;border-radius:50%;` +
         `background:${color};border:2px solid #ffffff;` +
         `box-shadow:${glow};pointer-events:none;">` +
         `</div>`;
-      const label = _floatingLabel(_highlightMatch(result.ident), color);
+      const label = _floatingLabel(_highlightMatch(result.ident), color, '10px');
       return (
         `<div style="display:flex;flex-direction:column;align-items:center;` +
-        `transform:translate(-50%,-7px);pointer-events:none;">` +
+        `transform:translate(-50%,-8.5px);pointer-events:none;">` +
         dot + label +
         `</div>`
       );
@@ -2790,6 +2836,37 @@ const renderGlobalSearchHighlights = (mapInstance, results, term) => {
 // 'type'        — classification, e.g. "TMA"
 // 'coordinates' — array of [lat, lon] vertices (used to draw the hit polyline)
 const _AIRSPACE_HOVER_DELAY_MS = 2000;
+// Phase 12: Airspace stacking panes — five dedicated Leaflet panes placed
+// between the tile layer (z=200) and ghost fix layer (z=390) so airspace fills
+// are always visually below all markers, fixes, and symbols.  Within the group,
+// z-index order mirrors ATC significance (bottom-most = widest extent):
+//   FIR + FIZ + SEC (201) → TMA (202) → CTR (203) → ATZ (204) → UCARA (205)
+const _ensureAirspacePanes = (mapInstance) => {
+  const panes = [
+    { name: 'airspaceFIRPane',   z: 201 },  // HK FIR + FIZ + SEC (bottom-most)
+    { name: 'airspaceTMAPane',   z: 202 },  // TMA + outer boundary
+    { name: 'airspaceCTRPane',   z: 203 },  // CTR
+    { name: 'airspaceATZPane',   z: 204 },  // ATZ
+    { name: 'airspaceUCARAPane', z: 205 },  // UCARA (top of airspace group)
+  ];
+  panes.forEach(({ name, z }) => {
+    if (!mapInstance.getPane(name)) {
+      const pane = mapInstance.createPane(name);
+      pane.style.zIndex       = String(z);
+      pane.style.pointerEvents = 'none';   // visible fills are non-interactive
+    }
+  });
+};
+
+// Returns the correct Leaflet pane name for a given airspace type string.
+const _getAirspacePaneName = (type) => {
+  if (type === 'TMA')   return 'airspaceTMAPane';
+  if (type === 'CTR')   return 'airspaceCTRPane';
+  if (type === 'ATZ')   return 'airspaceATZPane';
+  if (type === 'UCARA') return 'airspaceUCARAPane';
+  return 'airspaceFIRPane';   // FIR, FIZ, SEC all sit in the bottom tier
+};
+
 
 // Streamlined tooltip body: Name, Type, Class, Vertical Boundaries.
 //
@@ -2932,6 +3009,8 @@ const renderAirspaces = (mapInstance, airspaces) => {
     return { tmaOuterLayer: null, tmaSectors: {}, ctrPolygons: {}, fizPolygons: {}, atzPolygons: {}, firPolygons: {}, sectorPolygons: {}, ucaraPolygons: {} };
   }
 
+  // Phase 12: Create dedicated panes for each airspace tier.
+  _ensureAirspacePanes(mapInstance);
   // Per-polygon reference maps — keyed by the exact name string from the JSON.
   const tmaSectors     = {};
   const ctrPolygons    = {};
@@ -3039,7 +3118,8 @@ const renderAirspaces = (mapInstance, airspaces) => {
       fillOpacity: fillOpacity,
       weight:      weight,
       dashArray:   dashArray,
-      interactive: false
+      interactive: false,
+      pane:        _getAirspacePaneName(type)
     });
 
     // Phase 7: hover-tooltip wiring.
@@ -3055,7 +3135,6 @@ const renderAirspaces = (mapInstance, airspaces) => {
     const defaultVisible = (type === 'TMA') || (type === 'CTR') || (type === 'FIZ') || (type === 'ATZ') || (type === 'FIR') || (type === 'SEC') || (type === 'UCARA');
     if (defaultVisible) {
       polygon.addTo(mapInstance);
-      if (type === 'FIR' || type === 'SEC') polygon.bringToBack();
     }
 
     if (type === 'TMA') {
@@ -3328,6 +3407,159 @@ const _calculateHeading = (p1, p2) => {
 
 
 
+// ── Phase 10: Ghost Fix Pane Setup ────────────────────────────────────────────
+// The ghost pane sits at z-index 390 — just below the default overlayPane (400)
+// where interactive fix circleMarkers live. Ghost dots are always visually
+// beneath the active markers so they never intercept mouse events that belong
+// to the interactive layer above.
+//
+// pointerEvents: 'none' on the pane element ensures no mouse activity reaches
+// these decorative dots even if the individual marker options were somehow wrong.
+const _ensureGhostFixPane = (mapInstance) => {
+  if (mapInstance.getPane('ghostFixPane')) return;   // already created — nothing to do
+  const pane = mapInstance.createPane('ghostFixPane');
+  pane.style.zIndex       = '390';    // just below overlayPane=400
+  pane.style.pointerEvents = 'none';  // purely decorative — no mouse interaction
+};
+
+
+// Renders all RNAV fixes as faint, non-interactive ghost dots permanently visible
+// on the map. The ghost dots share the same radius (3 px) and screen position as
+// the interactive fix markers, so a search-result highlight marker visually
+// "activates" the ghost dot beneath it — zero extra click targets, clean pop-in effect.
+//
+// Design intent:
+//   • Very low opacity so they read as a subtle positional reference, not noise.
+//   • No labels, no tooltips, no mouse handlers — just SVG circles.
+//   • All placed in 'ghostFixPane' (z-index 390) so they never compete with the
+//     interactive waypointLayer (overlayPane, z-index 400).
+//
+// 'mapInstance'  — the Leaflet map
+// 'waypointData' — array of { ident, lat, lon } objects from loadWaypoints()
+//
+// Returns: the L.layerGroup holding all ghost markers, already added to the map.
+//          Returns null on bad input (caller can skip wiring the toggle).
+const renderGhostFixes = (mapInstance, waypointData) => {
+  if (!mapInstance) {
+    console.error('[MapLayers] renderGhostFixes: No map instance provided.');
+    return null;
+  }
+  if (!waypointData || waypointData.length === 0) {
+    console.warn('[MapLayers] renderGhostFixes: No waypoint data provided. Nothing to render.');
+    return null;
+  }
+
+  _ensureGhostFixPane(mapInstance);
+
+  const t1Layer = L.layerGroup(); // High Airways
+  const t2Layer = L.layerGroup(); // Low Airways
+  const t3Layer = L.layerGroup(); // TMA
+  const t4Layer = L.layerGroup(); // Other
+
+  const layerMap = { 1: t1Layer, 2: t2Layer, 3: t3Layer, 4: t4Layer };
+
+  const validFixes = waypointData.filter((f) => f.ident && f.lat != null && f.lon != null);
+
+  // ── Phase 11: Proximity de-cluttering ───────────────────────────────────────
+  // Some fix records share identical or near-identical coordinates (legacy
+  // duplicates, named procedure points stacked at a single waypoint, etc.). At
+  // the 8 px label size their text labels overlap into an illegible smear.
+  //
+  // CSS alone cannot solve this because the labels live in independent
+  // marker DOM nodes — there is no parent–sibling relationship that a CSS
+  // selector could use to detect or hide collisions. The lightest viable
+  // approach is a single bucket-dedup pass at render time:
+  //
+  //   1. Quantise each fix's coordinates into a ~165 m grid cell
+  //      (0.0015° ≈ 167 m at 22°N).
+  //   2. The FIRST fix that lands in a given cell gets its label rendered.
+  //   3. Subsequent fixes in the same cell render their DOT only — no label.
+  //
+  // The dot itself is always shown so the positional reference is preserved;
+  // only the redundant text is suppressed. Cost is one Set lookup per fix.
+  const _LABEL_DEDUP_QUANT      = 667;   // 1 / 0.0015 — multiply lat/lon by this then round
+  const _seenLabelCells         = new Set();
+  const _labelCellKey           = (lat, lon) =>
+    `${Math.round(lat * _LABEL_DEDUP_QUANT)}|${Math.round(lon * _LABEL_DEDUP_QUANT)}`;
+
+  for (const fix of validFixes) {
+    const tier = fix.tier || 4;
+
+    // Unified ghost style: same teal color as active fixes but faded.
+    const baseColor = '#7ec8e3';
+
+    const marker = L.circleMarker([fix.lat, fix.lon], {
+      radius:              3.6,
+      color:               baseColor,
+      fillColor:           baseColor,
+      fillOpacity:         0.45,
+      weight:              1,
+      opacity:             0.45,
+      interactive:         false,
+      bubblingMouseEvents: false,
+      pane:                'ghostFixPane',
+      className:           `ghost-fix-marker ghost-fix-t${tier}`
+    });
+
+    // ── Phase 12: Label alignment with search-highlight overlay ───────────────
+    // The global CSS reset `* { box-sizing: border-box }` means the highlight
+    // dot div `width:17px;height:17px;border:2px` is 17 px TOTAL (border included).
+    // The wrapper is translated -8.5px upward (half of 17 px). Dot bottom is at
+    // Y + 8.5 px; add margin-top:3px → label text-top = Y + 11.5 px ≈ Y + 12 px.
+    //
+    //     text_top = (-8.5 wrapper translate) + (17 dot, border-box) + (3 margin) ≈ +12
+    //
+    // For the ghost tooltip (direction:'bottom', padding:0), Leaflet places its
+    // top edge at lat/lon Y + offset.y. To pixel-match the highlight text top
+    // we need offset.y = 12. With `line-height: 1.2` pinned for both labels,
+    // the rendered glyph baselines coincide exactly when the highlight overlays
+    // the ghost — resolving the 4-6 px doubling from Phase 11's incorrect calc.
+    //
+    // Skip bindTooltip entirely for fixes whose label cell is already taken
+    // (proximity dedup, see _seenLabelCells above).
+    const cellKey = _labelCellKey(fix.lat, fix.lon);
+    if (!_seenLabelCells.has(cellKey)) {
+      _seenLabelCells.add(cellKey);
+      marker.bindTooltip(fix.ident, {
+        permanent: true,
+        direction: 'bottom',
+        className: 'ghost-fix-label',
+        offset:    [0, 12]
+      });
+    }
+
+    marker.tier = tier;
+    layerMap[tier].addLayer(marker);
+  }
+
+  // Phase 30: Zoom filtering for Tier 4 (generic) ghost markers only.
+  // Instead of re-styling every marker (which is expensive for 884 nodes), 
+  // we rely on CSS classes driven by a zoom-level class on the map container.
+  const updateZoomClasses = () => {
+    const zoom = mapInstance.getZoom();
+    const container = mapInstance.getContainer();
+    
+    // Manage a global class on the map container for CSS-driven decluttering
+    container.classList.toggle('zoom-hide-generic-ghosts', zoom < 9);
+  };
+
+  mapInstance.on('zoomend', updateZoomClasses);
+  updateZoomClasses();
+
+
+
+  // Default: T1-T3 are ON. T4 is OFF by default.
+  t1Layer.addTo(mapInstance);
+  t2Layer.addTo(mapInstance);
+  t3Layer.addTo(mapInstance);
+  // t4Layer is off by default per user request
+
+  console.log(`[MapLayers] Rendered ghost fixes across 4 tier layers.`);
+  return { t1Layer, t2Layer, t3Layer, t4Layer };
+};
+
+
+
 export {
   renderAirports,
   renderFixes,
@@ -3363,6 +3595,7 @@ export {
   applySymbolScale,
   setFetchWeatherFn,
   renderREA,
-  renderREH
+  renderREH,
+  renderGhostFixes
 };
 
