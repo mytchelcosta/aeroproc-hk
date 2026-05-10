@@ -107,6 +107,37 @@ Establish a professional delivery pipeline.
     - **Search Logic Update**: New `getGlobalSearchCategoryFilter()` exported from `Sidebar.js` reads each chip's `.active` class straight from the DOM — single source of truth, no parallel JS state object that could drift. `main.js` now wraps the search callback as `setViewGlobalSearchCallback((term) => handleGlobalSearch(_map, term, getGlobalSearchCategoryFilter()))` so the latest filter is captured on every keystroke. `handleGlobalSearch` accepts an optional third argument `categoryFilter = { aerodrome, fix, navaid }` (defaults to all-on for older callers); the inner scoring loop short-circuits with `if (filter[entry.layer] === false) continue;` before any string compares so muted layers cost nothing.
     - **Re-fire on Toggle**: `_wireGlobalSearch` in `Sidebar.js` adds a click handler to every `.gsl-chip[data-category]` that flips the `.active` class, mirrors it to `aria-pressed` for screen readers, and calls `_onGlobalSearch(input.value)` so the result set updates instantly without the user re-typing.
     - Build verified clean (`vite build` → 254.25 kB JS, 76.80 kB CSS, 0 errors).
+- [x] **Search UX Polish (Cap, Layout & Per-Category Counts)**:
+    - **Raise Result Cap & Distance Priority**: `SearchManager.js` now defines `_RESULT_CAP = 200` (replacing the hard 50), `_VHHH_LAT / _VHHH_LON` literals, and an inlined `_haversineNM(lat1, lon1, lat2, lon2)` (3440.065 NM Earth radius). For each scored entry the loop precomputes `distNm = _haversineNM(_VHHH_LAT, _VHHH_LON, entry.lat, entry.lon)` and stores it on the result. The sort comparator now goes `score → distNm asc → ident locale` so equally-scored matches are ordered by proximity to VHHH; the slice then applies `_RESULT_CAP`. No cap exists in `MapLayers.js` (`renderGlobalSearchHighlights` iterates the full `results` array as-is), so nothing to remove on that side.
+    - **Fix "XX Results" count positioning**: The `#global-search-count` badge was moved BELOW `.global-search-legend` inside `.global-search-meta` in `Sidebar.js` (was above, in a horizontal `space-between` flex row that pushed the chips around when the badge appeared). `.global-search-meta` is now `flex-direction: column`, so the badge's show/hide cycle only ever shifts content below the chips, never above. `.global-search-legend` also carries `min-height: 66px` (~3 chip rows) so any sibling appearing/disappearing nearby can't cause the chip block to bounce.
+    - **Vertical Chip Layout with Per-Category Counts**: `.global-search-legend` is now a vertical column (`flex-direction: column`); each `.gsl-chip` is a full-width `display: flex` row containing `[gsl-dot] [gsl-label flex:1 1 auto] [gsl-cat-count, margin-left:auto]`. New `<span class="gsl-cat-count" data-cat-count="…">` injected per chip. New `updateCategoryChipCounts({aerodrome, fix, navaid})` exported from `Sidebar.js` sets `textContent` and toggles `display: inline-block` / `none` per badge; called with `null` to hide all (used on empty search). `handleGlobalSearch` computes the per-category totals from the FULL `scoredResults` (before sort/slice) so the badges show the true category match count, not the displayed top-N. New CSS `.gsl-cat-count` (monospaced, font-size 10px, opacity 0.75, subtle white-tint background pill); inactive-chip rule retargeted to `.gsl-chip:not(.active) .gsl-label` so the strikethrough lands on the label, not the new count badge.
+    - Build verified clean (`vite build` → 255.28 kB JS, 77.10 kB CSS, 0 errors).
+
+---
+
+## Phase 10: Weather Card UX Polish (Completed)
+
+- [x] **Three-Tier Data Fallback System**:
+    - **Source priority**: Decoded CheckWX API field (tier 1, white) → raw METAR regex parse (tier 2, yellow `#facc15`) → TAF first period (tier 3, orange `#f97316`). Each field (Wind, QNH, Temp/Dew, Clouds, Visibility) resolves independently through this chain.
+    - **`_wrapTier(valueStr, tier)`**: Local helper inside `_buildWeatherCard` wraps each value in a `<span>` with the appropriate CSS class (`wx-value`, `wx-value--metar-fallback`, `wx-value--taf-fallback`, `wx-value--na`). Color alone signals data origin — no asterisk superscripts needed.
+    - **QNH raw fallback**: Handles both ICAO `Q` format (`Q1015` → 1015 hPa) and US InHg format (`A2992` → converted to hPa).
+    - **Visibility in metres**: Decoded API statute miles converted to metres (`× 1609`). Raw METAR 4-digit group is already metres. Capped display at `>=9999 m` / `>=10000 m`.
+    - **Cloud height 0-ft guard**: CheckWX API sometimes returns `base_feet_agl: 0` for coverage layers it can't decode. If ALL coverage layers (FEW/SCT/BKN/OVC) have `base_ft === 0`, the decoded array is flagged `apiCloudsSuspect = true` and tier 1 is skipped entirely, falling through to raw METAR regex (tier 2) which correctly parses heights like `BKN020` → 2000 ft.
+    - **Ceiling-only cloud display**: Only `BKN` and `OVC` layers are shown (FEW/SCT are non-ceiling and suppressed). If no BKN/OVC exists, displays `NIL`. Heights formatted as compact METAR notation (`BKN020`) rather than verbose `BKN 2,000ft`.
+
+- [x] **Raw String Box Colour Parity**:
+    - Raw METAR string box uses new `.wx-metar-raw` class → **yellow** text (`#facc15`), matching tier-2 value colour.
+    - Raw TAF string box retains `.wx-taf-raw` class → **orange** text (`#f97316`), matching tier-3 value colour.
+    - Both boxes share identical padding/border/background CSS shape for visual consistency.
+    - The redundant `<div class="wx-section-title">TAF</div>` header was removed — the TAF raw string itself starts with `TAF ICAO ...` making the label redundant.
+    - TAF validity period sub-line also removed for brevity.
+
+- [x] **Compact Layout Restructure**:
+    - **Header row**: Flight category badge + `METAR` label + compact observation timestamp (`DD Mon HH:MMZ`, e.g. `10 May 00:00Z`) aligned right — all on one line. The verbose `Observed: Sat, 09 May 2026 23:30:00Z` footer line is removed.
+    - **6-column CSS grid**: Row 1 — Wind (span 2) | QNH (span 2) | T/D (span 2). Row 2 — Clouds (span 3) | Visibility (span 3). Each cell uses `.wx-item-hdr` (`display: flex`) to place the emoji icon and abbreviated label on the same line, with the value on the line below.
+    - **`.wx-value` CSS**: `word-break: break-all` removed; replaced with `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px` to guarantee single-line values without text wrapping.
+    - **Compact value strings**: Wind — `100°/10KT` (no spaces around `/`, no space before `KT`); Temp/Dew — `24°C/20°C`; Gust — `10KTG20`. These eliminate the mid-number wraps seen at 11px.
+    - Build verified clean (`vite build` → 257.59 kB JS, 77.80 kB CSS, 0 errors).
 
 ---
 
@@ -121,5 +152,41 @@ Establish a professional delivery pipeline.
 | **Traffic Coloring** | 100% | Done |
 | **UI Refinements** | 100% | Done |
 | **Fixes Visualization** | 100% | Done |
+| **Weather Card UX Polish** | 100% | Done |
+| **FIR Fixes Overlay** | 0% | 🟡 Planned |
+
+*Last Updated: 2026-05-09*
+
+
+## Phase 9: FIR Fixes Overlay
+
+- [ ] **Data Audit & Completion**:
+    - **Verify existing dataset**: `public/data/fixes_hk.json` already contains **884 RNAV waypoints** parsed from the `[FIXES]` section (lines 133–1032) of `public/data/Hong-Kong-Sector-File.sct`. That section has 900 entries; the 16-entry gap is due to blank/comment lines. The JSON is therefore essentially complete for the current SCT revision and **no re-extraction is required** unless a newer sector file is dropped in.
+    - **Future-proofing script**: `scripts/parse_sct_fixes.js` (to be created) should read `public/data/Hong-Kong-Sector-File.sct`, extract every line in the `[FIXES]` block (stop at the next `[` section header), parse the EuroScope DMS coordinate strings (`N/S DD.MM.SS.sss E/W DDD.MM.SS.sss`) into decimal lat/lon, and write `public/data/fixes_hk.json` as `[{ "ident": "XXXXX", "lat": DD.ddddd, "lon": DDD.ddddd }]`. Run this any time the sector file is updated to keep the JSON in sync.
+
+- [ ] **Ghost Fix Layer (Non-Interactive Background Dots)**:
+    - **Design intent**: Every fix in `fixes_hk.json` should be permanently visible on the map as a very faint, greyed-out dot — the same geometric shape as the active (interactive) fix markers but at low opacity and with no mouse events. Because the search-result highlight markers use the same dot geometry and appear in the same screen location, the highlighted markers will visually appear to "activate" a pre-existing ghost dot, creating a convincing pop-in effect with zero extra click targets.
+    - **Rendering**: Add a new function `renderGhostFixes(mapInstance, waypointData)` in `MapLayers.js`. For each fix, create a `L.circleMarker` (same radius as the interactive fix markers) with: `color: 'rgba(180,200,210,0.25)'`, `fillColor: 'rgba(180,200,210,0.20)'`, `fillOpacity: 1`, `weight: 0.8`, `interactive: false`, `bubblingMouseEvents: false`. Add all ghost markers to a new dedicated `L.layerGroup` that is assigned to a new Leaflet custom pane named `'ghostFixPane'` (z-index slightly below the existing `waypointPane` so interactive markers always render on top).
+    - **No labels**: Ghost markers must not carry any tooltip or DivIcon label. The purpose is purely positional reference — adding labels at this scale would produce illegible noise for the full 884-fix dataset.
+    - **Layer toggle**: Register the ghost layer with the existing toolbar layer control under a new entry — e.g., labelled **"All Fixes (FIR)"** or **"Ghost Fixes"** — so the user can toggle visibility. The layer should default to **ON** since it is a core positional reference for ATCOs. The toolbar toggle drives `addTo` / `removeLayer` just like all other layers.
+    - **Performance**: All 884 markers should be added to the layer group in a single loop. Do **not** use `L.marker` or `L.divIcon` for ghost fixes — `L.circleMarker` is a native SVG element and is much cheaper. Do not add any zoom-level virtualization; at the scale the app targets (VHHH area), the full set is manageable.
+    - **Export**: Export `renderGhostFixes` and the ghost layer group reference from `MapLayers.js` so `main.js` can wire the toolbar toggle.
+    - **Build must pass clean.**
+
+---
+
+## 📈 Advancement Tracking
+| Milestone | Progress | Status |
+| :--- | :--- | :--- |
+| **Foundation** | 100% | Done |
+| **Data Expansion** | 100% | Done |
+| **Airspace Modeling** | 100% | Done |
+| **CI/CD** | 100% | Done |
+| **Bug Fixes** | 100% | Done |
+| **Traffic Coloring** | 100% | Done |
+| **UI Refinements** | 100% | Done |
+| **Fixes Visualization** | 100% | Done |
+| **Weather Card UX Polish** | 100% | Done |
+| **FIR Fixes Overlay** | 0% | 🟡 Planned |
 
 *Last Updated: 2026-05-09*

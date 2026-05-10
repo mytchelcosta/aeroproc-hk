@@ -1530,104 +1530,258 @@ const _buildAirportPopupHtml = (icao, name, lat, lon, customBody = null) => {
 // Called after the API fetch resolves to replace the loading spinner in wx-body.
 //
 // 'data' — WeatherResult from MetarService.fetchWeather()
+//
+// Fallback tiers for missing decoded fields:
+//   Tier 1 (decoded): normal rendering, no indicator.
+//   Tier 2 (raw METAR regex): amber asterisk (*) + tooltip "Parsed from raw METAR".
+//   Tier 1 (decoded): normal rendering.
+//   Tier 2 (raw METAR regex): yellow styling.
+//   Tier 3 (TAF first period): orange styling.
+//   N/A: shown in muted grey when all three fail.
 const _buildWeatherCard = (data) => {
-  // ── Wind string ───────────────────────────────────────────────────────────
-  let windStr;
-  if (data.wind.variable) {
-    windStr = `VRB / ${data.wind.speed_kts} KT`;
+  // ── Fallback helpers ──────────────────────────────────────────────────────
+
+  // Wraps a value string with the appropriate tier CSS class.
+  // Color alone signals the data source.
+  const _wrapTier = (valueStr, tier) => {
+    if (tier === 1) return `<span class="wx-value">${valueStr}</span>`;
+    if (tier === 2) return `<span class="wx-value wx-value--metar-fallback">${valueStr}</span>`;
+    if (tier === 3) return `<span class="wx-value wx-value--taf-fallback">${valueStr}</span>`;
+    return `<span class="wx-value wx-value--na">${valueStr}</span>`;
+  };
+
+  // Parses raw METAR string for a named group using a regex.
+  // Returns the match or null.
+  const raw = data.raw_metar || '';
+
+  // Raw METAR regex parsers (ICAO METAR format).
+  const _rawWind    = () => { const m = raw.match(/\b(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?KT\b/); return m || null; };
+  const _rawVis     = () => { const m = raw.match(/\b(\d{4})\b/);   return m ? m[1] : null; }; // metres
+  const _rawAlt     = () => { const m = raw.match(/\bQ(\d{4})\b/);  return m ? m[1] : null; }; // QNH hPa
+  const _rawTemp    = () => { const m = raw.match(/\bM?(\d{2})\/M?(\d{2})\b/); return m || null; };
+  const _rawClouds  = () => {
+    const matches = [...raw.matchAll(/\b(FEW|SCT|BKN|OVC|SKC|CLR|NSC|CAVOK)(\d{3})?\b/g)];
+    return matches.length ? matches : null;
+  };
+
+  // TAF first-period accessors.
+  const tafP0 = data.taf_forecast?.[0] || null;
+
+  // ── Wind ────────────────────────────────────────────────────────────────
+  let windStr, windTier;
+  if (data.wind && (data.wind.speed_kts > 0 || data.wind.degrees > 0 || data.wind.variable)) {
+    if (data.wind.variable) {
+      windStr = `VRB/${data.wind.speed_kts}KT`;
+    } else {
+      const deg = String(data.wind.degrees).padStart(3, '0');
+      windStr = `${deg}°/${data.wind.speed_kts}KT`;
+      if (data.wind.gust_kts) windStr += `G${data.wind.gust_kts}`;
+    }
+    windTier = 1;
   } else {
-    const deg = String(data.wind.degrees).padStart(3, '0');
-    windStr = `${deg}° / ${data.wind.speed_kts} KT`;
-    if (data.wind.gust_kts) windStr += ` G${data.wind.gust_kts}`;
+    const rm = _rawWind();
+    if (rm) {
+      const dir = rm[1] === 'VRB' ? 'VRB' : rm[1] + '°';
+      const spd = rm[2];
+      const gst = rm[3] ? `G${rm[3]}` : '';
+      windStr = `${dir}/${spd}${gst}KT`;
+      windTier = 2;
+    } else if (tafP0?.wind && (tafP0.wind.speed_kts > 0 || tafP0.wind.variable)) {
+      const dir = tafP0.wind.variable ? 'VRB' : String(tafP0.wind.degrees).padStart(3, '0') + '°';
+      windStr = `${dir}/${tafP0.wind.speed_kts}KT`;
+      windTier = 3;
+    } else {
+      windStr = 'N/A';
+      windTier = 0;
+    }
   }
 
-  // ── Cloud string ──────────────────────────────────────────────────────────
-  const cloudsStr = data.clouds.length
-    ? data.clouds.map((c) => `${c.code} ${c.base_ft.toLocaleString()}ft`).join(' · ')
-    : 'SKC';
+  // ── Visibility ─────────────────────────────────────────────────────────
+  // All values shown in metres (ICAO standard).
+  // CheckWX API returns statute miles — convert to metres. Raw METAR 4-digit is already metres.
+  let visStr, visTier;
+  if (data.visibility_sm != null) {
+    const m = Math.round(data.visibility_sm * 1609);
+    visStr = m >= 10000 ? '>=10000 m' : `${m} m`;
+    visTier = 1;
+  } else {
+    const rv = _rawVis();
+    if (rv) {
+      // Raw METAR 4-digit group is already in metres.
+      const mRaw = parseInt(rv, 10);
+      visStr = mRaw >= 9999 ? '>=9999 m' : `${mRaw} m`;
+      visTier = 2;
+    } else if (tafP0?.visibility_sm != null) {
+      const mTaf = Math.round(tafP0.visibility_sm * 1609);
+      visStr = mTaf >= 10000 ? '>=10000 m' : `${mTaf} m`;
+      visTier = 3;
+    } else {
+      visStr = 'N/A';
+      visTier = 0;
+    }
+  }
 
-  // ── Visibility string ─────────────────────────────────────────────────────
-  const visStr = data.visibility_sm != null
-    ? `${data.visibility_sm} SM`
-    : 'N/A';
+  // ── Clouds ──────────────────────────────────────────────────────────────
+  // 'Suspicious' = API has coverage layers (FEW/SCT/BKN/OVC) but ALL have base_ft 0.
+  // CheckWX sometimes returns 0 for heights it can't decode; raw METAR is more reliable.
+  const COVERAGE = ['FEW', 'SCT', 'BKN', 'OVC'];
+  const apiCloudsSuspect = data.clouds?.length > 0 &&
+    data.clouds.every(c => COVERAGE.includes(c.code) ? c.base_ft === 0 : true) &&
+    data.clouds.some(c => COVERAGE.includes(c.code) && c.base_ft === 0);
 
-  // ── Altimeter string ──────────────────────────────────────────────────────
-  const qnhStr = data.altimeter_hpa ? `${data.altimeter_hpa} hPa` : 'N/A';
+  let cloudsStr, cloudsTier;
+  if (data.clouds && data.clouds.length === 0) {
+    // Decoded API returned explicitly clear → SKC.
+    cloudsStr = 'SKC';
+    cloudsTier = 1;
+  } else if (data.clouds && data.clouds.length && !apiCloudsSuspect) {
+    // Ceiling-only BKN/OVC in compact METAR format (BKN020). FEW/SCT shown as NIL.
+    const ceilT1 = data.clouds.filter(function(c){ return c.code === 'BKN' || c.code === 'OVC'; });
+    cloudsStr = ceilT1.length
+      ? ceilT1.map(function(c){ return c.code + String(Math.round(c.base_ft / 100)).padStart(3,'0'); }).join(' ')
+      : 'NIL';
+    cloudsTier = 1;
+  } else {
+    // API is missing, empty, or has suspicious 0-height entries — parse raw METAR.
+    const rc = _rawClouds();
+    if (rc) {
+      const hasNil = rc.some(m => ['SKC', 'CLR', 'NSC', 'CAVOK'].includes(m[1]));
+      if (hasNil) {
+        cloudsStr = rc[0][1];
+        cloudsTier = 2;
+      } else {
+        // Ceiling-only, compact METAR format
+        const ceilT2 = rc.filter(function(m){ return m[1] === 'BKN' || m[1] === 'OVC'; });
+        cloudsStr = ceilT2.length
+          ? ceilT2.map(function(m){ return m[1] + (m[2] || '///'); }).join(' ')
+          : 'NIL';
+        cloudsTier = 2;
+      }
+    } else if (tafP0?.clouds?.length) {
+      const ceilT3 = tafP0.clouds.filter(function(c){ return c.code === 'BKN' || c.code === 'OVC'; });
+      cloudsStr = ceilT3.length
+        ? ceilT3.map(function(c){ return c.code + String(Math.round(c.base_ft / 100)).padStart(3,'0'); }).join(' ')
+        : 'NIL';
+      cloudsTier = 3;
+    } else {
+      cloudsStr = 'N/A';
+      cloudsTier = 0;
+    }
+  }
 
-  // ── Observed timestamp (human-readable) ───────────────────────────────────
-  let observedStr = data.observed || '';
+  // ── Temp / Dew ──────────────────────────────────────────────────────────
+  // altimeter_hpa defaults to 0 in _normaliseMetar when missing, so treat 0 as absent.
+  let tempStr, tempTier;
+  const tempC = data.temperature_c;
+  const dewC  = data.dewpoint_c;
+  if (tempC !== 0 || dewC !== 0) {
+    tempStr = `${tempC}°C/${dewC}°C`;
+    tempTier = 1;
+  } else {
+    const rt = _rawTemp();
+    if (rt) {
+      // Negative temps are prefixed with M in METAR.
+      const t = raw.match(/\b(M?)(\d{2})\/(M?)(\d{2})\b/);
+      if (t) {
+        const tc = (t[1] === 'M' ? -1 : 1) * parseInt(t[2], 10);
+        const dc = (t[3] === 'M' ? -1 : 1) * parseInt(t[4], 10);
+        tempStr = `${tc}°C/${dc}°C`;
+        tempTier = 2;
+      } else {
+        tempStr = 'N/A';
+        tempTier = 0;
+      }
+    } else {
+      tempStr = 'N/A';
+      tempTier = 0;
+    }
+  }
+
+  // ── QNH / Altimeter ─────────────────────────────────────────────────────
+  let qnhStr, qnhTier;
+  if (data.altimeter_hpa && data.altimeter_hpa !== 0) {
+    qnhStr = `${data.altimeter_hpa} hPa`;
+    qnhTier = 1;
+  } else {
+    const rq = _rawAlt();
+    if (rq) {
+      qnhStr = `${rq} hPa`;
+      qnhTier = 2;
+    } else if (raw.match(/\bA(\d{4})\b/)) {
+      // InHg format (A2992) — convert to hPa.
+      const m = raw.match(/\bA(\d{4})\b/);
+      const hpa = Math.round(parseInt(m[1], 10) / 100 * 33.8639);
+      qnhStr = `${hpa} hPa`;
+      qnhTier = 2;
+    } else {
+      qnhStr = 'N/A';
+      qnhTier = 0;
+    }
+  }
+
+  // ── Observed timestamp — compact "DD Mon HH:MMZ" for inline display ────────────
+  let observedShort = '';
   try {
     if (data.observed) {
-      observedStr = new Date(data.observed).toUTCString().replace(' GMT', 'Z');
+      const d   = new Date(data.observed);
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const mon = d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
+      const hh  = String(d.getUTCHours()).padStart(2, '0');
+      const mm  = String(d.getUTCMinutes()).padStart(2, '0');
+      observedShort = `${day} ${mon} ${hh}:${mm}Z`;
     }
-  } catch (_) { /* keep raw string on parse failure */ }
+  } catch (_) { observedShort = data.observed || ''; }
 
-  // ── TAF block ─────────────────────────────────────────────────────────────
+  // ── TAF block ─────────────────────────────────────────────────────
   let tafBlock;
   if (data.taf_raw) {
-    const fromStr = data.taf_valid_from || '';
-    const toStr   = data.taf_valid_to   || '';
-    let validStr  = '';
-    try {
-      if (fromStr && toStr) {
-        const from = new Date(fromStr);
-        const to   = new Date(toStr);
-        const fmtOpts = { day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' };
-        validStr = `${from.toLocaleString('en-GB', fmtOpts)}Z → ${to.toLocaleString('en-GB', fmtOpts)}Z`;
-      }
-    } catch (_) { validStr = `${fromStr} → ${toStr}`; }
-
-    tafBlock = `
-      <div class="wx-section-title">TAF</div>
-      <div class="wx-taf-raw">${_safeEscape(data.taf_raw)}</div>
-      ${validStr ? `<div class="wx-taf-valid">Valid: ${_safeEscape(validStr)}</div>` : ''}`;
+    tafBlock = `<div class="wx-taf-raw">${_safeEscape(data.taf_raw)}</div>`;
   } else {
     tafBlock = `<div class="wx-taf-na">${i18n.t('map.weather.taf_na')}</div>`;
   }
 
-  // ── Flight category badge CSS class ──────────────────────────────────────
+  // ── Flight category badge CSS class ─────────────────────────────────────────
   const catClass = `wx-cat--${(data.flight_category || 'UNK').toUpperCase()}`;
 
+  // Layout:
+  //   Header row: [VFR badge]  METAR  [09 May 23:30Z]
+  //   Grid row 1 (3 cells @2 cols each): Wind | QNH | Temp/Dew
+  //   Grid row 2 (2 cells @3 cols each): Clouds | Visibility
+  //   Yellow raw METAR box + divider + Orange raw TAF box
   return `
     <div class="wx-card">
-      <span class="wx-flight-cat ${_safeEscape(catClass)}">${_safeEscape(data.flight_category)}</span>
-      <div class="wx-section-title">METAR</div>
+      <div class="wx-header-row">
+        <span class="wx-flight-cat ${_safeEscape(catClass)}">${_safeEscape(data.flight_category)}</span>
+        <span class="wx-section-title">METAR</span>
+        ${observedShort ? `<span class="wx-obs-short">${_safeEscape(observedShort)}</span>` : ''}
+      </div>
       <div class="wx-grid">
-        <div class="wx-item">
-          <span class="wx-icon">💨</span>
-          <span class="wx-label">${i18n.t('map.weather.labels.wind')}</span>
-          <span class="wx-value">${_safeEscape(windStr)}</span>
+        <div class="wx-item wx-item--wind">
+          <div class="wx-item-hdr"><span class="wx-icon">💨</span><span class="wx-label">WND</span></div>
+          ${_wrapTier(_safeEscape(windStr), windTier)}
         </div>
-        <div class="wx-item">
-          <span class="wx-icon">👁</span>
-          <span class="wx-label">${i18n.t('map.weather.labels.visibility')}</span>
-          <span class="wx-value">${_safeEscape(visStr)}</span>
+        <div class="wx-item wx-item--qnh">
+          <div class="wx-item-hdr"><span class="wx-icon">⬇</span><span class="wx-label">QNH</span></div>
+          ${_wrapTier(_safeEscape(qnhStr), qnhTier)}
         </div>
-        <div class="wx-item">
-          <span class="wx-icon">☁</span>
-          <span class="wx-label">${i18n.t('map.weather.labels.clouds')}</span>
-          <span class="wx-value">${_safeEscape(cloudsStr)}</span>
+        <div class="wx-item wx-item--temp">
+          <div class="wx-item-hdr"><span class="wx-icon">🌡</span><span class="wx-label">T/D</span></div>
+          ${_wrapTier(_safeEscape(tempStr), tempTier)}
         </div>
-        <div class="wx-item">
-          <span class="wx-icon">🌡</span>
-          <span class="wx-label">${i18n.t('map.weather.labels.temp_dew')}</span>
-          <span class="wx-value">${_safeEscape(data.temperature_c)}°C / ${_safeEscape(String(data.dewpoint_c))}°C</span>
+        <div class="wx-item wx-item--clouds">
+          <div class="wx-item-hdr"><span class="wx-icon">☁</span><span class="wx-label">CLOUDS</span></div>
+          ${_wrapTier(_safeEscape(cloudsStr), cloudsTier)}
         </div>
-        <div class="wx-item">
-          <span class="wx-icon">⬇</span>
-          <span class="wx-label">${i18n.t('map.weather.labels.qnh')}</span>
-          <span class="wx-value">${_safeEscape(qnhStr)}</span>
+        <div class="wx-item wx-item--vis">
+          <div class="wx-item-hdr"><span class="wx-icon">👁</span><span class="wx-label">VIS</span></div>
+          ${_wrapTier(_safeEscape(visStr), visTier)}
         </div>
       </div>
-      <div class="wx-raw-metar">${_safeEscape(data.raw_metar)}</div>
+      <div class="wx-metar-raw">${_safeEscape(data.raw_metar)}</div>
       <hr class="wx-divider">
       ${tafBlock}
-      <div class="wx-observed">${i18n.t('map.weather.observed')}: ${_safeEscape(observedStr)}</div>
     </div>`;
 };
-
-
-
 
 // Renders aerodrome markers in three independent Leaflet LayerGroups — one per tier.
 // Each tier gets its own distinct icon style and default visibility:

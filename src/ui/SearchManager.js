@@ -4,10 +4,35 @@
  */
 
 import { renderGlobalSearchHighlights, clearGlobalSearchHighlights } from '../map/MapLayers.js';
-import { updateViewGlobalSearchCount } from '../components/Sidebar.js';
+import { updateViewGlobalSearchCount, updateCategoryChipCounts } from '../components/Sidebar.js';
 
 let _searchIndex = [];
 let _globalSearchTimer = null;
+
+// Phase 8 UX polish: VHHH centre point, used as the distance reference for
+// tiebreaking results that share the same match-score. Closer to VHHH wins.
+// Coordinates match the existing `_CENTRE_LAT / _CENTRE_LON` constants in
+// LiveTraffic.js — kept as plain literals here to avoid a cross-module
+// import for two numbers.
+const _VHHH_LAT = 22.3089;
+const _VHHH_LON = 113.9153;
+const _RESULT_CAP = 200;   // raised from 50 — still high enough to keep the map readable
+
+// Local haversine in nautical miles. Inlined (rather than importing the
+// Helpers.js version) because we only need it for the distance tiebreak
+// and the dependency chain stays leaner this way — SearchManager has no
+// other reason to import Helpers.
+const _haversineNM = (lat1, lon1, lat2, lon2) => {
+  const R    = 3440.065;   // Earth mean radius in nautical miles
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a    =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * (Math.PI / 180)) *
+    Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+};
 
 /**
  * Builds the single flat in-memory search index from all loaded data sources.
@@ -66,6 +91,8 @@ export const handleGlobalSearch = (map, term, categoryFilter) => {
     if (!term || !term.trim()) {
       clearGlobalSearchHighlights(map);
       updateViewGlobalSearchCount(0);
+      // Phase 8 UX polish: hide all per-category count badges when no search.
+      updateCategoryChipCounts(null);
       return;
     }
 
@@ -77,6 +104,10 @@ export const handleGlobalSearch = (map, term, categoryFilter) => {
     // 2 = Name starts with query
     // 3 = Ident contains query
     // 4 = Name contains query
+    //
+    // Phase 8 UX polish: also pre-compute each match's great-circle distance
+    // (NM) from VHHH so the sort below can use it as a tiebreaker — closer
+    // to VHHH wins when scores are equal.
     const scoredResults = [];
     for (const entry of _searchIndex) {
       // Phase 8: skip entries whose layer is currently toggled OFF in the
@@ -102,18 +133,35 @@ export const handleGlobalSearch = (map, term, categoryFilter) => {
       }
 
       if (score !== -1) {
-        scoredResults.push({ entry, score });
+        const distNm = _haversineNM(_VHHH_LAT, _VHHH_LON, entry.lat, entry.lon);
+        scoredResults.push({ entry, score, distNm });
       }
     }
 
-    // Sort by score (lower is better), then alphabetically by ident.
-    // Finally, slice the top 50 to prevent map overload.
+    // Phase 8 UX polish: per-category counts are taken from the FULL match
+    // set (before slicing/sorting) so the chip badges show the true total
+    // for each layer, not just what's plotted on the map. We compute these
+    // before the sort/slice so re-ordering doesn't change the totals.
+    const catCounts = { aerodrome: 0, fix: 0, navaid: 0 };
+    for (const r of scoredResults) {
+      if (r.entry.layer in catCounts) catCounts[r.entry.layer] += 1;
+    }
+    updateCategoryChipCounts(catCounts);
+
+    // Sort by score (lower is better); break ties first by distance from
+    // VHHH (closer first), then alphabetically by ident as a stable
+    // final fallback. Phase 8 UX polish: distance tiebreak prioritises
+    // local airspace results over far-away matches with the same score.
     scoredResults.sort((a, b) => {
       if (a.score !== b.score) return a.score - b.score;
+      if (a.distNm !== b.distNm) return a.distNm - b.distNm;
       return a.entry.ident.localeCompare(b.entry.ident);
     });
 
-    const results = scoredResults.slice(0, 50).map(s => s.entry);
+    // Phase 8 UX polish: cap raised from 50 → 200 (`_RESULT_CAP`). Plenty
+    // of headroom now that distance-priority sort means the closest hits
+    // always make it into the displayed slice.
+    const results = scoredResults.slice(0, _RESULT_CAP).map(s => s.entry);
 
     // Phase 8: forward the normalised query string (uppercase, trimmed) to the
     // renderer so each highlight label can wrap the matching substring in a

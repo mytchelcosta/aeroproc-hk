@@ -109,9 +109,17 @@ const _formatSpeedHtml = (condition, value) => {
 // toggle chips (`<button class="gsl-chip active" data-category="...">`).
 // All three default to ON. Toggling a chip OFF instantly drops that layer
 // type out of the search-result set — read by `SearchManager.handleGlobalSearch`
-// via `getGlobalSearchCategoryFilter()` below. We re-use the existing legend
-// row as the toggle UI rather than adding a separate row, so the search
-// section keeps its current vertical footprint.
+// via `getGlobalSearchCategoryFilter()` below.
+//
+// Phase 8 (UX polish):
+// The chip strip is now a *vertical* stack (`.global-search-legend` flex column).
+// Each chip row contains: coloured dot + label + per-category count badge
+// (`.gsl-cat-count`, right-aligned via `margin-left: auto`). Counts come from
+// `updateCategoryChipCounts({aerodrome,fix,navaid})` and reflect the FULL
+// pre-slice match count, not the displayed top-N. The total-results badge
+// (`#global-search-count`) was moved BELOW the legend so its show/hide can
+// never displace the chips above it. The chip container also carries a
+// `min-height` floor so a sibling can't push it around either.
 const _globalSearchHtml = () => `
   <div class="global-search-section" id="global-search-section">
     <div class="global-search-row">
@@ -128,27 +136,30 @@ const _globalSearchHtml = () => `
       <button class="global-search-clear" id="global-search-clear" title="Clear search" style="display:none;">&#10005;</button>
     </div>
     <div class="global-search-meta">
-      <span class="global-search-count" id="global-search-count" style="display:none;"></span>
       <span class="global-search-legend">
         <button type="button" class="gsl-chip active" data-category="aerodrome"
                 title="${i18n.t('sidebar.view.legend.aerodrome')}"
                 aria-pressed="true">
           <span class="gsl-dot" style="background:#3b9eff;"></span>
-          <span data-i18n="sidebar.view.legend.aerodrome">${i18n.t('sidebar.view.legend.aerodrome')}</span>
+          <span class="gsl-label" data-i18n="sidebar.view.legend.aerodrome">${i18n.t('sidebar.view.legend.aerodrome')}</span>
+          <span class="gsl-cat-count" data-cat-count="aerodrome" style="display:none;"></span>
         </button>
         <button type="button" class="gsl-chip active" data-category="fix"
                 title="${i18n.t('sidebar.view.legend.fix')}"
                 aria-pressed="true">
           <span class="gsl-dot" style="background:#b06bff;"></span>
-          <span data-i18n="sidebar.view.legend.fix">${i18n.t('sidebar.view.legend.fix')}</span>
+          <span class="gsl-label" data-i18n="sidebar.view.legend.fix">${i18n.t('sidebar.view.legend.fix')}</span>
+          <span class="gsl-cat-count" data-cat-count="fix" style="display:none;"></span>
         </button>
         <button type="button" class="gsl-chip active" data-category="navaid"
                 title="${i18n.t('sidebar.view.legend.navaid')}"
                 aria-pressed="true">
           <span class="gsl-dot" style="background:#ff8c00;"></span>
-          <span data-i18n="sidebar.view.legend.navaid">${i18n.t('sidebar.view.legend.navaid')}</span>
+          <span class="gsl-label" data-i18n="sidebar.view.legend.navaid">${i18n.t('sidebar.view.legend.navaid')}</span>
+          <span class="gsl-cat-count" data-cat-count="navaid" style="display:none;"></span>
         </button>
       </span>
+      <span class="global-search-count" id="global-search-count" style="display:none;"></span>
     </div>
   </div>
 `;
@@ -1540,6 +1551,33 @@ const updateViewGlobalSearchCount = (count) => {
 };
 
 
+// Phase 8 (UX polish): updates the per-category count badge inside each
+// chip in the global-search legend. Counts here reflect the FULL pre-slice
+// match count for that layer (computed by SearchManager from `scoredResults`
+// before the top-N cap is applied) so the user sees the true category total
+// even when only a subset is plotted on the map.
+//
+// 'counts' — { aerodrome: number, fix: number, navaid: number } (any may be
+//            omitted; missing keys are treated as 0). Pass null/undefined
+//            (or call with no args) to hide every count badge — used when
+//            the search input is cleared or no search is active.
+const updateCategoryChipCounts = (counts) => {
+  const cats = ['aerodrome', 'fix', 'navaid'];
+  cats.forEach((cat) => {
+    const el = document.querySelector(`.gsl-cat-count[data-cat-count="${cat}"]`);
+    if (!el) return;
+    const n = counts && typeof counts[cat] === 'number' ? counts[cat] : 0;
+    if (counts && n > 0) {
+      el.textContent  = String(n);
+      el.style.display = 'inline-block';
+    } else {
+      el.textContent  = '';
+      el.style.display = 'none';
+    }
+  });
+};
+
+
 export {
   initSidebar,
   buildLayerControls,
@@ -1556,6 +1594,7 @@ export {
   refreshBuilderSavedList,
   setViewGlobalSearchCallback,
   updateViewGlobalSearchCount,
+  updateCategoryChipCounts,
   getGlobalSearchCategoryFilter,
   updateTransitionUI
 };

@@ -3344,12 +3344,18 @@ kbd {
 .global-search-clear:hover { color: var(--text-primary); }
 
 /* Row below the search input: result count + colour-coded legend */
+/* Phase 8 UX polish:
+   `.global-search-meta` is now a vertical stack: the chip column on top,
+   the total-results count below it. Stacking vertically guarantees that
+   the count's show/hide cycle (the badge appears/disappears as the user
+   types) cannot displace the chip column above it. */
 .global-search-meta {
-    display:     flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top:  5px;
-    min-height:  14px;
+    display:        flex;
+    flex-direction: column;
+    align-items:    stretch;
+    gap:            4px;
+    margin-top:     5px;
+    min-height:     14px;
 }
 
 /* Count badge e.g. "12 results" — hidden when count is 0 */
@@ -3368,9 +3374,16 @@ kbd {
 
 /* The layer colour legend: three coloured dots with labels */
 .global-search-legend {
-    display:     flex;
-    align-items: center;
-    gap:         4px;
+    /* Phase 8 UX polish: vertical stack of chip rows (was horizontal row).
+       `min-height` reserves space for the three chip rows (~22px each ×
+       3 ≈ 66px) so that any sibling appearing/disappearing below cannot
+       cause perceived jitter — the chip block always occupies the same
+       height regardless of content state. */
+    display:        flex;
+    flex-direction: column;
+    align-items:    stretch;
+    gap:            2px;
+    min-height:     66px;
     /* Phase 29 */
     font-size:   calc(9px * var(--ui-scale));
     color:       var(--text-muted);
@@ -3391,23 +3404,28 @@ kbd {
 
 
 /* PHASE 8 — GLOBAL SEARCH CATEGORY TOGGLE CHIPS
-   Each legend entry (Aerodrome / Fix / NAVAID) is now a clickable button that
-   filters the corresponding layer in/out of the search results. Default state
-   is `.active` (ON); clicking removes the class to dim the chip and signal the
-   layer is muted. Visual treatment kept minimal — a subtle dot/text fade plus
-   a strikethrough on the label — so the row keeps the same compact footprint
-   it had as a plain legend. */
+   Each legend entry (Aerodrome / Fix / NAVAID) is a clickable button that
+   filters the corresponding layer in/out of the search results. Default
+   state is `.active` (ON); clicking removes the class to dim the chip and
+   signal the layer is muted.
+
+   Phase 8 UX polish: chips are now full-width rows in a vertical stack.
+   Layout per row: [coloured dot] [label, left-aligned] [count badge,
+   pushed right by margin-left:auto]. The count badge is hidden when 0 or
+   when no search is active. */
 .gsl-chip {
-    display:       inline-flex;
+    display:       flex;
     align-items:   center;
-    gap:           4px;
+    gap:           6px;
+    width:         100%;
     background:    transparent;
     border:        none;
-    padding:       2px 4px;
+    padding:       3px 6px;
     margin:        0;
     cursor:        pointer;
     color:         inherit;
     font:          inherit;
+    text-align:    left;
     border-radius: 4px;
     transition:    background-color 0.12s ease, opacity 0.12s ease;
 }
@@ -3418,13 +3436,35 @@ kbd {
     outline:        1px solid var(--color-sid);
     outline-offset: 1px;
 }
-/* Inactive (toggled OFF) state — the chip stays in place but reads as muted:
-   the colour dot loses its glow, the label fades and gets a strikethrough,
-   so the user can see at a glance which categories are currently filtered out. */
+/* The label sits between the dot and the count badge. `min-width: 0`
+   lets it shrink instead of forcing the row wider than the chip column. */
+.gsl-chip .gsl-label {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+/* Per-category count badge — small monospaced number on the right side
+   of each chip, telling the user how many of that category matched the
+   current query (full pre-slice count, not the displayed top-N). */
+.gsl-cat-count {
+    margin-left:    auto;
+    flex-shrink:    0;
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      10px;
+    font-weight:    700;
+    opacity:        0.75;
+    color:          inherit;
+    padding:        0 4px;
+    border-radius:  3px;
+    background:     rgba(255, 255, 255, 0.06);
+}
+/* Inactive (toggled OFF) chip — the colour dot loses its glow, the label
+   fades and gets a strikethrough, so the user sees at a glance which
+   categories are currently filtered out. The count badge follows along
+   so a muted category's badge isn't misread as "active filter". */
 .gsl-chip:not(.active) {
     opacity: 0.45;
 }
-.gsl-chip:not(.active) span:last-child {
+.gsl-chip:not(.active) .gsl-label {
     text-decoration: line-through;
     text-decoration-thickness: 1px;
 }
@@ -5101,32 +5141,57 @@ details[open] > .subpanel-collapsible-header::before {
     margin-bottom: 6px;
 }
 
-/* Grid of weather datum items */
+/* Header row: [badge]  METAR  [timestamp] */
+.wx-header-row {
+    display:     flex;
+    align-items: center;
+    gap:         6px;
+    margin-bottom: 6px;
+}
+
+/* Compact observed timestamp, pushed to the right */
+.wx-obs-short {
+    margin-left:  auto;
+    font-family:  'JetBrains Mono', monospace;
+    font-size:    9px;
+    color:        var(--text-muted);
+}
+
+/* 6-column grid: items use span to fill rows */
 .wx-grid {
     display:               grid;
-    grid-template-columns: 1fr 1fr;
-    gap:                   4px 8px;
-    margin-bottom:         8px;
+    grid-template-columns: repeat(6, 1fr);
+    gap:                   4px;
+    margin-bottom:         6px;
 }
+/* Row 1: Wind | QNH | Temp/Dew (each 2/6) */
+.wx-item--wind   { grid-column: span 2; }
+.wx-item--qnh    { grid-column: span 2; }
+.wx-item--temp   { grid-column: span 2; }
+/* Row 2: Clouds | Visibility (each 3/6) */
+.wx-item--clouds { grid-column: span 3; }
+.wx-item--vis    { grid-column: span 3; }
 
 .wx-item {
     display:        flex;
     flex-direction: column;
-    gap:            1px;
-    padding:        5px 7px;
+    gap:            2px;
+    padding:        4px 6px;
     background:     rgba(255, 255, 255, 0.04);
     border-radius:  5px;
     border:         1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Wind item spans both columns (it's the most important datum) */
-.wx-item:first-child {
-    grid-column: 1 / -1;
+/* Icon + label on same line */
+.wx-item-hdr {
+    display:     flex;
+    align-items: center;
+    gap:         4px;
 }
-
 .wx-icon {
-    font-size:   13px;
+    font-size:   11px;
     line-height: 1;
+    flex-shrink: 0;
 }
 
 .wx-label {
@@ -5139,10 +5204,28 @@ details[open] > .subpanel-collapsible-header::before {
 
 .wx-value {
     font-family:   'JetBrains Mono', monospace;
-    font-size:     11px;
+    font-size:     10px;
     font-weight:   600;
     color:         var(--text-primary);
-    word-break:    break-all;
+    white-space:   nowrap;
+    overflow:      hidden;
+    text-overflow: ellipsis;
+}
+
+/* Tier 2: value parsed from raw METAR string — yellow */
+.wx-value--metar-fallback {
+    color: #facc15;
+}
+
+/* Tier 3: value estimated from TAF first period — orange */
+.wx-value--taf-fallback {
+    color: #f97316;
+}
+
+/* N/A state when all three tiers fail */
+.wx-value--na {
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 /* Raw METAR string */
@@ -5164,11 +5247,11 @@ details[open] > .subpanel-collapsible-header::before {
     margin: 8px 0;
 }
 
-/* TAF raw text */
-.wx-taf-raw {
+/* Raw METAR string box — yellow text, same box style as TAF */
+.wx-metar-raw {
     font-family: 'JetBrains Mono', monospace;
     font-size:   9px;
-    color:       var(--text-secondary);
+    color:       #facc15;
     word-break:  break-all;
     line-height: 1.5;
     margin-top:  6px;
@@ -5177,6 +5260,21 @@ details[open] > .subpanel-collapsible-header::before {
     border-radius: 4px;
     border:      1px solid rgba(255, 255, 255, 0.05);
 }
+
+/* TAF raw text — orange text, same box shape */
+.wx-taf-raw {
+    font-family: 'JetBrains Mono', monospace;
+    font-size:   9px;
+    color:       #f97316;
+    word-break:  break-all;
+    line-height: 1.5;
+    margin-top:  6px;
+    padding:     6px 8px;
+    background:  rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    border:      1px solid rgba(255, 255, 255, 0.05);
+}
+
 
 .wx-taf-valid {
     font-size:  10px;
