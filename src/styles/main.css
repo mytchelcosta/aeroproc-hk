@@ -833,43 +833,70 @@ html, body {
     padding-right: 16px;
 }
 
-/* The lock toggle button — compact, sits in the header row */
-.builder-lock-btn {
+/* ── Phase 16: Lock / Unlock UI ───────────────────────── */
+
+.builder-locked-view {
+    padding: 16px;
+}
+
+.builder-locked-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 200px;
+    padding: 36px 20px;
+    background: rgba(255, 181, 71, 0.04);
+    border: 1px solid rgba(255, 181, 71, 0.18);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    color: rgba(255, 181, 71, 0.65);
+}
+.builder-locked-screen:hover {
+    background: rgba(255, 181, 71, 0.09);
+    border-color: rgba(255, 181, 71, 0.40);
+    color: rgba(255, 181, 71, 0.90);
+}
+.builder-lock-svg {
+    display: block;
+    transition: color 0.2s;
+}
+.builder-locked-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+.builder-locked-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.builder-section-topbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 12px 0;
+}
+.builder-unlock-icon {
     display: flex;
     align-items: center;
-    gap: 5px;
-    background: none;
-    border: 1px solid var(--border);
+    justify-content: center;
+    width: 26px;
+    height: 26px;
     border-radius: 5px;
-    padding: 4px 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
     cursor: pointer;
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 0.04em;
-    transition: border-color 0.15s, color 0.15s;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.builder-lock-btn:hover { border-color: var(--border-bright); color: var(--text-secondary); }
-.builder-lock-btn.locked { color: var(--color-star); border-color: rgba(255,181,71,0.4); }
-
-.lock-label { font-size: 10px; }
-
-/* Small hint text shown when the builder is locked */
-.lock-hint {
-    margin: 8px 16px 0;
-    padding: 7px 10px;
-    background: rgba(255, 181, 71, 0.06);
-    border-left: 2px solid rgba(255, 181, 71, 0.5);
-    border-radius: 0 4px 4px 0;
-    font-size: 11px;
-    color: var(--text-muted);
-}
-
-/* Disabled state for the New Procedure button when locked */
-.new-procedure-btn.disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-    pointer-events: none;
+.builder-unlock-icon:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-bright);
+    color: var(--text-secondary);
 }
 
 /* Phase 13: JSON Save / Load row — two equal-width buttons side by side */
@@ -3712,6 +3739,17 @@ kbd {
 }
 .transition-help-text { flex: 1; }
 
+.transition-prereq-hint {
+    font-size:     11px;
+    color:         var(--text-muted);
+    border-left:   2px solid rgba(249, 115, 22, 0.3);
+    padding:       4px 8px;
+    line-height:   1.4;
+    border-radius: 0 3px 3px 0;
+    background:    rgba(249, 115, 22, 0.04);
+}
+
+
 
 /* ================================================================
    PHASE 10.5 — TOOLBAR SUB-PANELS
@@ -5532,3 +5570,349 @@ details[open] > .subpanel-collapsible-header::before {
 }
 .vfr-dot-rea { background: #00ffff; box-shadow: 0 0 4px rgba(0, 255, 255, 0.6); }
 .vfr-dot-reh { background: #ff8c00; box-shadow: 0 0 4px rgba(255, 140, 0, 0.6); }
+
+/* ── Phase 15: Manual Point Modal ────────────────────────────────────────── */
+
+/* The "+" dot on the Manual Point button — teal, smaller text */
+.drop-point-dot.manual-dot {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1.5px solid var(--text-muted);
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-top: 0;
+}
+
+.manual-pt-modal-box {
+    max-width: 320px;
+    width: 100%;
+}
+
+.manual-pt-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.manual-pt-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.manual-pt-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.manual-pt-input {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 7px 10px;
+    width: 100%;
+    transition: border-color 0.15s;
+}
+
+.manual-pt-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.manual-pt-error {
+    font-size: 11px;
+    color: #f87171;
+    padding: 4px 0;
+}
+
+/* ── Phase 14: Inline Restriction Panel ──────────────────────────────────── */
+
+.inline-restriction-panel {
+    padding: 0 12px 12px;
+}
+
+.inline-panel-idle {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 0;
+}
+
+.inline-panel-active {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.inline-fix-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 0 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+}
+
+.inline-restr-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.inline-restr-row {
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr 1fr;
+    align-items: center;
+    gap: 4px;
+}
+
+.inline-restr-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+.inline-restr-req {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 11px;
+    padding: 4px 5px;
+    width: 100%;
+}
+
+.inline-restr-val {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 5px;
+    width: 100%;
+}
+
+.inline-restr-unit {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 11px;
+    padding: 4px 5px;
+    width: 100%;
+}
+
+.inline-restr-req:focus,
+.inline-restr-val:focus,
+.inline-restr-unit:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* Holding toggle row */
+.inline-hold-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.inline-hold-toggle-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    flex: 1;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    transition: background 0.2s;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 12px;
+    width: 12px;
+    left: 2px;
+    bottom: 2px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(14px);
+    background: #fff;
+}
+
+.inline-hold-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 4px 0 0;
+    border-top: 1px solid var(--border);
+}
+
+.inline-hold-field-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 4px;
+}
+
+.inline-hold-toggle-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    flex: 1;
+}
+
+.inline-hold-input {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 6px;
+    width: 100%;
+}
+
+.inline-hold-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.inline-hold-suffix {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.inline-turn-dir {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.inline-turn-btn {
+    flex: 1;
+    padding: 3px 0;
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.inline-turn-btn.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: #fff;
+}
+
+/* Action buttons */
+.inline-action-row {
+    display: flex;
+    gap: 6px;
+    padding-top: 4px;
+}
+
+.inline-action-btn {
+    flex: 1;
+    padding: 6px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 5px;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.inline-action-btn.primary {
+    background: var(--accent-primary);
+    color: #fff;
+}
+
+.inline-action-btn.primary:hover {
+    opacity: 0.88;
+}
+
+.inline-action-btn.secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.inline-action-btn.secondary:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.inline-action-btn.save {
+    background: #1a6b3a;
+    color: #7ef5a8;
+    border: 1px solid #2a9b5a;
+}
+
+.inline-action-btn.save:hover {
+    background: #1f8044;
+}
+
+/* Idle-state action row (when no point is pending) */
+.pending-action-row {
+    display: flex;
+    gap: 6px;
+}
+
+.pending-action-row .inline-action-btn {
+    font-size: 10px;
+    padding: 5px 4px;
+}

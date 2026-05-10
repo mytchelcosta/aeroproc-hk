@@ -23,7 +23,7 @@ import './styles/main.css';
 import { i18n } from './utils/i18n.js';
 import { calculateDistance, calculateTrueBearing, trueToMagnetic } from './utils/Helpers.js';
 import { initMap }                                    from './map/MapCore.js';
-import { renderFixes, addThresholdsToLayer,
+import { renderFixes,
          filterWaypoints,
          enableSnapMode, disableSnapMode,
          enableGhostSnapMode, disableGhostSnapMode,
@@ -754,19 +754,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Step 5: Render the waypoints as circle markers grouped in a LayerGroup.
   _waypointLayer = renderFixes(_map, waypoints);
 
-  // Phase 10: Render the full FIR fix dataset as faint, non-interactive ghost dots.
-  // These dots are always visible in View mode as a positional reference overlay.
-  // They sit in ghostFixPane (z-index 390) — below interactive markers — and have
-  // no labels or click handlers, so they never interfere with the drawing workflow.
-  _ghostFixLayers = renderGhostFixes(_map, waypoints);
-
-  // Step 5b: Load the hardcoded runway threshold data and add those markers
-  // to the same LayerGroup so thresholds are toggled by the same tab switch.
-  // Thresholds are rendered as amber circles, visually distinct from teal fixes.
+  // Step 5b: Load runway threshold data for aerodrome popup runway info.
+  // Threshold yellow dots are removed (Phase 17) — runway fixes appear in the ghost layer.
   const thresholds = loadRunwayThresholds();
-  if (_waypointLayer) {
-    addThresholdsToLayer(_waypointLayer, thresholds);
-  }
 
   // Step 5c: Fetch and render airport markers from the OurAirports CSV dataset.
   // loadAerodromes() returns { major, regional, heliports } — three categorized arrays.
@@ -785,6 +775,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('[AeroProc] Fetching NAVAIDs...');
   const navaids = await loadNavaids();
   _navaidLayer = renderNavaids(_map, navaids);
+
+  // Phase 10: Render the full FIR fix dataset as faint ghost dots.
+  // Rendered AFTER navaids and aerodromes so those layers can pre-seed the
+  // cross-layer label dedup set, suppressing ghost labels at co-located positions.
+  _ghostFixLayers = renderGhostFixes(_map, waypoints);
 
   // Step 5e: Phase 10.5 — Fetch and render airspace polygons (TMA sectors + CTR/ATZ zones).
   // All polygons are ON by default. The Airspaces sub-panel controls each one individually.

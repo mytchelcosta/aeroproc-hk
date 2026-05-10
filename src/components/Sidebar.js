@@ -598,6 +598,16 @@ const showMetadataForm = (onStart) => {
   // Auto-focus the name field so the user can type immediately without clicking.
   setTimeout(() => document.getElementById('proc-name')?.focus(), 60);
 
+  // Force uppercase so the stored procedure name always matches ATC convention.
+  const _nameInput = document.getElementById('proc-name');
+  if (_nameInput) {
+    _nameInput.addEventListener('input', () => {
+      const pos = _nameInput.selectionStart;
+      _nameInput.value = _nameInput.value.toUpperCase();
+      _nameInput.setSelectionRange(pos, pos);
+    });
+  }
+
   // Enter-key navigation: pressing Enter in a field advances to the next logical step.
   const _advanceOnEnter = (fromId, toId) => {
     document.getElementById(fromId)?.addEventListener('keydown', (e) => {
@@ -1645,7 +1655,7 @@ const updateTransitionUI = (drawingState, callbacks) => {
              Right-click any fix in the common route on the map to add a transition branch.
            </span>
          </div>`
-      : `<div class="lock-hint">Add at least 2 points to the common route before adding transitions.</div>`;
+      : `<div class="transition-prereq-hint">Add at least 2 points to the common route before adding transitions.</div>`;
 
     section.innerHTML = `
       ${savedTransitionsHtml}

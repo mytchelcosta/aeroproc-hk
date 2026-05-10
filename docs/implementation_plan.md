@@ -312,6 +312,15 @@ Establish a professional delivery pipeline.
 
 ---
 
+## Phase 17: Builder & Ghost Layer Polish (Complete)
+
+- [x] **Procedure Name Auto-Caps**: `input` listener on `#proc-name` in `showMetadataForm` forces `value.toUpperCase()` on every keystroke, preserving cursor position via `setSelectionRange`.
+- [x] **Remove Runway Threshold Yellow Dots**: `addThresholdsToLayer` call removed from main.js; `loadRunwayThresholds()` retained for aerodrome popup runway info. Threshold fixes appear via ghost layer instead.
+- [x] **Ghost Fix Label De-Cluttering — Cross-Layer Awareness**: Module-level `_crossLayerOccupiedCells` Set added to MapLayers.js. `renderAerodromes` and `renderNavaids` populate it with each marker's `_crossLabelCellKey(lat, lon)`. `renderGhostFixes` initializes `_seenLabelCells` from this set (pre-seeded) instead of empty, suppressing ghost labels at aerodrome/navaid positions. Render order in main.js changed: aerodromes → navaids → ghost fixes (was: ghost → thresholds → aerodromes → navaids).
+- [x] **"Add at least 2 points" Notice Styling**: Replaced `class="lock-hint"` with `class="transition-prereq-hint"` and added CSS: 11px muted text, amber left border (`rgba(249,115,22,0.3)`), subtle amber tint background.
+
+---
+
 ## Phase X: Future Enhancements (Post-MVP)
 
 - [ ] **Builder Airspaces**: Re-integrate Airspace selection options into the Procedural Builder (hidden during Phase 14).
@@ -336,5 +345,6 @@ Establish a professional delivery pipeline.
 | **Procedural Builder Workflow Streamlining** | 100% | Done |
 | **Builder UX Refinements & Highlight Parity** | 100% | Done |
 | **Builder Lock/Unlock UI Overhaul** | 100% | Done |
+| **Builder & Ghost Layer Polish** | 0% | Pending |
 
-*Last Updated: 2026-05-10 — Phase 16 Complete*
+*Last Updated: 2026-05-10 — Phase 17 Planned*

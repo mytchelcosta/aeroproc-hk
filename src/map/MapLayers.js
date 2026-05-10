@@ -194,6 +194,16 @@ let _contextMenuCallbacks = null;  // { isInSequence, onRemove, onEdit }
 let _customDropCallback   = null;
 let _customDropMapHandler = null;
 
+// ── Cross-layer label dedup ───────────────────────────────────────────────
+// Populated by renderNavaids and renderAerodromes with their label positions.
+// renderGhostFixes seeds its _seenLabelCells from this set so ghost fix labels
+// are automatically suppressed wherever a navaid or aerodrome already labels
+// the same ~165 m grid cell — preventing visual overlap between layers.
+const _CROSS_LABEL_QUANT   = 667;  // 1 / 0.0015° ≈ 167 m per cell
+const _crossLabelCellKey   = (lat, lon) =>
+  `${Math.round(lat * _CROSS_LABEL_QUANT)}|${Math.round(lon * _CROSS_LABEL_QUANT)}`;
+let _crossLayerOccupiedCells = new Set();  // reset is not needed — layers render once
+
 // ── Ghost snap mode (Builder) ─────────────────────────────────────────────
 // Ghost dots (renderGhostFixes) serve as the click/hover targets in builder
 // snap mode. The pane starts with pointer-events:none; enabling ghost snap mode
@@ -1897,6 +1907,7 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
       console.warn('[MapLayers] Skipping major aerodrome with incomplete data:', aerodrome);
       return;
     }
+    _crossLayerOccupiedCells.add(_crossLabelCellKey(aerodrome.lat, aerodrome.lon));
 
     const isShifted = ['SBSP', 'SBSJ', 'SBKP', 'SBTA'].includes(aerodrome.icao.toUpperCase());
     const iconClass = isShifted ? 'airport-icon shifted-marker' : 'airport-icon';
@@ -2036,6 +2047,7 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
   // Smaller, muted amber airplane so they are clearly secondary to Tier 1.
   regional.forEach((aerodrome) => {
     if (!aerodrome.icao || aerodrome.lat == null || aerodrome.lon == null) return;
+    _crossLayerOccupiedCells.add(_crossLabelCellKey(aerodrome.lat, aerodrome.lon));
 
     const isShifted = ['SBSP', 'SBSJ', 'SBKP', 'SBTA'].includes(aerodrome.icao.toUpperCase());
     const icon = L.divIcon({
@@ -2070,6 +2082,7 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
   // Small green circle with an 'H' inside — aviation-standard heliport symbol.
   heliports.forEach((aerodrome) => {
     if (!aerodrome.icao || aerodrome.lat == null || aerodrome.lon == null) return;
+    _crossLayerOccupiedCells.add(_crossLabelCellKey(aerodrome.lat, aerodrome.lon));
 
     const icon = L.divIcon({
       className: 'heliport-icon',
@@ -2142,6 +2155,7 @@ const renderNavaids = (mapInstance, navaids) => {
       console.warn('[MapLayers] Skipping NAVAID with incomplete data:', navaid);
       return;
     }
+    _crossLayerOccupiedCells.add(_crossLabelCellKey(navaid.lat, navaid.lon));
 
     const isVor = VOR_TYPES.has(navaid.type);
 
@@ -3552,7 +3566,8 @@ const renderGhostFixes = (mapInstance, waypointData) => {
   // The dot itself is always shown so the positional reference is preserved;
   // only the redundant text is suppressed. Cost is one Set lookup per fix.
   const _LABEL_DEDUP_QUANT      = 667;   // 1 / 0.0015 — multiply lat/lon by this then round
-  const _seenLabelCells         = new Set();
+  // Pre-seed from navaids/aerodromes so ghost labels don't overlap their labels.
+  const _seenLabelCells         = new Set(_crossLayerOccupiedCells);
   const _labelCellKey           = (lat, lon) =>
     `${Math.round(lat * _LABEL_DEDUP_QUANT)}|${Math.round(lon * _LABEL_DEDUP_QUANT)}`;
 
