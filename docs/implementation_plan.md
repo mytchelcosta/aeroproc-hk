@@ -115,7 +115,7 @@ Establish a professional delivery pipeline.
 
 ---
 
-## Phase 10: Weather Card UX Polish (Completed)
+## Phase 9: Weather Card UX Polish (Completed)
 
 - [x] **Three-Tier Data Fallback System**:
     - **Source priority**: Decoded CheckWX API field (tier 1, white) → raw METAR regex parse (tier 2, yellow `#facc15`) → TAF first period (tier 3, orange `#f97316`). Each field (Wind, QNH, Temp/Dew, Clouds, Visibility) resolves independently through this chain.
@@ -139,26 +139,7 @@ Establish a professional delivery pipeline.
     - **Compact value strings**: Wind — `100°/10KT` (no spaces around `/`, no space before `KT`); Temp/Dew — `24°C/20°C`; Gust — `10KTG20`. These eliminate the mid-number wraps seen at 11px.
     - Build verified clean (`vite build` → 257.59 kB JS, 77.80 kB CSS, 0 errors).
 
----
-
-## 📈 Advancement Tracking
-| Milestone | Progress | Status |
-| :--- | :--- | :--- |
-| **Foundation** | 100% | Done |
-| **Data Expansion** | 100% | Done |
-| **Airspace Modeling** | 100% | Done |
-| **CI/CD** | 100% | Done |
-| **Bug Fixes** | 100% | Done |
-| **Traffic Coloring** | 100% | Done |
-| **UI Refinements** | 100% | Done |
-| **Fixes Visualization** | 100% | Done |
-| **Weather Card UX Polish** | 100% | Done |
-| **FIR Fixes Overlay** | 0% | 🟡 Planned |
-
-*Last Updated: 2026-05-09*
-
-
-## Phase 9: FIR Fixes Overlay
+## Phase 10: FIR Fixes Overlay (Planned)
 
 - [ ] **Data Audit & Completion**:
     - **Verify existing dataset**: `public/data/fixes_hk.json` already contains **884 RNAV waypoints** parsed from the `[FIXES]` section (lines 133–1032) of `public/data/Hong-Kong-Sector-File.sct`. That section has 900 entries; the 16-entry gap is due to blank/comment lines. The JSON is therefore essentially complete for the current SCT revision and **no re-extraction is required** unless a newer sector file is dropped in.
