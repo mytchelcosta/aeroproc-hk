@@ -26,6 +26,7 @@ import { initMap }                                    from './map/MapCore.js';
 import { renderFixes, addThresholdsToLayer,
          filterWaypoints,
          enableSnapMode, disableSnapMode,
+         enableGhostSnapMode, disableGhostSnapMode,
          enableFreeDrawMode, disableFreeDrawMode,
          enableCustomDropOverlay, disableCustomDropOverlay,
          setContextMenuCallbacks,
@@ -40,6 +41,7 @@ import { renderFixes, addThresholdsToLayer,
          createDraggableCustomMarker, removeDraggableMarker,
          renderGlobalSearchHighlights,
          clearGlobalSearchHighlights,
+         getFilteredFixes,
          updateCommonRouteGhost,
          clearCommonRouteGhost,
          applySymbolScale,
@@ -66,7 +68,11 @@ import { initSidebar, buildLayerControls,
          updateViewGlobalSearchCount,
          getGlobalSearchCategoryFilter,
          updateTransitionUI,
-         setJSONCallbacks }                           from './components/Sidebar.js';
+         setJSONCallbacks,
+         setBuilderUnlockCallback,
+         showPendingPointRestrictions,
+         clearPendingPointRestrictions,
+         collectInlineRestrictions }                  from './components/Sidebar.js';
 import { initMeasuringVector,
          enableMeasuringVector,
          disableMeasuringVector,
@@ -155,6 +161,11 @@ let _savedProcLayers = {};
 // of being deleted from the database immediately. deleteProc() is deferred to
 // handleSave() so a mid-edit tab switch never loses the procedure from LocalStorage.
 let _editingOriginalProcId = null;
+
+// Phase 14: holds the raw fix/point data for the point currently awaiting
+// restriction entry in the inline form. Null when no point is pending.
+// Committed to DrawingState by _commitPendingPoint() when "Add Point" is clicked.
+let _pendingPoint = null;
 
 // Phase 13: controls whether leg measurement labels are shown in Viewer mode.
 // Toggled by the "Leg Measurements" button in the Viewer tab header.
@@ -408,6 +419,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Phase 13: Register JSON I/O callbacks so the Builder main menu buttons
   // can trigger export and import without Sidebar.js importing from main.js.
   setJSONCallbacks(handleSaveJSON, handleLoadJSON);
+
+  // Auto-enable ghost fix layer checkboxes when the builder is unlocked,
+  // so ghost dots are visible as snap targets without the user having to
+  // manually toggle them on.
+  setBuilderUnlockCallback(() => {
+    ['chk-ghost-t1', 'chk-ghost-t2', 'chk-ghost-t3', 'chk-ghost-t4'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && !el.checked) {
+        el.checked = true;
+        el.dispatchEvent(new Event('change'));
+      }
+    });
+  });
 
   // Step 3: Initialize the restriction modal HTML (injected once into <body>).
   initModal();
@@ -1067,7 +1091,7 @@ const handleEditProcedure = (id) => {
       _triggerPointAdded({ ident: 'Custom Point', lat: latLon.lat, lon: latLon.lon, isFix: false });
     });
   } else {
-    enableSnapMode(_waypointLayer, (fixData) => {
+    enableGhostSnapMode(_map, (fixData) => {
       _triggerPointAdded({
         ident: fixData.ident,
         lat:   fixData.lat,
@@ -1077,8 +1101,6 @@ const handleEditProcedure = (id) => {
       });
     });
 
-    // Wire context-menu callbacks for the edit session (same as a fresh draw session).
-    // Phase 12: include transition callbacks for direction-aware right-click menu.
     setContextMenuCallbacks({
       isInSequence:     (ident) => DrawingState.points.some(
         (p) => p.ident.toUpperCase() === ident.toUpperCase()
@@ -1110,6 +1132,7 @@ const handleEditProcedure = (id) => {
     onSave:               handleSave,
     onCancel:             handleCancel,
     onSearch:             handleSearch,
+    onSearchEnter:        handleSearchEnter,
     onMeasurementsToggle: handleMeasurementsToggle,
     onDropCustomToggle:   handleDropCustomToggle
   });
@@ -1230,22 +1253,19 @@ const handleStartDrawing = (metadata) => {
       });
     });
   } else {
-    // Route types (SID, STAR, IAC) use snap-to-fix mode:
-    // the user clicks an existing waypoint marker to add it.
-    enableSnapMode(_waypointLayer, (fixData) => {
+    // Route types (SID, STAR, IAC) use ghost snap mode:
+    // hovering a ghost dot shows a glow; clicking adds the fix.
+    enableGhostSnapMode(_map, (fixData) => {
       _triggerPointAdded({
         ident: fixData.ident,
         lat:   fixData.lat,
         lon:   fixData.lon,
-        tipo:  fixData.tipo || 'ICAO',  // 'RWY' for thresholds, 'ICAO'/'TERMINAL' for fixes
+        tipo:  fixData.tipo || 'ICAO',
         isFix: true
       });
     });
 
-    // Wire up context-menu callbacks so right-clicking an in-sequence fix
-    // in snap mode shows the "Remove / Edit Restrictions / Add Transition" menu.
-    // Phase 12: added onAddTransition, procedureType, isInTransitionMode so the
-    // context menu can show the correct direction-aware transition option.
+    // Wire context-menu callbacks for right-click on in-sequence markers.
     setContextMenuCallbacks({
       isInSequence:     (ident) => DrawingState.points.some(
         (p) => p.ident.toUpperCase() === ident.toUpperCase()
@@ -1268,6 +1288,7 @@ const handleStartDrawing = (metadata) => {
     onSave:               handleSave,
     onCancel:             handleCancel,
     onSearch:             handleSearch,
+    onSearchEnter:        handleSearchEnter,
     onMeasurementsToggle: handleMeasurementsToggle,
     onDropCustomToggle:   handleDropCustomToggle
   });
@@ -1275,16 +1296,37 @@ const handleStartDrawing = (metadata) => {
 
 
 // Called on every keystroke in the Builder search bar.
-// Delegates to MapLayers.filterWaypoints which updates the opacity/visibility
-// of every marker so matching fixes pop out and everything else fades away.
-// The full DrawingState.points array is passed so in-sequence fixes can show
-// their ATC restrictions in the permanent map label regardless of search state.
+// Ghost dots are the interactive click targets; this function only manages the
+// DivIcon glow overlay so the user can see which fixes match the search term.
+// filterWaypoints is NOT called here — it is called once at build/edit start
+// and again after each point is added or removed (via _afterPointAdded etc.).
 //
 // 'searchTerm' — the current string in the search input (can be empty)
 const handleSearch = (searchTerm) => {
-  if (_waypointLayer) {
-    filterWaypoints(_waypointLayer, searchTerm, DrawingState.points, DrawingState.metadata.color);
+  const term = searchTerm.trim();
+  if (term.length > 0) {
+    const hits = getFilteredFixes(term).map((f) => ({ ...f, layer: 'fix' }));
+    renderGlobalSearchHighlights(_map, hits, term);
+  } else {
+    clearGlobalSearchHighlights(_map);
   }
+};
+
+
+// Phase 15: Called when the user presses Enter in the Builder search bar.
+// If exactly one fix matches the current search term, it is selected immediately
+// (same as clicking that fix's marker) without requiring a mouse click.
+//
+// 'searchTerm' — the current value in the search input
+const handleSearchEnter = (searchTerm) => {
+  const hits = getFilteredFixes(searchTerm.trim());
+  if (hits.length !== 1) return;   // 0 = nothing to select; >1 = ambiguous, wait for more typing
+  _triggerPointAdded({
+    ident: hits[0].ident,
+    lat:   hits[0].lat,
+    lon:   hits[0].lon,
+    isFix: true
+  });
 };
 
 
@@ -1352,29 +1394,77 @@ const _triggerPointAdded = (rawData) => {
     }
   }
 
-  // Build a descriptive label for the modal title
-  const label = rawData.isFix
-    ? rawData.ident
-    : `Custom Point (${rawData.lat.toFixed(4)}, ${rawData.lon.toFixed(4)})`;
+  // Phase 14: if a point is already pending (user clicked another fix before committing
+  // the first one), auto-commit it with whatever restrictions are currently in the form.
+  if (_pendingPoint) {
+    const autoRestrictions = collectInlineRestrictions();
+    _commitPendingPoint(autoRestrictions, false);  // false = don't re-focus search yet
+  }
 
-  showRestrictionModal(
-    label,
+  // Phase 14: store the new point as pending and show the inline restriction form.
+  // The modal (showRestrictionModal) is no longer used for new point additions.
+  _pendingPoint = rawData;
 
-    // onConfirm: the user entered level/speed/holding data and clicked Confirm.
-    // restrictions now includes: { levelCondition, levelValue, speedCondition, speedValue,
-    //                               isHolding, holdingBearing, holdingSide }
-    (restrictions) => {
-      DrawingState.addPoint({ ...rawData, ...restrictions });
-      _afterPointAdded(rawData);
+  // Define callbacks as a named object so onErase can re-open the same form
+  // (resetting all fields) by calling showPendingPointRestrictions again with the
+  // same callbacks reference — forming a self-referential but non-recursive cycle.
+  const _inlineCallbacks = {
+    // "Add Point / Next Point" — commits the pending point with collected restrictions,
+    // clears the form, and re-focuses the search field for the next fix.
+    onAdd: (restrictions) => {
+      _commitPendingPoint(restrictions);
     },
 
-    // onSkip: the user clicked Skip. restrictions has all fields at their defaults
-    // (empty strings for level/speed, isHolding: false for holding).
-    (restrictions) => {
-      DrawingState.addPoint({ ...rawData, ...restrictions });
-      _afterPointAdded(rawData);
+    // "Erase / Reset" — clears only the restriction fields (keeps the pending fix selected).
+    // Requires a brief confirmation so accidental clicks don't wipe entered data.
+    onErase: () => {
+      const confirmed = window.confirm(
+        `Clear restriction fields for "${rawData.ident}"?\n\nThe fix remains selected; only the restriction values will be reset.`
+      );
+      if (!confirmed) return;
+      // Re-render the form with all fields empty by passing the same callbacks.
+      showPendingPointRestrictions(rawData, _inlineCallbacks);
+    },
+
+    // "Create Procedure" (from pending state) — commits the pending point first,
+    // then immediately saves the whole procedure.
+    onCreate: (restrictions) => {
+      _commitPendingPoint(restrictions, false);
+      handleSave();
     }
-  );
+  };
+  showPendingPointRestrictions(rawData, _inlineCallbacks);
+};
+
+
+// Phase 14: Commits _pendingPoint to DrawingState with the supplied restrictions,
+// then runs _afterPointAdded to update the map/sidebar.
+//
+// 'restrictions' — object from collectInlineRestrictions() or auto-collected on second click
+// 'refocusSearch' — when true (default), clearPendingPointRestrictions() refocuses the
+//                   search field; pass false when another action (save/cancel) follows.
+const _commitPendingPoint = (restrictions, refocusSearch = true) => {
+  if (!_pendingPoint) return;
+  const point = _pendingPoint;
+  _pendingPoint = null;
+
+  DrawingState.addPoint({
+    ident:           point.ident,
+    lat:             point.lat,
+    lon:             point.lon,
+    isFix:           point.isFix,
+    altReq:          restrictions.altReq          ?? null,
+    altVal:          restrictions.altVal          ?? null,
+    spdReq:          restrictions.spdReq          ?? null,
+    spdVal:          restrictions.spdVal          ?? null,
+    isHolding:       restrictions.isHolding       ?? false,
+    holdingBearing:  restrictions.holdingBearing  ?? null,
+    holdingTurn:     restrictions.holdingTurn     ?? null,
+    holdingOBS:      restrictions.holdingOBS      ?? null,
+  });
+
+  _afterPointAdded(point);
+  clearPendingPointRestrictions(refocusSearch);
 };
 
 
@@ -1690,6 +1780,13 @@ const handleEndTransition = () => {
 // layer, then switches to the View tab so the user immediately sees their
 // saved procedure in the list.
 const handleSave = () => {
+  // Phase 14: if the user hits "Create Procedure" while a point is pending in the
+  // inline form but BEFORE clicking "Add Point", auto-commit with current field values.
+  if (_pendingPoint) {
+    const restrictions = collectInlineRestrictions();
+    _commitPendingPoint(restrictions, false);
+  }
+
   if (DrawingState.points.length === 0) {
     console.warn('[AeroProc] Cannot save: the procedure has no points. Add at least one point first.');
     return;
@@ -1773,7 +1870,15 @@ const handleCancel = () => {
 // removes all per-session overlays (draggable markers, holding badges, ghost line) from the map.
 // Called by handleSave, handleCancel, and tab switches.
 const _cleanupDrawingMode = () => {
+  // Phase 14: discard any pending point without committing it.
+  _pendingPoint = null;
+  clearPendingPointRestrictions(false);
+
+  // Phase 15: clear any DivIcon glow highlights left from the builder search bar.
+  clearGlobalSearchHighlights(_map);
+
   disableSnapMode(_waypointLayer);
+  disableGhostSnapMode();
   disableFreeDrawMode(_map);
   disableCustomDropOverlay(_map);   // stop any active drop-point overlay
   setContextMenuCallbacks(null);    // clear right-click callbacks so old session doesn't leak

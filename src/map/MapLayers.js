@@ -135,7 +135,7 @@ let _mapRef = null;
 
 // Helper to determine if any interactive drawing/measuring tool is active.
 const isAnyDrawingToolActive = () => {
-  return !!_snapCallback || !!_freeDrawCallback || isMeasuringVectorActive();
+  return !!_snapCallback || !!_freeDrawCallback || !!_ghostSnapCallback || isMeasuringVectorActive();
 };
 
 // ── Measurement labels ────────────────────────────────────────────────
@@ -193,6 +193,17 @@ let _contextMenuCallbacks = null;  // { isInSequence, onRemove, onEdit }
 // within the same route procedure drawing session.
 let _customDropCallback   = null;
 let _customDropMapHandler = null;
+
+// ── Ghost snap mode (Builder) ─────────────────────────────────────────────
+// Ghost dots (renderGhostFixes) serve as the click/hover targets in builder
+// snap mode. The pane starts with pointer-events:none; enabling ghost snap mode
+// sets it to auto so Leaflet events reach the individual marker SVG paths.
+// Individual markers are created with interactive:true so their SVG paths
+// respond once the pane allows events.
+let _ghostMarkers        = [];     // every marker created by renderGhostFixes
+let _ghostSnapCallback   = null;   // set by enableGhostSnapMode; null otherwise
+let _ghostMapRef         = null;   // map ref kept for hover glow management
+let _ghostHoverMarker    = null;   // single DivIcon shown over hovered ghost dot
 
 
 // ── Phase 39: VFR Corridors (REA/REH) ──────────────────────────────────────
@@ -386,7 +397,7 @@ const _createFixMarker = (fix) => {
 
   marker.on('contextmenu', (e) => {
     L.DomEvent.stop(e);
-    if (!_snapCallback) return;
+    if (!_snapCallback && !_ghostSnapCallback) return;
     const id = (marker.fixData?.ident || '').toUpperCase();
     if (!_contextMenuCallbacks?.isInSequence?.(id)) return;
     _showContextMenu(e.originalEvent.clientX, e.originalEvent.clientY, id);
@@ -400,13 +411,15 @@ const _createFixMarker = (fix) => {
 // based on its relationship to the active procedure and search term.
 // Extracted so both filterWaypoints and the viewport-refresh path share the logic.
 //
-// 'marker'       — a Leaflet circleMarker from _fixMarkerMap
-// 'ident'        — the fix's ident string (already uppercased)
-// 'activeMap'    — Map<ident → point> for the current procedure sequence
-// 'isFiltering'  — true when a search term is active
-// 'term'         — uppercased search term (empty string when not filtering)
-// 'sequenceColor'— hex color string for in-sequence fix markers
-const _styleFixMarker = (marker, ident, activeMap, isFiltering, term, sequenceColor) => {
+// 'marker'            — a Leaflet circleMarker from _fixMarkerMap
+// 'ident'             — the fix's ident string (already uppercased)
+// 'activeMap'         — Map<ident → point> for the current procedure sequence
+// 'isFiltering'       — true when a search term is active
+// 'term'              — uppercased search term (empty string when not filtering)
+// 'sequenceColor'     — hex color string for in-sequence fix markers
+// 'suppressMatchLabel'— when true, matched markers get bright style but NO permanent
+//                       label (caller provides a DivIcon highlight overlay instead)
+const _styleFixMarker = (marker, ident, activeMap, isFiltering, term, sequenceColor, suppressMatchLabel = false) => {
   const inSequence = activeMap.has(ident);
   const tooltipEl  = marker.getTooltip()?.getElement();
   const baseRadius = marker.defaultStyle?.radius || 3;
@@ -433,17 +446,25 @@ const _styleFixMarker = (marker, ident, activeMap, isFiltering, term, sequenceCo
     if (newEl) newEl.style.setProperty('opacity', '1', 'important');
 
   } else if (isFiltering) {
-    // Search match: highlighted prefix in permanent label.
-    const matchLen    = term.length;
-    const highlighted =
-      `<span class="fix-label-highlight">${_safeEscape(ident.slice(0, matchLen))}</span>` +
-      _safeEscape(ident.slice(matchLen));
-    marker.unbindTooltip();
-    marker.bindTooltip(highlighted, { permanent: true, direction: 'top', className: 'fix-label', offset: [0, -4] });
+    // Search match: bright + clickable. Label is suppressed when the caller provides
+    // a DivIcon highlight overlay (Phase 15 highlight parity mode).
     marker.setStyle({ color: '#ffffff', fillColor: marker.defaultStyle?.fillColor || '#7ec8e3', fillOpacity: 1, opacity: 1, weight: 2 });
     if (marker.setRadius) marker.setRadius(Math.max(baseRadius + 2, 5));
-    const newEl = marker.getTooltip()?.getElement();
-    if (newEl) newEl.style.setProperty('opacity', '1', 'important');
+    if (suppressMatchLabel) {
+      // Caller shows a DivIcon glow overlay — revert to delayed hover tooltip only.
+      marker.unbindTooltip();
+      _bindDelayedTooltip(marker, ident, { direction: 'top', className: 'fix-tooltip', offset: [0, -4] });
+    } else {
+      // Standard builder search: highlighted prefix in permanent label above the dot.
+      const matchLen    = term.length;
+      const highlighted =
+        `<span class="fix-label-highlight">${_safeEscape(ident.slice(0, matchLen))}</span>` +
+        _safeEscape(ident.slice(matchLen));
+      marker.unbindTooltip();
+      marker.bindTooltip(highlighted, { permanent: true, direction: 'top', className: 'fix-label', offset: [0, -4] });
+      const newEl = marker.getTooltip()?.getElement();
+      if (newEl) newEl.style.setProperty('opacity', '1', 'important');
+    }
 
   } else {
     // Viewport-visible but not in sequence and not searched — faded permanent label.
@@ -462,12 +483,13 @@ const _styleFixMarker = (marker, ident, activeMap, isFiltering, term, sequenceCo
 // Re-runs filterWaypoints with the cached args whenever the user pans or zooms
 // so viewport-culled markers are updated to reflect the new visible area.
 const _onViewportChange = () => {
-  if (!_snapCallback || !_waypointLayerRef || !_lastFilterArgs) return;
+  if ((!_snapCallback && !_ghostSnapCallback) || !_waypointLayerRef || !_lastFilterArgs) return;
   filterWaypoints(
     _waypointLayerRef,
     _lastFilterArgs.searchTerm,
     _lastFilterArgs.activePoints,
-    _lastFilterArgs.sequenceColor
+    _lastFilterArgs.sequenceColor,
+    _lastFilterArgs.suppressMatchLabel
   );
 };
 
@@ -774,11 +796,15 @@ const clearActiveShape = (mapInstance, drawingState) => {
 // 'searchTerm'    — the current text in the Builder search box (may be empty)
 // 'activePoints'  — the current procedure sequence from DrawingState.points
 // 'sequenceColor' — hex color string used to tint in-sequence markers
-const filterWaypoints = (waypointLayer, searchTerm, activePoints = [], sequenceColor = '#4ddb8d') => {
+// 'suppressMatchLabel' — Phase 15: when true, matched markers are made bright but have
+//                        no permanent label; the caller renders a DivIcon glow overlay
+//                        (via renderGlobalSearchHighlights) for visual highlight parity
+//                        with View Mode.
+const filterWaypoints = (waypointLayer, searchTerm, activePoints = [], sequenceColor = '#4ddb8d', suppressMatchLabel = false) => {
   if (!waypointLayer) return;
 
   // Cache for viewport-change re-renders triggered by map pan / zoom.
-  _lastFilterArgs = { searchTerm, activePoints: activePoints.slice(), sequenceColor };
+  _lastFilterArgs = { searchTerm, activePoints: activePoints.slice(), sequenceColor, suppressMatchLabel };
 
   const term        = searchTerm.trim().toUpperCase();
   const isFiltering = term.length > 0;
@@ -789,7 +815,7 @@ const filterWaypoints = (waypointLayer, searchTerm, activePoints = [], sequenceC
   // fixes legible. This avoids blank-map syndrome without flooding the DOM.
   const bounds       = _mapRef?.getBounds();
   const zoom         = _mapRef?.getZoom() ?? 0;
-  const showViewport = !isFiltering && !!_snapCallback && zoom >= 10 && !!bounds;
+  const showViewport = !isFiltering && (!!_snapCallback || !!_ghostSnapCallback) && zoom >= 10 && !!bounds;
 
   // Predicate: should this fix have a visible marker right now?
   const shouldShow = (fix) => {
@@ -823,8 +849,20 @@ const filterWaypoints = (waypointLayer, searchTerm, activePoints = [], sequenceC
       _fixMarkerMap.set(ident, marker);
     }
 
-    _styleFixMarker(marker, ident, activeMap, isFiltering, term, sequenceColor);
+    _styleFixMarker(marker, ident, activeMap, isFiltering, term, sequenceColor, suppressMatchLabel);
   });
+};
+
+
+// Phase 15: Returns all fix records whose ident starts with the given search term
+// (case-insensitive prefix match). Used by main.js to:
+//   1. Select the single matched fix when the user presses Enter in the Builder search bar.
+//   2. Build the results array for renderGlobalSearchHighlights (highlight parity).
+// Returns an empty array when searchTerm is blank.
+const getFilteredFixes = (searchTerm) => {
+  const term = (searchTerm || '').trim().toUpperCase();
+  if (!term) return [];
+  return _allFixData.filter((f) => (f.ident || '').toUpperCase().startsWith(term));
 };
 
 
@@ -3415,6 +3453,41 @@ const _calculateHeading = (p1, p2) => {
 //
 // pointerEvents: 'none' on the pane element ensures no mouse activity reaches
 // these decorative dots even if the individual marker options were somehow wrong.
+
+// Renders a violet glow DivIcon at the ghost dot's position so the user gets clear
+// visual feedback before clicking. The DivIcon itself is non-interactive (pointer-events:none
+// on inner HTML) so the ghost dot underneath still receives the click.
+const _showGhostHoverGlow = (fix) => {
+  if (!_ghostMapRef) return;
+  _removeGhostHoverGlow();
+  const color = '#b06bff';
+  const glow  = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
+  const dot   =
+    `<div style="width:17px;height:17px;border-radius:50%;` +
+    `background:${color};border:2px solid #ffffff;` +
+    `box-shadow:${glow};pointer-events:none;"></div>`;
+  const label =
+    `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;` +
+    `line-height:1.2;color:${color};white-space:nowrap;text-align:center;margin-top:3px;` +
+    `text-shadow:-1px -1px 0 rgba(0,0,0,0.95), 1px -1px 0 rgba(0,0,0,0.95),` +
+    `-1px 1px 0 rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.95),` +
+    `0 0 6px rgba(0,0,0,0.8);">${_safeEscape(fix.ident)}</div>`;
+  const html =
+    `<div style="display:flex;flex-direction:column;align-items:center;` +
+    `transform:translate(-50%,-8.5px);pointer-events:none;">` +
+    dot + label + `</div>`;
+  const icon = L.divIcon({ className: 'ghost-hover-glow', html, iconSize: [0, 0], iconAnchor: [0, 0] });
+  _ghostHoverMarker = L.marker([fix.lat, fix.lon], { icon, interactive: false, zIndexOffset: 500 });
+  _ghostHoverMarker.addTo(_ghostMapRef);
+};
+
+const _removeGhostHoverGlow = () => {
+  if (_ghostHoverMarker && _ghostMapRef) {
+    _ghostMapRef.removeLayer(_ghostHoverMarker);
+    _ghostHoverMarker = null;
+  }
+};
+
 const _ensureGhostFixPane = (mapInstance) => {
   if (mapInstance.getPane('ghostFixPane')) return;   // already created — nothing to do
   const pane = mapInstance.createPane('ghostFixPane');
@@ -3450,6 +3523,7 @@ const renderGhostFixes = (mapInstance, waypointData) => {
   }
 
   _ensureGhostFixPane(mapInstance);
+  _ghostMarkers = [];  // reset so re-render (unlikely) doesn't leak stale refs
 
   const t1Layer = L.layerGroup(); // High Airways
   const t2Layer = L.layerGroup(); // Low Airways
@@ -3495,7 +3569,7 @@ const renderGhostFixes = (mapInstance, waypointData) => {
       fillOpacity:         0.45,
       weight:              1,
       opacity:             0.45,
-      interactive:         false,
+      interactive:         true,   // SVG path responds when pane pointer-events is 'auto'
       bubblingMouseEvents: false,
       pane:                'ghostFixPane',
       className:           `ghost-fix-marker ghost-fix-t${tier}`
@@ -3530,6 +3604,25 @@ const renderGhostFixes = (mapInstance, waypointData) => {
 
     marker.tier = tier;
     layerMap[tier].addLayer(marker);
+
+    // Builder snap mode: hover shows glow, click adds fix.
+    // Handlers are bound once at render time and guarded by _ghostSnapCallback.
+    marker.on('mouseover', () => {
+      if (!_ghostSnapCallback) return;
+      _ghostMapRef = mapInstance;
+      _showGhostHoverGlow(fix);
+    });
+    marker.on('mouseout', () => {
+      if (!_ghostSnapCallback) return;
+      _removeGhostHoverGlow();
+    });
+    marker.on('click', (e) => {
+      L.DomEvent.stop(e);
+      if (!_ghostSnapCallback) return;
+      _removeGhostHoverGlow();
+      _ghostSnapCallback({ ident: fix.ident, lat: fix.lat, lon: fix.lon, isFix: true });
+    });
+    _ghostMarkers.push(marker);
   }
 
   // Phase 30: Zoom filtering for Tier 4 (generic) ghost markers only.
@@ -3558,6 +3651,31 @@ const renderGhostFixes = (mapInstance, waypointData) => {
   return { t1Layer, t2Layer, t3Layer, t4Layer };
 };
 
+
+// Activates ghost-dot click/hover mode for builder snap-to-fix.
+// Enables pointer events on the ghostFixPane so the interactive SVG paths respond.
+// 'mapInstance' — the Leaflet map (used to look up the pane and manage hover glows)
+// 'callback'    — called with { ident, lat, lon, isFix:true } when a ghost dot is clicked
+const enableGhostSnapMode = (mapInstance, callback) => {
+  _ghostSnapCallback = callback;
+  _ghostMapRef = mapInstance;
+  const pane = mapInstance.getPane('ghostFixPane');
+  if (pane) pane.style.pointerEvents = 'auto';
+  console.log('[MapLayers] Ghost snap mode ENABLED.');
+};
+
+// Deactivates ghost-dot snap mode and restores the pane to its default
+// non-interactive state. Removes any hover glow left on screen.
+const disableGhostSnapMode = () => {
+  _ghostSnapCallback = null;
+  _removeGhostHoverGlow();
+  if (_ghostMapRef) {
+    const pane = _ghostMapRef.getPane('ghostFixPane');
+    if (pane) pane.style.pointerEvents = 'none';
+  }
+  _ghostMapRef = null;
+  console.log('[MapLayers] Ghost snap mode DISABLED.');
+};
 
 
 export {
@@ -3596,6 +3714,9 @@ export {
   setFetchWeatherFn,
   renderREA,
   renderREH,
-  renderGhostFixes
+  renderGhostFixes,
+  enableGhostSnapMode,
+  disableGhostSnapMode,
+  getFilteredFixes
 };
 

@@ -36,6 +36,10 @@ let _builderLocked = true;
 let _onSaveJSON = null;
 let _onLoadJSON = null;
 
+// Fired once each time the builder transitions from locked → unlocked.
+// main.js uses this to auto-enable ghost fix layers on the map.
+let _onBuilderUnlock = null;
+
 // Phase 9.8 — Global Viewer Search
 // Callback registered by main.js. Fired on every keystroke in the global search
 // bar (after debounce in main.js handles the timing).
@@ -45,6 +49,11 @@ let _onGlobalSearch = null;
 // Reset to false each time showDrawingPanel() is called so new sessions
 // always start with the overlay off.
 let _dropCustomActive = false;
+
+// Phase 14: Cached callbacks from the last showDrawingPanel() call.
+// Used by clearPendingPointRestrictions() to re-wire the idle-state buttons
+// without requiring main.js to pass callbacks a second time.
+let _drawingCallbacks = null;
 
 // Phase 13: Viewer sort preference. Persists while the tab is open.
 // Allowed values: 'aerodrome-type' | 'type-aerodrome' | 'alpha-asc' | 'alpha-desc'
@@ -97,9 +106,11 @@ const _formatLevelHtml = (condition, value) => {
 const _formatSpeedHtml = (condition, value) => {
   if (!condition || !value) return '';
   const safe = _escapeHtml(value);
-  if (condition === 'At')        return `@${safe}`;
-  if (condition === 'At Least')  return `&gt;${safe}`;  // HTML-entity for ">"
-  if (condition === 'Less Than') return `&lt;${safe}`;  // HTML-entity for "<"
+  if (condition === 'At')                return `@${safe}`;
+  if (condition === 'Less Than')         return `&lt;${safe}`;
+  if (condition === 'Less Than Or Equal') return `&le;${safe}`;
+  if (condition === 'Greater Than')      return `&gt;${safe}`;
+  if (condition === 'At Least')          return `&ge;${safe}`;
   return safe;
 };
 
@@ -426,60 +437,79 @@ const showBuilderTab = () => {
 // that container with the current database entries.
 // Automatically called after cancel, export, and on initial load.
 const showMainMenu = () => {
-  const lockIcon  = _builderLocked ? '&#128274;' : '&#128275;';  // 🔒 or 🔓
-  const lockLabel = _builderLocked ? 'Locked'    : 'Unlocked';
-  const lockClass = _builderLocked ? 'lock-btn locked' : 'lock-btn';
+  // Phase 16: Locked vs Unlocked render completely different UIs.
+  // Locked  → full-width lock screen (no procedures list visible, emphasis on security).
+  // Unlocked → small discrete icon in the top-right; full content below.
 
-  _renderBuilderPanel(`
-    <div class="builder-section">
-      <div class="builder-main-menu-header">
-        <div class="section-label" style="padding: 16px 0 8px;" data-i18n="sidebar.builder.title">Builder</div>
-        <button class="builder-lock-btn ${lockClass}" id="btn-master-lock" title="Toggle build lock">
-          <span>${lockIcon}</span>
-          <span class="lock-label">${i18n.t(`sidebar.builder.lock.${lockLabel.toLowerCase()}`)}</span>
+  // SVG: closed padlock (locked state large icon)
+  const SVG_LOCKED =
+    `<svg class="builder-lock-svg" width="52" height="52" viewBox="0 0 24 24" fill="none" ` +
+    `stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">` +
+    `<rect x="3" y="11" width="18" height="12" rx="2"/>` +
+    `<path d="M7 11V7a5 5 0 0 1 10 0v4"/>` +
+    `<circle cx="12" cy="16.5" r="1.2" fill="currentColor" stroke="none"/>` +
+    `</svg>`;
+
+  // SVG: open padlock (small corner icon when unlocked — invites re-locking)
+  const SVG_UNLOCKED_SMALL =
+    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" ` +
+    `stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">` +
+    `<rect x="3" y="11" width="18" height="12" rx="2"/>` +
+    `<path d="M7 11V7a5 5 0 0 1 9.9-1"/>` +
+    `</svg>`;
+
+  if (_builderLocked) {
+    _renderBuilderPanel(`
+      <div class="builder-section builder-locked-view">
+        <button class="builder-locked-screen" id="btn-master-lock">
+          ${SVG_LOCKED}
+          <div class="builder-locked-title">Builder Locked</div>
+          <div class="builder-locked-sub">Click to unlock</div>
         </button>
       </div>
-      <button
-        class="new-procedure-btn ${_builderLocked ? 'disabled' : ''}"
-        id="btn-new-procedure"
-        ${_builderLocked ? 'disabled' : ''}
-      >
-        <span class="new-btn-plus">+</span>
-        <span data-i18n="sidebar.builder.btn_new">New Procedure</span>
-      </button>
-      ${_builderLocked ? `<div class="lock-hint" data-i18n="sidebar.builder.lock.hint">Unlock to create or edit procedures.</div>` : ''}
-      <div class="json-io-row">
-        <button class="json-io-btn" id="btn-save-json" title="Download all procedures as a JSON file">
-          &#8595; Save to JSON
+    `);
+  } else {
+    _renderBuilderPanel(`
+      <div class="builder-section">
+        <div class="builder-section-topbar">
+          <button class="builder-unlock-icon" id="btn-master-lock" title="Lock builder">
+            ${SVG_UNLOCKED_SMALL}
+          </button>
+        </div>
+        <button class="new-procedure-btn" id="btn-new-procedure">
+          <span class="new-btn-plus">+</span>
+          <span data-i18n="sidebar.builder.btn_new">New Procedure</span>
         </button>
-        <button class="json-io-btn" id="btn-load-json" title="Import procedures from a JSON file on your computer">
-          &#8593; Load from JSON
-        </button>
+        <div class="json-io-row">
+          <button class="json-io-btn" id="btn-save-json" title="Download all procedures as a JSON file">
+            &#8595; Save to JSON
+          </button>
+          <button class="json-io-btn" id="btn-load-json" title="Import procedures from a JSON file on your computer">
+            &#8593; Load from JSON
+          </button>
+        </div>
+        <div id="builder-saved-list"></div>
       </div>
-      <div id="builder-saved-list"></div>
-    </div>
-  `);
+    `);
 
-  // Lock toggle — flips the lock state and re-renders the menu
+    // New Procedure and JSON buttons only wired when unlocked.
+    const btn = document.getElementById('btn-new-procedure');
+    if (btn && _onNewProcedure) btn.addEventListener('click', _onNewProcedure);
+
+    const saveBtn = document.getElementById('btn-save-json');
+    if (saveBtn && _onSaveJSON) saveBtn.addEventListener('click', _onSaveJSON);
+
+    const loadBtn = document.getElementById('btn-load-json');
+    if (loadBtn && _onLoadJSON) loadBtn.addEventListener('click', _onLoadJSON);
+  }
+
+  // Lock toggle always wired — flips state and re-renders.
   document.getElementById('btn-master-lock').addEventListener('click', () => {
+    const wasLocked = _builderLocked;
     _builderLocked = !_builderLocked;
     showMainMenu();
+    if (wasLocked && !_builderLocked && _onBuilderUnlock) _onBuilderUnlock();
   });
-
-  const btn = document.getElementById('btn-new-procedure');
-  if (btn && _onNewProcedure && !_builderLocked) {
-    btn.addEventListener('click', _onNewProcedure);
-  }
-
-  // Phase 13: wire JSON I/O buttons — always available regardless of lock state.
-  const saveBtn = document.getElementById('btn-save-json');
-  if (saveBtn && _onSaveJSON) {
-    saveBtn.addEventListener('click', _onSaveJSON);
-  }
-  const loadBtn = document.getElementById('btn-load-json');
-  if (loadBtn && _onLoadJSON) {
-    loadBtn.addEventListener('click', _onLoadJSON);
-  }
 };
 
 
@@ -506,44 +536,21 @@ const showMetadataForm = (onStart) => {
       <div class="form-field">
         <label class="form-label" for="proc-type" data-i18n="sidebar.builder.form.type">Type</label>
         <select class="form-select" id="proc-type">
-          <optgroup label="Route Procedures">
-            <option value="SID">SID — Standard Instrument Departure</option>
-            <option value="STAR">STAR — Standard Terminal Arrival</option>
-            <option value="IAC">IAC — Instrument Approach Chart</option>
-          </optgroup>
-          <optgroup label="Airspace Areas">
-            <option value="CTR">CTR — Control Zone</option>
-            <option value="FIS">FIS — Flight Information Service</option>
-            <option value="TMA">TMA — Terminal Maneuvering Area</option>
-            <option value="ATZ">ATZ — Aerodrome Traffic Zone</option>
-          </optgroup>
+          <option value="SID">SID — Standard Instrument Departure</option>
+          <option value="STAR">STAR — Standard Terminal Arrival</option>
+          <option value="IAC">IAC — Instrument Approach Chart</option>
         </select>
       </div>
 
       <div class="form-field">
         <label class="form-label" for="proc-airport" data-i18n="sidebar.builder.form.airport">Airport</label>
         <select class="form-select" id="proc-airport">
-          <optgroup label="International / Commercial">
-            <option value="SBGR">SBGR — Guarulhos Int'l</option>
-            <option value="SBSP">SBSP — Congonhas</option>
-            <option value="SBKP">SBKP — Viracopos</option>
-            <option value="SBSJ">SBSJ — São José dos Campos</option>
-            <option value="SBST">SBST — Santos (Guarujá)</option>
-          </optgroup>
-          <optgroup label="Regional / Urban">
-            <option value="SBMT">SBMT — Campo de Marte</option>
-            <option value="SBBP">SBBP — Bragança Paulista</option>
-            <option value="SBTA">SBTA — Taubaté</option>
-          </optgroup>
-          <optgroup label="General Aviation">
-            <option value="SBJD">SBJD — Jundiaí</option>
-            <option value="SBJH">SBJH — Catarina (São Roque)</option>
-            <option value="SDCO">SDCO — Sorocaba</option>
-            <option value="SDAM">SDAM — Amarais (Campinas)</option>
-            <option value="SDAI">SDAI — Americana</option>
-            <option value="SDTB">SDTB — Atibaia</option>
-            <option value="SDOI">SDOI — Boituva</option>
-            <option value="SDPW">SDPW — Piracicaba</option>
+          <optgroup label="Hong Kong FIR">
+            <option value="VHHH">VHHH — Hong Kong International</option>
+            <option value="VMMC">VMMC — Macao International</option>
+            <option value="ZGSZ">ZGSZ — Shenzhen Bao'an International</option>
+            <option value="ZGGG">ZGGG — Guangzhou Baiyun International</option>
+            <option value="ZGHK">ZGHK — Zhuhai Jinwan</option>
           </optgroup>
           <option value="">Other</option>
         </select>
@@ -587,6 +594,30 @@ const showMetadataForm = (onStart) => {
   `);
 
   // ── Wire up form interactions ─────────────────────────────────────
+
+  // Auto-focus the name field so the user can type immediately without clicking.
+  setTimeout(() => document.getElementById('proc-name')?.focus(), 60);
+
+  // Enter-key navigation: pressing Enter in a field advances to the next logical step.
+  const _advanceOnEnter = (fromId, toId) => {
+    document.getElementById(fromId)?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const next = document.getElementById(toId);
+      if (next) next.focus();
+    });
+  };
+  _advanceOnEnter('proc-name',    'proc-type');
+  _advanceOnEnter('proc-type',    'proc-airport');
+  _advanceOnEnter('proc-airport', 'proc-runway');
+
+  // Enter on the runway field fires Start Drawing
+  document.getElementById('proc-runway')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('btn-start-drawing')?.click();
+    }
+  });
 
   // Track the currently selected color (starts with the SID blue default)
   let selectedColor = '#3b9eff';
@@ -667,6 +698,10 @@ const showDrawingPanel = (drawingState, callbacks) => {
   // button starts un-toggled for every session (fresh draw or edit).
   _dropCustomActive = false;
 
+  // Cache the callbacks so the inline restriction panel can re-wire them after
+  // clearing a pending point without requiring another call from main.js.
+  _drawingCallbacks = callbacks;
+
   const isRoute  = !drawingState.isAreaType();
   // Area procedures show a brief usage hint; route procedures have a search bar
   // directly above the sequence list so the hint text there was redundant.
@@ -694,14 +729,18 @@ const showDrawingPanel = (drawingState, callbacks) => {
     </div>
   ` : '';
 
-  // The "Drop Custom Point" toggle is only shown for route procedures.
-  // It lets the user click blank map areas to drop a custom coordinate point
-  // alongside regular waypoint snapping — useful for procedures with off-FIX points.
+  // The "Drop Custom Point" toggle and "Manual Point" button are only shown for route
+  // procedures. Drop Custom lets the user click blank map areas; Manual Point opens
+  // a modal for typing an exact lat/lon coordinate.
   const dropPointHtml = isRoute ? `
     <div class="drop-point-section">
       <button class="drop-point-btn" id="btn-drop-custom" title="Toggle: click anywhere on map to drop a custom point">
         <span class="drop-point-dot"></span>
         <span data-i18n="sidebar.builder.panel.drop_custom">Drop Custom Point</span>
+      </button>
+      <button class="drop-point-btn" id="btn-manual-point" title="Enter exact coordinates manually">
+        <span class="drop-point-dot manual-dot">+</span>
+        <span>Manual Point</span>
       </button>
     </div>
   ` : '';
@@ -726,17 +765,6 @@ const showDrawingPanel = (drawingState, callbacks) => {
 
       ${modeHintHtml}
 
-      <div class="manual-point-section">
-        <div class="manual-point-label" data-i18n="sidebar.builder.panel.manual_title">Manual Point</div>
-        <div class="coord-row">
-          <input type="number" class="coord-input" id="manual-lat"
-                 placeholder="Lat" step="any">
-          <input type="number" class="coord-input" id="manual-lon"
-                 placeholder="Lon" step="any">
-          <button class="manual-add-btn" id="btn-manual-add" title="Add Point">+</button>
-        </div>
-      </div>
-
       <div id="sequence-list-wrapper"></div>
 
       ${transitionSectionHtml}
@@ -748,9 +776,11 @@ const showDrawingPanel = (drawingState, callbacks) => {
         </label>
       </div>
 
-      <div class="builder-actions">
-        <button class="builder-action-btn primary"  id="btn-save" data-i18n="sidebar.builder.panel.btn_save">✓ Save &amp; Export</button>
-        <button class="builder-action-btn danger"   id="btn-cancel" data-i18n="sidebar.builder.panel.btn_cancel">✕ Cancel</button>
+      <div id="inline-restriction-panel" class="inline-restriction-panel inline-panel-idle">
+        <div class="inline-action-row">
+          <button class="builder-action-btn primary" id="btn-create-procedure">✓ Create Procedure</button>
+          <button class="builder-action-btn danger"  id="btn-cancel-drawing">✕ Cancel</button>
+        </div>
       </div>
 
     </div>
@@ -761,6 +791,15 @@ const showDrawingPanel = (drawingState, callbacks) => {
   if (searchInput && callbacks.onSearch) {
     searchInput.addEventListener('input', () => {
       callbacks.onSearch(searchInput.value);
+    });
+
+    // Phase 15: pressing Enter while a term is typed selects the single matching fix
+    // (if exactly one result exists). The actual lookup happens in main.js via onSearchEnter.
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && searchInput.value.trim()) {
+        e.preventDefault();
+        if (callbacks.onSearchEnter) callbacks.onSearchEnter(searchInput.value.trim());
+      }
     });
   }
 
@@ -776,35 +815,10 @@ const showDrawingPanel = (drawingState, callbacks) => {
     });
   }
 
-  // Wire up the manual add button
-  document.getElementById('btn-manual-add').addEventListener('click', () => {
-    const latVal = parseFloat(document.getElementById('manual-lat').value);
-    const lonVal = parseFloat(document.getElementById('manual-lon').value);
-
-    if (isNaN(latVal) || isNaN(lonVal)) {
-      console.warn('[Sidebar] Manual add: Lat and Lon must be valid numbers.');
-      document.getElementById('manual-lat').classList.add('input-error');
-      document.getElementById('manual-lon').classList.add('input-error');
-      return;
-    }
-    if (latVal < -90 || latVal > 90) {
-      console.warn(`[Sidebar] Manual add: Latitude ${latVal} is out of range (-90 to 90).`);
-      return;
-    }
-    if (lonVal < -180 || lonVal > 180) {
-      console.warn(`[Sidebar] Manual add: Longitude ${lonVal} is out of range (-180 to 180).`);
-      return;
-    }
-
-    // Clear error highlights on valid input
-    document.getElementById('manual-lat').classList.remove('input-error');
-    document.getElementById('manual-lon').classList.remove('input-error');
-
-    if (callbacks.onManualAdd) callbacks.onManualAdd(latVal, lonVal);
-
-    // Clear the inputs so the user can type the next point quickly
-    document.getElementById('manual-lat').value = '';
-    document.getElementById('manual-lon').value = '';
+  // Phase 15: Manual Point button opens a modal for exact lat/lon entry instead of
+  // the old inline input fields. Keeps the sidebar clean during the drawing workflow.
+  document.getElementById('btn-manual-point')?.addEventListener('click', () => {
+    _showManualPointModal(callbacks.onManualAdd);
   });
 
   // Wire up the measurement toggle checkbox
@@ -815,16 +829,25 @@ const showDrawingPanel = (drawingState, callbacks) => {
     });
   }
 
-  document.getElementById('btn-save').addEventListener('click', () => {
+  // Wire the idle-state Create Procedure and Cancel buttons.
+  // These are replaced by showPendingPointRestrictions() when a fix is pending,
+  // and restored by clearPendingPointRestrictions() after the point is committed.
+  document.getElementById('btn-create-procedure')?.addEventListener('click', () => {
     if (callbacks.onSave) callbacks.onSave();
   });
-
-  document.getElementById('btn-cancel').addEventListener('click', () => {
+  document.getElementById('btn-cancel-drawing')?.addEventListener('click', () => {
     if (callbacks.onCancel) callbacks.onCancel();
   });
 
   // Render the (initially empty) sequence list
   refreshSequenceList(drawingState, callbacks);
+
+  // Auto-focus the waypoint search bar immediately so the user can type a fix name
+  // without having to click the field first. Route procedures only — area types
+  // use free-draw clicks, not a search bar.
+  if (!drawingState.isAreaType()) {
+    setTimeout(() => document.getElementById('waypoint-search')?.focus(), 80);
+  }
 };
 
 
@@ -985,6 +1008,93 @@ const showExportResult = (json, onNewProcedure) => {
   document.getElementById('btn-new-after-export').addEventListener('click', () => {
     if (onNewProcedure) onNewProcedure();
   });
+};
+
+
+// Phase 15: Opens a small modal for typing an exact lat/lon coordinate.
+// Replaces the old inline manual-point-section fields inside the drawing panel.
+// The modal is created dynamically, positioned in the center of the screen,
+// and removed from the DOM on confirm or cancel.
+//
+// 'onConfirm' — function(lat, lon) called when the user submits valid coordinates
+const _showManualPointModal = (onConfirm) => {
+  // Guard: don't open two at once.
+  if (document.getElementById('manual-pt-modal')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'manual-pt-modal';
+  overlay.className = 'modal-overlay is-visible';
+  overlay.innerHTML = `
+    <div class="modal-box manual-pt-modal-box">
+      <div class="modal-header">
+        <span class="modal-tag">MANUAL POINT</span>
+        <div class="modal-point-name">Enter Coordinates</div>
+      </div>
+      <div class="manual-pt-fields">
+        <div class="manual-pt-row">
+          <label class="manual-pt-label">Latitude</label>
+          <input type="number" id="mpt-lat" class="manual-pt-input" placeholder="e.g. 22.3089" step="any">
+        </div>
+        <div class="manual-pt-row">
+          <label class="manual-pt-label">Longitude</label>
+          <input type="number" id="mpt-lon" class="manual-pt-input" placeholder="e.g. 113.9146" step="any">
+        </div>
+        <div class="manual-pt-error hidden" id="mpt-error"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--cancel" id="mpt-cancel">Cancel</button>
+        <button class="modal-btn modal-btn--confirm" id="mpt-confirm">Add Point</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const latInput = document.getElementById('mpt-lat');
+  const lonInput = document.getElementById('mpt-lon');
+  const errDiv   = document.getElementById('mpt-error');
+
+  const _close = () => overlay.remove();
+
+  const _submit = () => {
+    const latVal = parseFloat(latInput.value);
+    const lonVal = parseFloat(lonInput.value);
+    errDiv.className = 'manual-pt-error hidden';
+
+    if (isNaN(latVal) || isNaN(lonVal)) {
+      errDiv.textContent = 'Latitude and Longitude must be valid numbers.';
+      errDiv.className   = 'manual-pt-error';
+      return;
+    }
+    if (latVal < -90 || latVal > 90) {
+      errDiv.textContent = `Latitude ${latVal} is out of range (−90 to 90).`;
+      errDiv.className   = 'manual-pt-error';
+      return;
+    }
+    if (lonVal < -180 || lonVal > 180) {
+      errDiv.textContent = `Longitude ${lonVal} is out of range (−180 to 180).`;
+      errDiv.className   = 'manual-pt-error';
+      return;
+    }
+
+    _close();
+    if (onConfirm) onConfirm(latVal, lonVal);
+  };
+
+  document.getElementById('mpt-confirm').addEventListener('click', _submit);
+  document.getElementById('mpt-cancel').addEventListener('click', _close);
+
+  // Close on backdrop click
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) _close(); });
+
+  // Enter key submits, Escape cancels
+  overlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter')  { e.preventDefault(); _submit(); }
+    if (e.key === 'Escape') { e.preventDefault(); _close();  }
+  });
+
+  // Auto-focus the Lat field
+  setTimeout(() => latInput?.focus(), 50);
 };
 
 
@@ -1557,6 +1667,210 @@ const setViewGlobalSearchCallback = (fn) => {
 };
 
 
+// ── Phase 14: Inline Restriction Panel ──────────────────────────────────────
+
+
+// Reads the current values from the inline restriction form fields.
+// Returns a complete restrictions object in the same shape as DrawingState.addPoint expects.
+// Returns all-empty defaults when the panel is not in the active (pending) state.
+const collectInlineRestrictions = () => {
+  const altReq  = document.getElementById('inline-alt-req')?.value  || '';
+  const altVal  = document.getElementById('inline-alt-val')?.value  || '';
+  const altUnit = document.getElementById('inline-alt-unit')?.value || 'ft';
+
+  // Map the UI symbol back to the existing levelCondition string format.
+  const levelCondMap = { '@': 'At', '+': 'Above', '-': 'Below', '': '' };
+  const levelCondition = levelCondMap[altReq] || '';
+  // Combine value + unit into the existing 'FL100' / '5000ft' / '1500m' format.
+  let levelValue = '';
+  if (altVal && levelCondition) {
+    levelValue = altUnit === 'FL' ? `FL${altVal}` : `${altVal}${altUnit}`;
+  }
+
+  const spdReq  = document.getElementById('inline-spd-req')?.value  || '';
+  const spdVal  = document.getElementById('inline-spd-val')?.value  || '';
+  const spdUnit = document.getElementById('inline-spd-unit')?.value || 'KT';
+
+  // Map UI symbols to speedCondition strings. 'Less Than Or Equal' and 'Greater Than'
+  // are new conditions added in Phase 14 beyond the original modal's options.
+  const speedCondMap = { '@': 'At', '<': 'Less Than', '<=': 'Less Than Or Equal', '>': 'Greater Than', '>=': 'At Least', '': '' };
+  const speedCondition = speedCondMap[spdReq] || '';
+  let speedValue = '';
+  if (spdVal && speedCondition) {
+    speedValue = `${spdVal}${spdUnit}`;
+  }
+
+  const isHolding     = document.getElementById('inline-hold-chk')?.checked ?? false;
+  const holdingBearing = document.getElementById('inline-hold-bearing')?.value || '';
+  const holdingSide    = document.querySelector('#inline-turn-dir .inline-turn-btn.active')?.dataset.dir || 'RIGHT';
+  const holdingOBS     = document.getElementById('inline-hold-obs')?.value || '';
+
+  return { levelCondition, levelValue, speedCondition, speedValue, isHolding, holdingBearing, holdingSide, holdingOBS };
+};
+
+
+// Renders the inline restriction form for a pending (just-selected) fix into
+// the #inline-restriction-panel element. Called from main.js when a fix is clicked
+// or a custom point is placed — replacing the modal pop-up from earlier phases.
+//
+// Shows: fix name header, ALT row (req/val/unit), SPD row (req/val/unit),
+//        Holding toggle (+ bearing/direction/OBS fields when active),
+//        and three action buttons: Add Point, Erase, Create Procedure.
+//
+// 'pendingPoint' — the raw fix/point object: { ident, lat, lon, isFix, ... }
+// 'callbacks'    — { onAdd(restrictions), onErase(), onCreate(restrictions) }
+const showPendingPointRestrictions = (pendingPoint, callbacks) => {
+  const panel = document.getElementById('inline-restriction-panel');
+  if (!panel) return;
+
+  const fixIcon  = pendingPoint.isFix ? '&#9670;' : '&#9671;';   // ◆ or ◇
+  const fixLabel = pendingPoint.isFix
+    ? pendingPoint.ident
+    : `Custom (${pendingPoint.lat.toFixed(4)}, ${pendingPoint.lon.toFixed(4)})`;
+
+  panel.className = 'inline-restriction-panel inline-panel-active';
+  panel.innerHTML = `
+    <div class="inline-fix-header">
+      <span class="inline-fix-icon">${fixIcon}</span>
+      <span class="inline-fix-name">${_escapeHtml(fixLabel)}</span>
+    </div>
+
+    <div class="inline-restr-rows">
+      <div class="inline-restr-row">
+        <label class="inline-restr-label">ALT</label>
+        <select class="inline-restr-req" id="inline-alt-req">
+          <option value="">—</option>
+          <option value="@">@</option>
+          <option value="+">+</option>
+          <option value="-">−</option>
+        </select>
+        <input type="number" class="inline-restr-val" id="inline-alt-val" placeholder="value" min="0" step="1">
+        <select class="inline-restr-unit" id="inline-alt-unit">
+          <option value="ft">ft</option>
+          <option value="FL">FL</option>
+          <option value="m">m</option>
+        </select>
+      </div>
+      <div class="inline-restr-row">
+        <label class="inline-restr-label">SPD</label>
+        <select class="inline-restr-req" id="inline-spd-req">
+          <option value="">—</option>
+          <option value="@">@</option>
+          <option value="<">&lt;</option>
+          <option value="<=">&le;</option>
+          <option value=">">&gt;</option>
+          <option value=">=">&ge;</option>
+        </select>
+        <input type="number" class="inline-restr-val" id="inline-spd-val" placeholder="value" min="0" step="1">
+        <select class="inline-restr-unit" id="inline-spd-unit">
+          <option value="KT">KT</option>
+          <option value="KM/HR">KM/HR</option>
+          <option value="MACH">MACH</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="inline-hold-toggle-row">
+      <label class="inline-hold-label">
+        <span class="toggle-switch">
+          <input type="checkbox" id="inline-hold-chk">
+          <span class="toggle-slider"></span>
+        </span>
+        <span class="inline-hold-label-text">Holding Point</span>
+      </label>
+    </div>
+
+    <div id="inline-hold-fields" class="inline-hold-fields" style="display:none;">
+      <div class="inline-hold-field-row">
+        <span class="inline-restr-label">BRG</span>
+        <input type="number" class="inline-hold-input" id="inline-hold-bearing"
+               placeholder="000" min="0" max="359" step="1">
+        <span class="inline-hold-suffix">°M</span>
+      </div>
+      <div class="inline-hold-field-row">
+        <span class="inline-restr-label">TURN</span>
+        <div class="inline-turn-dir" id="inline-turn-dir" style="grid-column: 2 / -1;">
+          <button type="button" class="inline-turn-btn active" data-dir="RIGHT">R</button>
+          <button type="button" class="inline-turn-btn" data-dir="LEFT">L</button>
+        </div>
+      </div>
+      <div class="inline-hold-field-row">
+        <span class="inline-restr-label">OBS</span>
+        <input type="text" class="inline-hold-input" id="inline-hold-obs"
+               placeholder="Advisory" style="grid-column: 2 / -1;">
+      </div>
+    </div>
+
+    <div class="inline-action-row pending-action-row">
+      <button class="inline-action-btn primary" id="btn-add-point">&#10003; Add Point</button>
+      <button class="inline-action-btn secondary" id="btn-erase-pending">&#10005; Erase</button>
+      <button class="inline-action-btn save" id="btn-create-proc-pending">&#128190; Save</button>
+    </div>
+  `;
+
+  // ── Holding toggle: show/hide the bearing, direction, and OBS fields ────────
+  const holdChk    = document.getElementById('inline-hold-chk');
+  const holdFields = document.getElementById('inline-hold-fields');
+  holdChk?.addEventListener('change', () => {
+    holdFields.style.display = holdChk.checked ? 'block' : 'none';
+    if (holdChk.checked) document.getElementById('inline-hold-bearing')?.focus();
+  });
+
+  // ── Turn direction toggle buttons ────────────────────────────────────────────
+  document.getElementById('inline-turn-dir')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.inline-turn-btn');
+    if (!btn) return;
+    document.querySelectorAll('#inline-turn-dir .inline-turn-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+
+  // ── Action buttons ────────────────────────────────────────────────────────────
+  document.getElementById('btn-add-point')?.addEventListener('click', () => {
+    if (callbacks?.onAdd) callbacks.onAdd(collectInlineRestrictions());
+  });
+
+  document.getElementById('btn-erase-pending')?.addEventListener('click', () => {
+    if (callbacks?.onErase) callbacks.onErase();
+  });
+
+  document.getElementById('btn-create-proc-pending')?.addEventListener('click', () => {
+    if (callbacks?.onCreate) callbacks.onCreate(collectInlineRestrictions());
+  });
+
+  // Auto-focus the ALT requirement dropdown so the user can navigate by keyboard immediately.
+  setTimeout(() => document.getElementById('inline-alt-req')?.focus(), 60);
+};
+
+
+// Resets the #inline-restriction-panel back to its idle state (just "Create Procedure"
+// and "Cancel" buttons). Called by main.js after a pending point has been committed.
+// Also returns keyboard focus to the waypoint search bar so the user can type the next fix.
+const clearPendingPointRestrictions = (refocusSearch = true) => {
+  const panel = document.getElementById('inline-restriction-panel');
+  if (!panel) return;
+
+  panel.className = 'inline-restriction-panel inline-panel-idle';
+  panel.innerHTML = `
+    <div class="inline-action-row">
+      <button class="builder-action-btn primary" id="btn-create-procedure">&#10003; Create Procedure</button>
+      <button class="builder-action-btn danger"  id="btn-cancel-drawing">&#10005; Cancel</button>
+    </div>
+  `;
+
+  // Re-wire idle buttons using the cached drawing callbacks.
+  document.getElementById('btn-create-procedure')?.addEventListener('click', () => {
+    if (_drawingCallbacks?.onSave) _drawingCallbacks.onSave();
+  });
+  document.getElementById('btn-cancel-drawing')?.addEventListener('click', () => {
+    if (_drawingCallbacks?.onCancel) _drawingCallbacks.onCancel();
+  });
+
+  if (refocusSearch) {
+    setTimeout(() => document.getElementById('waypoint-search')?.focus(), 50);
+  }
+};
+
+
 // Phase 13: registers the JSON import/export callbacks from main.js.
 // Called once at startup so the "Save to JSON" and "Load from JSON" buttons in
 // the Builder main menu know what to do when clicked.
@@ -1566,6 +1880,10 @@ const setViewGlobalSearchCallback = (fn) => {
 const setJSONCallbacks = (onSave, onLoad) => {
   _onSaveJSON = onSave;
   _onLoadJSON = onLoad;
+};
+
+const setBuilderUnlockCallback = (cb) => {
+  _onBuilderUnlock = cb;
 };
 
 
@@ -1632,5 +1950,9 @@ export {
   updateCategoryChipCounts,
   getGlobalSearchCategoryFilter,
   updateTransitionUI,
-  setJSONCallbacks
+  setJSONCallbacks,
+  setBuilderUnlockCallback,
+  showPendingPointRestrictions,
+  clearPendingPointRestrictions,
+  collectInlineRestrictions
 };

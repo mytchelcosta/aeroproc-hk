@@ -220,6 +220,103 @@ Establish a professional delivery pipeline.
     - **UI Integration**: Two new side-by-side buttons — **"↓ Save to JSON"** and **"↑ Load from JSON"** — added to the Builder main menu (below the "+ New Procedure" button). Callbacks wired via `setJSONCallbacks()` in `Sidebar.js`. `handleSaveJSON` in `main.js` exports `loadAll()`. `handleLoadJSON` confirms replacement with the user, clears all existing procedures from the map and localStorage, then re-saves each imported procedure via `saveProc()` (assigning fresh IDs). Both panels refresh after import.
     - Build verified clean (`vite build` → 264.50 kB JS, 78.94 kB CSS, 0 errors).
 
+---
+
+## Phase 14: Procedural Builder Workflow Streamlining ✅ COMPLETE
+
+- [x] **Streamlined Keyboard-Driven Workflow**:
+    - Metadata form uses Tab/Enter progression: Name → Type → Airport → Runway → Submit.
+    - Removed the redundant "BUILDER" header from the sidebar main menu.
+- [x] **Airport Options Update**:
+    - Airport dropdown now lists VHHH / VMMC / ZGSZ / ZGGG / ZGHK.
+- [x] **Hide Airspaces**:
+    - Airspace type options removed from the metadata form type dropdown (moved to Phase X).
+- [x] **Point Creation & Inline Restrictions**:
+    - `showDrawingPanel()` auto-focuses the waypoint search field via `setTimeout`.
+    - Fix selection now shows the inline `#inline-restriction-panel` (no modal pop-up for new points). The modal is kept only for editing existing points via the ✎ button.
+    - Auto-commit: if a point is pending when a second fix is clicked, the first is committed with current form values before showing the new point's form.
+- [x] **Restriction Fields UI**:
+    - ALT row: req dropdown (`@` / `+` / `-`) + numeric value + unit (`ft` / `FL` / `m`).
+    - SPD row: req dropdown (`@` / `<` / `<=` / `>` / `>=`) + numeric value + `KT`.
+    - `collectInlineRestrictions()` maps UI symbols → DrawingState schema strings and formats value+unit (`FL100` / `5000ft`).
+- [x] **Holding Point Toggle**:
+    - Toggle switch reveals Bearing / Turn Direction / OBS fields.
+    - `holdingOBS` added to DrawingState schema (`_serializePoint`, `updatePoint`).
+    - Turn direction uses active-button toggle (L / R buttons).
+- [x] **Workflow Action Buttons**:
+    - **Add Point**: commits pending point, resets panel to idle, refocuses search.
+    - **Erase / Reset**: re-opens blank form for same fix (requires confirmation).
+    - **Create Procedure**: commits pending point then calls `handleSave()`.
+- [x] **`_commitPendingPoint()` in main.js**: calls `DrawingState.addPoint`, `_afterPointAdded`, clears `_pendingPoint`, calls `clearPendingPointRestrictions`.
+- [x] **`handleSave()` updated**: auto-commits any pending point before saving.
+- [x] **`_cleanupDrawingMode()` updated**: clears `_pendingPoint` and resets panel.
+- [x] **CSS added** to `main.css`: all inline restriction panel styles.
+
+**Implementation notes:**
+- `_drawingCallbacks` cached as module-level var in Sidebar.js so `clearPendingPointRestrictions` can re-wire idle buttons without a callback parameter.
+- `clearPendingPointRestrictions(refocusSearch)` accepts optional bool; false skips the search field focus (used when save/cancel follows immediately).
+- Speed conditions `'Less Than Or Equal'` and `'Greater Than'` added to `_formatSpeedHtml` in Sidebar.
+---
+
+## Phase 15: Builder UX Refinements & Highlight Parity ✅ COMPLETE
+
+- [x] **Keyboard Selection in Builder Search**:
+    - `getFilteredFixes(searchTerm)` exported from `MapLayers.js` — prefix-matches `_allFixData`.
+    - `handleSearchEnter(term)` in `main.js`: if exactly one fix matches, calls `_triggerPointAdded` immediately.
+    - `Sidebar.js` wires a `keydown` listener on `#waypoint-search`: Enter key (when term is non-empty) calls `callbacks.onSearchEnter(term)`.
+    - Both `showDrawingPanel` callback objects include `onSearchEnter: handleSearchEnter`.
+- [x] **Manual Point Data Entry (Pop-up)**:
+    - Removed the inline `manual-point-section` (lat/lon inputs + add button) from the drawing panel HTML.
+    - Added a "Manual Point" button (`#btn-manual-point`) inside the `drop-point-section` alongside "Drop Custom Point".
+    - `_showManualPointModal(onConfirm)` creates a `.modal-overlay` element dynamically, with lat/lon inputs, an error div, Confirm/Cancel buttons, backdrop-click dismiss, Enter/Escape key support, and auto-focus on the Lat field.
+    - CSS added: `.manual-pt-modal-box`, `.manual-pt-fields`, `.manual-pt-row`, `.manual-pt-label`, `.manual-pt-input`, `.manual-pt-error`, `.drop-point-dot.manual-dot`.
+- [x] **Builder Highlight Parity with View Mode**:
+    - `filterWaypoints` now accepts `suppressMatchLabel = false`. When true, search-matched markers get bright/clickable style but NO permanent label — the DivIcon overlay provides the label.
+    - `_styleFixMarker` updated: when `suppressMatchLabel` is true and `isFiltering`, reverts to a delayed hover tooltip (via `_bindDelayedTooltip`) instead of the permanent prefix-highlighted label.
+    - `_lastFilterArgs` and `_onViewportChange` both carry and use `suppressMatchLabel` so viewport-change re-renders are consistent.
+    - `handleSearch` in `main.js` passes `suppressMatchLabel: true` to `filterWaypoints` when a term is active, then calls `renderGlobalSearchHighlights` with the matched fixes formatted as `{ ...fix, layer: 'fix' }` — producing identical DivIcon glow overlays to View Mode.
+    - When the term is cleared, `clearGlobalSearchHighlights` is called to remove overlays.
+    - `_cleanupDrawingMode` calls `clearGlobalSearchHighlights` so overlays don't persist after save/cancel.
+
+**Implementation notes:**
+- `getFilteredFixes` is shared between `handleSearch` (highlight rendering) and `handleSearchEnter` (single-match Enter key selection).
+- The DivIcon glow markers use `pointer-events: none` so clicks pass through to the circleMarkers below for snap-to-fix selection.
+
+---
+
+## Phase 16: Builder UI Overhaul & Polish ✅ COMPLETE
+
+- [x] **Redesign Locked State**:
+    - `showMainMenu()` now renders a completely different DOM tree depending on `_builderLocked`.
+    - Locked: a large `.builder-locked-screen` button fills the builder area — amber-tinted border, centered SVG padlock icon, "Builder Locked" title, "Click to unlock" subtitle. No procedures list or action buttons are rendered.
+    - All amber styling (background, border-color, color) transitions on hover to emphasize interactivity.
+- [x] **Redesign Unlocked State**:
+    - Unlocked: a `.builder-unlock-icon` button (26×26px, subtle border) appears in the top-right corner via `.builder-section-topbar`. Contains a small open-padlock SVG.
+    - All content (New Procedure, JSON IO, procedures list) rendered below without clutter.
+    - No emojis anywhere in the lock/unlock system — pure SVG icons.
+- [x] **Holding Info Styling Fix**:
+    - Holding field HTML restructured: long labels ("Inbound Bearing", "Turn Direction", "OBS") replaced with compact uppercase abbreviations ("BRG", "TURN", "OBS") using the existing `.inline-restr-label` class (same style as ALT/SPD).
+    - `.inline-hold-field-row` grid updated from `60px 1fr auto` → `28px 1fr auto` (matching ALT/SPD row geometry).
+    - Turn buttons now use single letters ("R" / "L") to fit the narrower grid.
+    - Turn div and OBS input use `style="grid-column: 2 / -1"` to span the remaining columns cleanly.
+- [x] **Builder Fixes Layer Optimization** (complete):
+    - **Ghost dots as snap targets**: Ghost circleMarkers set `interactive: true`; `ghostFixPane.style.pointerEvents` toggled between `'auto'` (builder snap active) and `'none'` (default). `enableGhostSnapMode(map, cb)` / `disableGhostSnapMode()` added to MapLayers.js, replacing `enableSnapMode` for route types in main.js.
+    - **Hover glow**: `_showGhostHoverGlow(fix)` renders a violet DivIcon overlay (pointer-events:none) at the hovered ghost dot on `mouseover`; removed on `mouseout` or click.
+    - **Remove 3rd layer**: `handleSearch` in builder mode no longer calls `filterWaypoints` with a search term. Ghost dots are the click targets; `renderGlobalSearchHighlights` provides visual-only glow for search matches.
+    - **Auto-enable ghost layers on unlock**: `setBuilderUnlockCallback` added to Sidebar.js; main.js auto-checks `#chk-ghost-t1` through `#chk-ghost-t4` on each lock→unlock transition.
+    - **Context menu preserved**: guard updated to check `_ghostSnapCallback` so right-click on in-sequence markers works in ghost snap mode.
+
+**Implementation notes:**
+- Old CSS classes `.builder-lock-btn`, `.lock-label`, `.lock-hint`, `.new-procedure-btn.disabled` removed (no longer rendered).
+- `refreshBuilderSavedList()` handles the missing `#builder-saved-list` element (early return) so it is safe to call regardless of lock state.
+
+---
+
+## Phase X: Future Enhancements (Post-MVP)
+
+- [ ] **Builder Airspaces**: Re-integrate Airspace selection options into the Procedural Builder (hidden during Phase 14).
+- [ ] **Builder Transitions**: Develop the transitions logic and UI for connecting distinct procedure segments in the builder.
+
 ## 📈 Advancement Tracking
 | Milestone | Progress | Status |
 | :--- | :--- | :--- |
@@ -236,5 +333,8 @@ Establish a professional delivery pipeline.
 | **Ghost Layer Polish** | 100% | Done |
 | **Display Settings Polish** | 100% | Done |
 | **Procedural Builder Persistence** | 100% | Done |
+| **Procedural Builder Workflow Streamlining** | 100% | Done |
+| **Builder UX Refinements & Highlight Parity** | 100% | Done |
+| **Builder Lock/Unlock UI Overhaul** | 100% | Done |
 
-*Last Updated: 2026-05-10 — Phase 13 Complete*
+*Last Updated: 2026-05-10 — Phase 16 Complete*
