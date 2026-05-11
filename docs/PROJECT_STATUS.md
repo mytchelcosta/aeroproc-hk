@@ -1,6 +1,6 @@
 # Project Status: AeroProc Hong Kong (VHHH)
 
-**Current Status**: 🟢 Phase 24: Holding Pattern Drawing — Completed
+**Current Status**: 🟢 Phase 25: Builder Reliability — Completed (Phase 26 Active)
 **Last Updated**: 2026-05-11
 **Target Area**: Hong Kong FIR (VHHK)
 **Live Site**: [mytchelcosta.github.io/aeroproc-hk/](https://mytchelcosta.github.io/aeroproc-hk/)
@@ -24,6 +24,8 @@ AeroProc HK is a high-fidelity aeronautical visualization tool for the Hong Kong
 - [x] **Display Settings Polish**: Adjust scaling defaults, increase aerodrome visibility, fix ghost label zoom persistence, reorder airspace stacking, and solve ghost vs highlight label offset (Phase 12).
 - [x] **Interaction Polish**: Resolved custom point anchor offsets, added cancel confirmation guards, and implemented permanent labels for custom points (Phase 23).
 - [x] **Holding Pattern Drawing**: Implemented aeronautical racetrack SVG depiction, fixed blue 'H' badge artifacts, and resolved custom point symbol timing lag (Phase 24).
+- [x] **Builder Reliability**: Fixed `_procMarkersLayer` declaration and `DrawingState` field name mapping (Phase 25).
+- [ ] **Premium Holding UX**: Implementing integrated 'H' badges and glassmorphic hover tooltips for metadata (Phase 26).
 - [ ] **Procedure Migration**: Mapping STARs and SIDs from official AIP HK charts.
 
 ## 📈 Milestone Progress
@@ -44,8 +46,12 @@ AeroProc HK is a high-fidelity aeronautical visualization tool for the Hong Kong
 - **Phase 22: Precision Refinements**: 100% 🟢
 - **Phase 23: Final Interaction Polish**: 100% 🟢
 - **Phase 24: Holding Pattern Drawing**: 100% 🟢
+- **Phase 25: Builder Reliability**: 100% 🟢
+- **Phase 26: Premium Holding UX & Custom Point Cleanup**: 10% 🟡
 
 ## 📝 Recent Notes
+- **2026-05-11**: Phase 26 Active. Refining holding visualization with an integrated "H" badge and a slick, semi-transparent hover tooltip for bearing/side info. Resolving the custom point label doubling artifact by ensuring the legacy "pending" tooltip is destroyed upon commitment.
+- **2026-05-11**: Phase 25 Complete. Resolved the point-addition failure by declaring `_procMarkersLayer` at the module level and correcting the field name mapping for restrictions (`altReq` → `levelCondition`). Verified stable commitment flow.
 - **2026-05-11**: Phase 24 Complete. Implemented standard aeronautical holding pattern SVG drawing (rotated racetrack with direction arrows). Resolved "blue H" badge artifact in saved procedures. Fixed custom point rendering lag by adding a temporary "pending" diamond marker. Added visual feedback for the holding toggle in the sidebar.
 - **2026-05-10**: Phase 23 Complete. Refined holding point aesthetics by removing redundant bearing/side text from the map badge. Resolved custom point coordinate precision by adjusting the diamond marker anchor. Implemented a "Confirm Cancel" guard for the procedure builder.
 - **2026-05-10**: Phase 22 Complete. Resolved custom point anchor offsets, added a cancel confirmation guard, and implemented permanent labels for custom points.

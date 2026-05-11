@@ -12,3 +12,4 @@ Your rules:
 9. Python Rules: Use strict Type Hinting for all variables and function returns so it is clear what data is moving around.
 10. JavaScript Rules: Use modern ES6 syntax (e.g., const/let, arrow functions).
 11. Fail Gracefully: Never write code that fails silently. If there is a potential error (like a missing file or bad data), write code that catches the error and prints a clear, plain-English message to the console explaining exactly what went wrong.
+12. When you finish a phase, update `docs/implementation_plan.md` and `docs/PROJECT_STATUS.md` with the work done.

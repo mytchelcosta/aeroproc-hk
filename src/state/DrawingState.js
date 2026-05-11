@@ -57,13 +57,13 @@ const AREA_TYPES = ['CTR', 'FIS', 'TMA', 'ATZ'];
 
 // Default map colors per type, matching the CSS color palette.
 const COLOR_PRESETS = {
-  SID:  '#3b9eff',  // blue  — matches --color-sid
+  SID: '#3b9eff',  // blue  — matches --color-sid
   STAR: '#ffb547',  // amber — matches --color-star
-  IAC:  '#4ddb8d',  // green — matches --color-iac
-  CTR:  '#ff6b6b',  // red   — matches --color-ctr
-  FIS:  '#c084fc',  // purple— matches --color-fis
-  TMA:  '#fb923c',  // orange— matches --color-tma
-  ATZ:  '#facc15'   // yellow— matches --color-atz
+  IAC: '#4ddb8d',  // green — matches --color-iac
+  CTR: '#ff6b6b',  // red   — matches --color-ctr
+  FIS: '#c084fc',  // purple— matches --color-fis
+  TMA: '#fb923c',  // orange— matches --color-tma
+  ATZ: '#facc15'   // yellow— matches --color-atz
 };
 
 
@@ -74,18 +74,18 @@ const COLOR_PRESETS = {
 //
 // 'p' — a point object from DrawingState.points with all live fields
 const _serializePoint = (p) => ({
-  ident:          p.ident,
-  lat:            parseFloat(p.lat.toFixed(6)),
-  lon:            parseFloat(p.lon.toFixed(6)),
+  ident: p.ident,
+  lat: parseFloat(p.lat.toFixed(6)),
+  lon: parseFloat(p.lon.toFixed(6)),
   levelCondition: p.levelCondition || null,
-  levelValue:     p.levelValue     || null,
+  levelValue: p.levelValue || null,
   speedCondition: p.speedCondition || null,
-  speedValue:     p.speedValue     || null,
-  isFix:          p.isFix,
-  isHolding:      p.isHolding      || false,
+  speedValue: p.speedValue || null,
+  isFix: p.isFix,
+  isHolding: p.isHolding || false,
   holdingBearing: p.isHolding ? (p.holdingBearing || null) : null,
-  holdingSide:    p.isHolding ? (p.holdingSide    || 'RIGHT') : null,
-  holdingOBS:     p.isHolding ? (p.holdingOBS     || null)   : null
+  holdingSide: p.isHolding ? (p.holdingSide || 'RIGHT') : null,
+  holdingOBS: p.isHolding ? (p.holdingOBS || null) : null
 });
 
 
@@ -98,12 +98,12 @@ const DrawingState = {
 
   // The options the user selected in the metadata form before drawing.
   metadata: {
-    name:    '',
-    type:    'SID',          // one of the 7 recognized types
+    name: '',
+    type: 'SID',          // one of the 7 recognized types
     pattern: 'solid',        // 'solid', 'dashed', or 'dotted'
-    color:   COLOR_PRESETS.SID,
+    color: COLOR_PRESETS.SID,
     airport: '',             // ICAO airport identifier (e.g. 'SBGR')
-    runway:  ''              // runway designation (e.g. '10L/28R')
+    runway: ''              // runway designation (e.g. '10L/28R')
   },
 
   // The currently active editing buffer.
@@ -186,15 +186,15 @@ const DrawingState = {
   // 'pattern' — one of: solid, dashed, dotted
   // 'color'   — a hex string (e.g. '#3b9eff')
   start(name, type, pattern, color, airport = '', runway = '') {
-    this.isActive              = true;
-    this.metadata              = { name, type, pattern, color, airport, runway };
-    this.points                = [];
-    this.common_route          = [];
-    this.transitions           = [];
-    this._inTransitionMode     = false;
+    this.isActive = true;
+    this.metadata = { name, type, pattern, color, airport, runway };
+    this.points = [];
+    this.common_route = [];
+    this.transitions = [];
+    this._inTransitionMode = false;
     this._activeTransitionName = '';
     this.convergencePointIdent = null;
-    this.activeShape           = null;
+    this.activeShape = null;
     console.log(`[DrawingState] Session started: ${type} "${name}" | ${airport} ${runway} | ${pattern} | ${color}`);
   },
 
@@ -308,13 +308,13 @@ const DrawingState = {
     }
 
     // Lock the common route and switch the editing buffer to a fresh empty branch.
-    this.common_route          = this.points.slice();  // snapshot; the original stays untouched
-    this._transitionDirection  = direction;            // 'inbound' or 'outbound'
+    this.common_route = this.points.slice();  // snapshot; the original stays untouched
+    this._transitionDirection = direction;            // 'inbound' or 'outbound'
     this.convergencePointIdent = fixIdent;             // the key fix ident (for auto-finish + schema)
-    this._inTransitionMode     = true;
+    this._inTransitionMode = true;
     this._activeTransitionName = '';                   // name is assigned at completion
-    this.points                = [];                   // fresh buffer for the new branch
-    this.activeShape           = null;                 // old shape ref is stale
+    this.points = [];                   // fresh buffer for the new branch
+    this.activeShape = null;                 // old shape ref is stale
 
     console.log(
       `[DrawingState] ${direction} transition started. ` +
@@ -342,9 +342,9 @@ const DrawingState = {
     // 'points' so rendering code can look up the fix's coordinates from the common route
     // and connect the line without duplicating the fix in the points array.
     const entry = {
-      name:      resolvedName,
+      name: resolvedName,
       direction: this._transitionDirection,  // 'inbound', 'outbound', or null (old format)
-      points:    this.points.slice()          // snapshot — does NOT include convergence/divergence fix
+      points: this.points.slice()          // snapshot — does NOT include convergence/divergence fix
     };
 
     if (this._transitionDirection === 'inbound') {
@@ -362,26 +362,26 @@ const DrawingState = {
     );
 
     // Return to common-route editing mode.
-    this._inTransitionMode     = false;
-    this._transitionDirection  = null;
+    this._inTransitionMode = false;
+    this._transitionDirection = null;
     this._activeTransitionName = '';
     this.convergencePointIdent = null;
-    this.points                = this.common_route.slice();  // restore the editing buffer
-    this.activeShape           = null;                        // main.js will recreate the shape
+    this.points = this.common_route.slice();  // restore the editing buffer
+    this.activeShape = null;                        // main.js will recreate the shape
   },
 
   // End the session and wipe all data, ready for the next build.
   reset() {
-    this.isActive              = false;
-    this.metadata              = { name: '', type: 'SID', pattern: 'solid', color: COLOR_PRESETS.SID, airport: '', runway: '' };
-    this.points                = [];
-    this.common_route          = [];
-    this.transitions           = [];
-    this._inTransitionMode     = false;
+    this.isActive = false;
+    this.metadata = { name: '', type: 'SID', pattern: 'solid', color: COLOR_PRESETS.SID, airport: '', runway: '' };
+    this.points = [];
+    this.common_route = [];
+    this.transitions = [];
+    this._inTransitionMode = false;
     this._activeTransitionName = '';
-    this._transitionDirection  = null;
+    this._transitionDirection = null;
     this.convergencePointIdent = null;
-    this.activeShape           = null;
+    this.activeShape = null;
     console.log('[DrawingState] Session reset. Ready for next build.');
   },
 
@@ -414,25 +414,25 @@ const DrawingState = {
     }
 
     return {
-      name:    this.metadata.name || '(unnamed)',
-      type:    this.metadata.type,
+      name: this.metadata.name || '(unnamed)',
+      type: this.metadata.type,
       airport: this.metadata.airport || '',
-      runway:  this.metadata.runway  || '',
+      runway: this.metadata.runway || '',
       lineStyle: {
         pattern: this.metadata.pattern,
-        color:   this.metadata.color
+        color: this.metadata.color
       },
       common_route: routePoints.map(_serializePoint),
       // Serialize each transition preserving its direction-aware schema.
       // Old-format transitions (no direction) pass through unchanged.
       transitions: this.transitions.map((t) => {
         const entry = {
-          name:      t.name,
+          name: t.name,
           direction: t.direction || null,
-          points:    t.points.map(_serializePoint)
+          points: t.points.map(_serializePoint)
         };
-        if (t.direction === 'inbound'  && t.convergence_fix) entry.convergence_fix = t.convergence_fix;
-        if (t.direction === 'outbound' && t.divergence_fix)  entry.divergence_fix  = t.divergence_fix;
+        if (t.direction === 'inbound' && t.convergence_fix) entry.convergence_fix = t.convergence_fix;
+        if (t.direction === 'outbound' && t.divergence_fix) entry.divergence_fix = t.divergence_fix;
         return entry;
       })
     };

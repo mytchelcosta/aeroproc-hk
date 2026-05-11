@@ -2091,6 +2091,71 @@ html, body {
 }
 .drop-point-btn.active .drop-point-dot { opacity: 1; }
 
+/* Phase 21: inline coordinate fields below the drop-custom button */
+.drop-coords-row {
+    display:        flex;
+    align-items:    center;
+    gap:            4px;
+    margin-top:     6px;
+    padding:        0 2px;
+}
+
+.drop-coord-input {
+    flex:           1 1 0;
+    min-width:      0;
+    background:     var(--bg-tertiary);
+    border:         1px solid var(--border);
+    border-radius:  4px;
+    color:          var(--text-secondary);
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      10px;
+    padding:        4px 5px;
+    text-align:     center;
+    -moz-appearance: textfield;
+}
+.drop-coord-input::-webkit-outer-spin-button,
+.drop-coord-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.drop-coord-input:focus {
+    outline:      none;
+    border-color: var(--accent-primary);
+    color:        var(--text-primary);
+}
+.drop-coord-input::placeholder { color: rgba(255,255,255,0.25); font-size: 9px; }
+
+.drop-coord-add-btn {
+    flex-shrink:    0;
+    width:          24px;
+    height:         24px;
+    background:     var(--bg-tertiary);
+    border:         1px solid var(--border-bright);
+    border-radius:  4px;
+    color:          var(--text-muted);
+    font-size:      14px;
+    line-height:    1;
+    cursor:         pointer;
+    display:        flex;
+    align-items:    center;
+    justify-content: center;
+    transition:     border-color 0.15s, color 0.15s;
+}
+.drop-coord-add-btn:hover { border-color: var(--color-iac); color: var(--color-iac); }
+
+.inline-clear-row { text-align: center; margin-top: 2px; }
+.inline-clear-link {
+    background:     transparent;
+    border:         none;
+    color:          var(--text-muted);
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      9px;
+    cursor:         pointer;
+    letter-spacing: 0.04em;
+    padding:        2px 4px;
+    border-radius:  3px;
+    transition:     color 0.15s;
+}
+.inline-clear-link:hover { color: var(--text-secondary); }
+
+
 
 /* ================================================================
    PHASE 8.2 — HOLDING PATTERN MODAL STYLES
@@ -2208,16 +2273,16 @@ html, body {
     text-shadow:  0 0 8px currentColor;
 }
 
-/* Small text showing bearingÃ‚Â° SIDE below the H. */
+/* Bearing/side text below the H glyph — amber to match ATC holding annotation style. */
 .holding-badge-info {
-    font-family:  'JetBrains Mono', monospace;
-    font-size:    9px;
-    font-weight:  600;
-    color:        rgba(255, 255, 255, 0.80);
-    text-shadow:  0 1px 3px rgba(0,0,0,0.8);
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      9px;
+    font-weight:    600;
+    color:          #ffb547;
+    text-shadow:    0 1px 3px rgba(0,0,0,0.8);
     letter-spacing: 0.03em;
-    white-space:  nowrap;
-    margin-top:   2px;
+    white-space:    nowrap;
+    margin-top:     2px;
 }
 
 /* Holding info line inside fix labels (builder sequence + saved procedure labels).
@@ -2242,21 +2307,23 @@ html, body {
    that they can be moved.
    ================================================================ */
 
-/* Outer DivIcon wrapper — zero-size, transparent background. */
+/* Outer DivIcon wrapper — 24x24px, centered via iconAnchor:[12,12] in Leaflet. */
 .draggable-custom-marker {
+    display:    flex;
+    align-items: center;
+    justify-content: center;
     background: transparent !important;
     border:     none        !important;
     cursor:     grab;
 }
 
-/* The visible diamond element centered on the lat/lon via transform. */
+/* The visible diamond element. Centering is handled by iconAnchor, not CSS translate. */
 .draggable-custom-marker-inner {
     display:          flex;
     align-items:      center;
     justify-content:  center;
     width:            18px;
     height:           18px;
-    transform:        translate(-50%, -50%);
     border-radius:    3px;
     border:           2px solid;   /* color injected inline to match the procedure */
     background:       rgba(0, 0, 0, 0.55);
@@ -2268,12 +2335,12 @@ html, body {
 }
 
 .draggable-custom-marker-inner:hover {
-    transform: translate(-50%, -50%) scale(1.25);
+    transform: scale(1.25);
 }
 
 .draggable-custom-marker-inner:active {
     cursor:    grabbing;
-    transform: translate(-50%, -50%) scale(1.15);
+    transform: scale(1.15);
 }
 
 /* The diamond glyph inside the marker. */
@@ -2283,6 +2350,32 @@ html, body {
     /* color injected inline to match the procedure */
     pointer-events: none;
     user-select:    none;
+}
+
+/* Permanent label tooltip for custom (non-fix) draggable points. */
+.custom-point-label {
+    background:    rgba(0, 0, 0, 0.65);
+    border:        1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+    color:         #e8e8e8;
+    font-size:     10px;
+    font-family:   monospace;
+    padding:       1px 4px;
+    white-space:   nowrap;
+    pointer-events: none;
+}
+
+/* Pending state modifier for custom-drop markers awaiting form confirmation.
+   Dashed border + pulse animation signals the point is unconfirmed. */
+.draggable-custom-marker-inner.pending {
+    border-style: dashed;
+    opacity:      0.65;
+    animation:    pending-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pending-pulse {
+    0%, 100% { opacity: 0.45; }
+    50%       { opacity: 0.85; }
 }
 
 
@@ -5789,10 +5882,26 @@ details[open] > .subpanel-collapsible-header::before {
     background: #fff;
 }
 
+/* Keyboard focus ring on the toggle: highlight the slider when the hidden input is focused via Tab. */
+.toggle-switch:focus-within .toggle-slider {
+    outline:        2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
 /* Holding Point toggle label text — matches the compact label style of other form rows */
 .inline-hold-label-text {
     font-size: 11px;
     color: var(--text-muted);
+}
+
+/* Amber tint applied to the holding-point toggle row when the toggle is checked,
+   giving in-panel visual confirmation that holding is armed before point commit. */
+.inline-hold-toggle-row.inline-hold-toggle-active {
+    border-left:  2px solid rgba(255, 181, 71, 0.75);
+    background:   rgba(255, 181, 71, 0.06);
+    padding-left: 6px;
+    margin-left:  -6px;
+    border-radius: 3px;
 }
 
 .inline-hold-fields {
@@ -5921,4 +6030,59 @@ details[open] > .subpanel-collapsible-header::before {
 .pending-action-row .inline-action-btn {
     font-size: 10px;
     padding: 5px 4px;
+}
+
+
+/* ================================================================
+   PHASE 26 — HOLDING FIX HOVER TOOLTIP (GLASSMORPHISM)
+   Appears when the user hovers over the "H" dot on a holding
+   waypoint in either an active session or a saved procedure.
+   ================================================================ */
+
+/* Override Leaflet's default tooltip background/border. */
+.holding-hover-tip.leaflet-tooltip {
+    background:           rgba(10, 8, 4, 0.80) !important;
+    backdrop-filter:      blur(10px)            !important;
+    -webkit-backdrop-filter: blur(10px)         !important;
+    border:               1px solid rgba(255, 181, 71, 0.35) !important;
+    border-radius:        6px                   !important;
+    box-shadow:           0 4px 20px rgba(0, 0, 0, 0.6), 0 0 10px rgba(255, 181, 71, 0.15) !important;
+    padding:              6px 12px              !important;
+    display:              flex                  !important;
+    flex-direction:       column                !important;
+    align-items:          center                !important;
+    gap:                  2px                  !important;
+    pointer-events:       none                  !important;
+    white-space:          nowrap                !important;
+    min-width:            60px                  !important;
+}
+
+/* Hide the default Leaflet tooltip directional arrow. */
+.holding-hover-tip.leaflet-tooltip::before {
+    display: none !important;
+}
+
+/* Bearing value — large amber numerals. */
+.hht-bearing {
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      13px;
+    font-weight:    700;
+    color:          #ffb547;
+    display:        block;
+    text-align:     center;
+    letter-spacing: 0.05em;
+    text-shadow:    0 0 8px rgba(255, 181, 71, 0.5);
+    line-height:    1.2;
+}
+
+/* Turn direction label — smaller, muted amber. */
+.hht-side {
+    font-family:    'JetBrains Mono', monospace;
+    font-size:      10px;
+    font-weight:    600;
+    color:          rgba(255, 181, 71, 0.65);
+    display:        block;
+    text-align:     center;
+    letter-spacing: 0.08em;
+    line-height:    1.2;
 }

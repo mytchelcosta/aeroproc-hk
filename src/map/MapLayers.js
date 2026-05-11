@@ -151,6 +151,12 @@ let _measurementsVisible = false;
 // the active sequence changes and cleared when the drawing session ends.
 let _holdingMarkersLayer = null;
 
+// ── Active procedure markers (builder session) ────────────────────────
+// A LayerGroup of glowing waypoint markers shown for all committed points
+// during an active drawing session. Replaces the old filter-based styling
+// and holding badge layer with a single unified overlay.
+let _procMarkersLayer = null;
+
 // Set of fix idents (uppercase) whose ghost fix labels should be hidden because
 // they are currently designated as holding points. The "H" badge already provides
 // the primary identification; the ghost label's white ident text behind it causes
@@ -1085,19 +1091,81 @@ const clearMeasurementLabels = (mapInstance) => {
 
 // ── PREMIUM PROCEDURE MARKER BUILDER ──────────────────────────────────────
 // Generates the HTML for a procedure fix marker (Image 2 style).
-// Includes a glowing dot, ident label, and optional holding "H" badge.
+// For holding waypoints the "H" letter is embedded directly inside the glowing
+// dot — bearing/side detail is provided via the separate hover tooltip system.
 const _buildProcMarkerHtml = (ident, color, isHolding, restrLine) => {
   const glow = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
-  
-  const dot = `<div style="width:17px;height:17px;border-radius:50%;background:${color};border:2px solid #ffffff;box-shadow:${glow};pointer-events:none;"></div>`;
-  
-  const hBadge = isHolding 
-    ? `<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;color:${color};text-shadow:0 0 8px ${color}aa;">H</div>`
-    : '';
+
+  // Holding fixes get an "H" centered inside the colored circle.
+  // Regular fixes get a plain filled circle.
+  const dot = isHolding
+    ? `<div style="width:17px;height:17px;border-radius:50%;background:${color};border:2px solid #ffffff;box-shadow:${glow};display:flex;align-items:center;justify-content:center;pointer-events:none;">` +
+      `<span style="font-family:'Outfit',sans-serif;font-weight:900;font-size:9px;color:rgba(0,0,0,0.85);line-height:1;pointer-events:none;">H</span>` +
+      `</div>`
+    : `<div style="width:17px;height:17px;border-radius:50%;background:${color};border:2px solid #ffffff;box-shadow:${glow};pointer-events:none;"></div>`;
 
   const label = `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;line-height:1.2;color:${color};white-space:nowrap;text-align:center;margin-top:4px;text-shadow:-1px -1px 0 rgba(0,0,0,0.95), 1px -1px 0 rgba(0,0,0,0.95), -1px 1px 0 rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.8);">${_safeEscape(ident)}${restrLine ? '<div style="font-size:8.5px;margin-top:1px;opacity:0.9;">' + restrLine + '</div>' : ''}</div>`;
 
-  return `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-8.5px);pointer-events:none;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">${hBadge}${dot}${label}</div>`;
+  return `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-8.5px);pointer-events:none;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">${dot}${label}</div>`;
+};
+
+
+// ── HOLDING FIX HOVER TOOLTIP SYSTEM ──────────────────────────────────────
+// Ensures the 'procHoverPane' Leaflet pane exists. This pane has
+// pointer-events: auto so invisible hit-area markers inside it can receive
+// mouse events even though the main procMarkersPane has pointer-events: none.
+const _ensureProcHoverPane = (mapInstance) => {
+  if (!mapInstance.getPane('procHoverPane')) {
+    const pane = mapInstance.createPane('procHoverPane');
+    pane.style.zIndex = '701';
+    pane.style.pointerEvents = 'auto';
+  }
+};
+
+// Creates an invisible interactive circle at a holding fix position.
+// Hovering over it shows a glassmorphism tooltip with bearing and turn direction.
+// Click events are re-dispatched to the Leaflet map so Measuring Vector snapping
+// continues to work correctly when the user clicks on a holding fix position.
+//
+// 'addToTarget' — either _procMarkersLayer (active session) or a L.layerGroup (saved procedure)
+const _createHoldingHoverMarker = (mapInstance, lat, lon, holdingBearing, holdingSide, addToTarget) => {
+  if (!mapInstance || lat == null || lon == null) return;
+  _ensureProcHoverPane(mapInstance);
+
+  const bearingText = holdingBearing ? `${_safeEscape(String(holdingBearing))}°` : '---';
+  const sideText = _safeEscape(holdingSide || 'RIGHT');
+
+  const tooltipHtml =
+    `<span class="hht-bearing">${bearingText}</span>` +
+    `<span class="hht-side">${sideText}</span>`;
+
+  // Transparent circle sized to cover the 17px visual dot in screen space.
+  const hitArea = L.circleMarker([lat, lon], {
+    radius: 10,
+    color: 'rgba(0,0,0,0)',
+    fillColor: 'rgba(0,0,0,0)',
+    fillOpacity: 0,
+    weight: 0,
+    interactive: true,
+    pane: 'procHoverPane'
+  });
+
+  hitArea.bindTooltip(tooltipHtml, {
+    permanent: false,
+    sticky: false,
+    direction: 'top',
+    offset: [0, -14],
+    className: 'holding-hover-tip'
+  });
+
+  // Re-dispatch click to the map so Measuring Vector and other map click handlers
+  // still receive the event when the user clicks on a holding fix position.
+  hitArea.on('click', (e) => {
+    L.DomEvent.stopPropagation(e);
+    mapInstance.fire('click', { latlng: e.latlng, originalEvent: e.originalEvent });
+  });
+
+  hitArea.addTo(addToTarget);
 };
 
 
@@ -1212,7 +1280,11 @@ const renderSavedProcedure = (mapInstance, procedure) => {
       });
       L.marker([pt.lat, pt.lon], { icon, interactive: false }).addTo(group);
 
-      // Note: marker already rendered via _buildProcMarkerHtml above.
+      // For holding fixes, add an invisible interactive circle on top so hovering
+      // over the H-dot shows the glassmorphism bearing/direction tooltip.
+      if (pt.isHolding) {
+        _createHoldingHoverMarker(mapInstance, pt.lat, pt.lon, pt.holdingBearing, pt.holdingSide, group);
+      }
     });
   };
 
@@ -2414,6 +2486,8 @@ const updateProcedureMarkers = (mapInstance, activePoints, sequenceColor = '#4dd
     pane.style.zIndex = '700';
     pane.style.pointerEvents = 'none';
   }
+  // Ensure the interactive hover pane exists for holding-fix tooltips.
+  _ensureProcHoverPane(mapInstance);
 
   if (!_procMarkersLayer) {
     _procMarkersLayer = L.layerGroup();
@@ -2460,6 +2534,12 @@ const updateProcedureMarkers = (mapInstance, activePoints, sequenceColor = '#4dd
 
     L.marker([pt.lat, pt.lon], { icon, interactive: false, pane: 'procMarkersPane' })
       .addTo(_procMarkersLayer);
+
+    // For holding fixes, add a hover hit-area marker in procHoverPane so the
+    // glassmorphism bearing/direction tooltip appears on mouse-over.
+    if (pt.isHolding) {
+      _createHoldingHoverMarker(mapInstance, pt.lat, pt.lon, pt.holdingBearing, pt.holdingSide, _procMarkersLayer);
+    }
   });
 
   if (labelsChanged) _refreshGhostLabels();
@@ -2542,6 +2622,11 @@ const showPendingCustomMarker = (mapInstance, lat, lon, color, ident) => {
 // or when the session is cancelled or cleaned up.
 const clearPendingCustomMarker = (mapInstance) => {
   if (_pendingCustomMarker) {
+    // Explicitly unbind the tooltip before removing the marker so its DOM node
+    // is destroyed immediately rather than waiting for Leaflet's GC pass.
+    // This prevents the permanent label from briefly doubling when the real
+    // draggable marker (with its own identical tooltip) is created right after.
+    _pendingCustomMarker.unbindTooltip();
     if (mapInstance && mapInstance.hasLayer(_pendingCustomMarker)) {
       mapInstance.removeLayer(_pendingCustomMarker);
     }

@@ -679,6 +679,29 @@ if (pt.isHolding) {
 
 ---
 
+---
+
+## Phase 25: Builder Reliability & Point Addition Fix (Completed)
+
+Addressing the regression where clicking "Add Point" fails to commit the waypoint to the procedure sequence.
+
+- [x] **Hoisting & Scope Verification**: Resolved `ReferenceError` by properly declaring `_procMarkersLayer` at the module level in `MapLayers.js`.
+- [x] **Point Addition Flow Audit**: Fixed field name mismatch in `main.js:_commitPendingPoint` (mapping `altReq/spdReq` → `levelCondition/speedCondition`).
+- [x] **Marker Layer Orchestration**: Restored `clearProcedureMarkers` during session cleanup and synchronized imports between modules.
+- [x] **Defensive Rendering**: Verified that `updateProcedureMarkers` handles all sequence points without blocking UI execution.
+
+## Phase 26: Premium Holding UX & Custom Point Cleanup ✅ COMPLETE
+
+Restoring missing holding parameters and resolving label duplication for custom waypoints.
+
+- [x] **Restore Holding Info**: Extended `_buildProcMarkerHtml` to accept `holdingBearing` and `holdingSide`. The "H" badge now renders the bearing/side in amber (`#ffb547`) beneath the colored "H" glyph — matching the legacy visual. Both call sites (`updateProcedureMarkers` and `_renderPointLabels` in `renderSavedProcedure`) updated to pass `pt.holdingBearing` and `pt.holdingSide`.
+- [x] **Integrated Holding "H" Badge**: `_buildProcMarkerHtml` now embeds the "H" letter directly inside the glowing dot for holding waypoints (flex-centered 9px black text over the colored circle) instead of rendering a separate floating badge above the dot. The `holdingBearing`/`holdingSide` parameters were removed from the function signature; bearing/side detail moved exclusively to the hover tooltip.
+- [x] **Slick Hover Tooltip (Glassmorphism)**: New `_ensureProcHoverPane(mapInstance)` creates a `procHoverPane` (z-index 701, `pointer-events: auto`) alongside the non-interactive `procMarkersPane`. New `_createHoldingHoverMarker(mapInstance, lat, lon, holdingBearing, holdingSide, addToTarget)` creates an invisible `L.circleMarker` (radius 10, zero fill/stroke) in `procHoverPane` with a Leaflet tooltip styled via new `.holding-hover-tip`, `.hht-bearing`, `.hht-side` CSS classes — dark glassmorphism panel with amber bearing and muted amber turn direction, no arrow tip. Both `updateProcedureMarkers` (active session) and `_renderPointLabels` inside `renderSavedProcedure` (saved procedures) now call this helper for every holding fix.
+- [x] **Resolve Custom Label Doubling**: Handled by `_pendingCustomMarker.unbindTooltip()` call in `clearPendingCustomMarker` before `removeLayer`, ensuring the permanent label DOM node is destroyed immediately rather than lingering when the real draggable marker's identical tooltip is created a frame later.
+- [x] **Refine Interaction Handshake**: The holding hover hit-area marker lives in `procHoverPane` (separate from `procMarkersPane`) and adds an `on('click')` handler that calls `L.DomEvent.stopPropagation(e)` then `mapInstance.fire('click', { latlng, originalEvent })`, re-dispatching every click to the Leaflet map. Measuring Vector's `handleMVClick` is bound on `map.on('click')` and therefore still receives the event correctly when the user clicks on a holding fix position.
+- [x] **Resolve Custom Label Duplication**: Added `_pendingCustomMarker.unbindTooltip()` call in `clearPendingCustomMarker` before `removeLayer`, ensuring the permanent label DOM node is destroyed immediately rather than lingering when the real draggable marker's identical tooltip is created a frame later.
+- [x] **Layer Visibility Sync**: Confirmed the pending → committed handshake is correct: `_commitPendingPoint` clears the pending marker and preview (`_pendingPoint = null`, `clearPendingCustomMarker`) before `_afterPointAdded` calls `updateActiveShape` (no preview) and `createDraggableCustomMarker` (real marker). No race condition possible because the preview call is gated on `!rawData.isFix` inside `_triggerPointAdded` — by the time `_pendingPoint` is null, no further preview can fire for that point.
+
 ## Phase X: Future Enhancements (Post-MVP)
 
 
@@ -712,5 +735,7 @@ if (pt.isHolding) {
 | **Precision Refinements & Safety Guards** | 100% | Done |
 | **Final Interaction Polish & UI Refinements** | 100% | Done |
 | **Holding Pattern Fixes & Aeronautical Drawing** | 100% | Done |
+| **Builder Reliability & Point Addition Fix** | 100% | Done |
+| **Holding Metadata & Custom Point UX Cleanup** | 100% | Done |
 
-*Last Updated: 2026-05-11 — Phase 24 Complete*
+*Last Updated: 2026-05-10 — Phase 26 Complete*

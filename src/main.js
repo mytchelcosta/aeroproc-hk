@@ -22,124 +22,146 @@ import './styles/main.css';
 
 import { i18n } from './utils/i18n.js';
 import { calculateDistance, calculateTrueBearing, trueToMagnetic } from './utils/Helpers.js';
-import { initMap }                                    from './map/MapCore.js';
-import { renderFixes,
-         filterWaypoints,
-         enableSnapMode, disableSnapMode,
-         enableGhostSnapMode, disableGhostSnapMode,
-         enableFreeDrawMode, disableFreeDrawMode,
-         enableCustomDropOverlay, disableCustomDropOverlay,
-         setContextMenuCallbacks,
-         updateActiveShape, clearActiveShape,
-         setMeasurementsVisible, updateMeasurementLabels,
-         clearMeasurementLabels,
-         renderSavedProcedure,
-         renderAerodromes,
-         renderNavaids,
-         renderAirspaces,
-         updateHoldingMarkers, clearHoldingMarkers,
-         createDraggableCustomMarker, removeDraggableMarker,
-         renderGlobalSearchHighlights,
-         clearGlobalSearchHighlights,
-         getFilteredFixes,
-         updateCommonRouteGhost,
-         clearCommonRouteGhost,
-         applySymbolScale,
-         setFetchWeatherFn,
-         renderGhostFixes }                         from './map/MapLayers.js';
-import { fetchWeather }                             from './services/MetarService.js';
-import { loadWaypoints, loadRunwayThresholds,
-         loadAerodromes, loadNavaids,
-         loadDataManifest, loadAirspaces,
-         lookupAircraft, lookupAirline, lookupAirport } from './data/DataLoader.js';
-import { initDataStatusModal, showDataStatusModal,
-         updateStatusBadge, getWorstStatus,
-         processManifest }                            from './components/DataStatusModal.js';
-import { loadAll, saveProc, deleteProc }              from './data/ProcedureDatabase.js';
-import { exportToJSON, importFromJSON }               from './data/ProcedureDB.js';
-import { DrawingState }                               from './state/DrawingState.js';
-import { initModal, showRestrictionModal }            from './components/Modal.js';
-import { initSidebar, buildLayerControls,
-         showViewTab, showMainMenu, showMetadataForm,
-         showDrawingPanel, refreshSequenceList,
-         clearSearch,
-         updateViewTab, refreshBuilderSavedList,
-         setViewGlobalSearchCallback,
-         updateViewGlobalSearchCount,
-         getGlobalSearchCategoryFilter,
-         updateTransitionUI,
-         setJSONCallbacks,
-         setBuilderUnlockCallback,
-         showPendingPointRestrictions,
-         clearPendingPointRestrictions,
-         collectInlineRestrictions }                  from './components/Sidebar.js';
-import { initMeasuringVector,
-         enableMeasuringVector,
-         disableMeasuringVector,
-         clearAllVectors,
-         clearSelectedVector,
-         cycleSelectedVector,
-         deselectAllVectors,
-         updateCursorLatLng,
-         setOriginAtCursor,
-         setFinalAtCursor,
-         updateAttachedVectors,
-         isMeasuringVectorActive,
-         setVectorSnapProvider }                      from './map/MeasuringVector.js';
-import { initLiveTraffic,
-          enableLiveTraffic,
-          disableLiveTraffic,
-          setAircraftLabels,
-          setPositionUpdateCallback,
-          setLabelState,
-          setAutoDeclutter,
-          isLiveTrafficEnabled }                           from './traffic/LiveTraffic.js';
-import { initEphemeralDraw,
-         enableEphemeralPolygon,
-         enableEphemeralCircle,
-         enableEphemeralLine,
-         disableEphemeralDraw,
-         isEphemeralDrawActive,
-         isEphemeralPolygonActive,
-         isEphemeralCircleActive,
-         isEphemeralLineActive,
-         isDrawingInProgress,
-         setShapeChangeCallback,
-         toggleShapeVisibility,
-         renameShape,
-         deleteShapeById,
-         zoomToShape }                                from './map/EphemeralDraw.js';
-import { initNotationTool,
-         enableNotationTool,
-         disableNotationTool,
-         isNotationActive,
-         setNoteChangeCallback,
-         getNotes,
-         toggleNoteVisibility,
-         deleteNoteById,
-         editNoteById }                                 from './map/NotationTool.js';
-import { initGeoPointTool,
-         enableGeoPointTool,
-         disableGeoPointTool,
-         isGeoPointActive,
-         setGeoPointChangeCallback,
-         getGeoPoints,
-         deleteGeoPointById,
-         clearAllGeoPoints,
-         toggleGeoPointVisibility }                   from './map/GeoPointTool.js';
-import { initRangeTool,
-         enableRangeTool,
-         disableRangeTool,
-         isRangeToolActive,
-         setRangeChangeCallback,
-         getRanges,
-         deleteRangeById,
-         clearAllRanges,
-         toggleRangeVisibility }                      from './map/RangeTool.js';
-import { buildSearchIndex, handleGlobalSearch, getSearchIndex }   from './ui/SearchManager.js';
-import { 
-  initToolbarManager, updateToolbarHighlights, syncMapCursor, 
-  stopAllActiveTools, toggleToolbarPanel, wireToolbarPanels, 
+import { initMap } from './map/MapCore.js';
+import {
+  renderFixes,
+  filterWaypoints,
+  enableSnapMode, disableSnapMode,
+  enableGhostSnapMode, disableGhostSnapMode,
+  enableFreeDrawMode, disableFreeDrawMode,
+  enableCustomDropOverlay, disableCustomDropOverlay,
+  setContextMenuCallbacks,
+  updateActiveShape, clearActiveShape,
+  setMeasurementsVisible, updateMeasurementLabels,
+  clearMeasurementLabels,
+  renderSavedProcedure,
+  renderAerodromes,
+  renderNavaids,
+  renderAirspaces,
+  updateProcedureMarkers, clearProcedureMarkers,
+  createDraggableCustomMarker, removeDraggableMarker,
+  showPendingCustomMarker, clearPendingCustomMarker,
+  renderGlobalSearchHighlights,
+  clearGlobalSearchHighlights,
+  getFilteredFixes,
+  updateCommonRouteGhost,
+  clearCommonRouteGhost,
+  applySymbolScale,
+  setFetchWeatherFn,
+  renderGhostFixes
+} from './map/MapLayers.js';
+import { fetchWeather } from './services/MetarService.js';
+import {
+  loadWaypoints, loadRunwayThresholds,
+  loadAerodromes, loadNavaids,
+  loadDataManifest, loadAirspaces,
+  lookupAircraft, lookupAirline, lookupAirport
+} from './data/DataLoader.js';
+import {
+  initDataStatusModal, showDataStatusModal,
+  updateStatusBadge, getWorstStatus,
+  processManifest
+} from './components/DataStatusModal.js';
+import { loadAll, saveProc, deleteProc } from './data/ProcedureDatabase.js';
+import { exportToJSON, importFromJSON } from './data/ProcedureDB.js';
+import { DrawingState } from './state/DrawingState.js';
+// Modal.js is no longer imported — all restriction editing now uses the inline panel.
+import {
+  initSidebar, buildLayerControls,
+  showViewTab, showMainMenu, showMetadataForm,
+  showDrawingPanel, refreshSequenceList,
+  clearSearch,
+  updateViewTab, refreshBuilderSavedList,
+  setViewGlobalSearchCallback,
+  updateViewGlobalSearchCount,
+  getGlobalSearchCategoryFilter,
+  updateTransitionUI,
+  setJSONCallbacks,
+  setBuilderUnlockCallback,
+  showPendingPointRestrictions,
+  clearPendingPointRestrictions,
+  collectInlineRestrictions,
+  updateDropCustomCoords
+} from './components/Sidebar.js';
+import {
+  initMeasuringVector,
+  enableMeasuringVector,
+  disableMeasuringVector,
+  clearAllVectors,
+  clearSelectedVector,
+  cycleSelectedVector,
+  deselectAllVectors,
+  updateCursorLatLng,
+  setOriginAtCursor,
+  setFinalAtCursor,
+  updateAttachedVectors,
+  isMeasuringVectorActive,
+  setVectorSnapProvider
+} from './map/MeasuringVector.js';
+import {
+  initLiveTraffic,
+  enableLiveTraffic,
+  disableLiveTraffic,
+  setAircraftLabels,
+  setPositionUpdateCallback,
+  setLabelState,
+  setAutoDeclutter,
+  isLiveTrafficEnabled
+} from './traffic/LiveTraffic.js';
+import {
+  initEphemeralDraw,
+  enableEphemeralPolygon,
+  enableEphemeralCircle,
+  enableEphemeralLine,
+  disableEphemeralDraw,
+  isEphemeralDrawActive,
+  isEphemeralPolygonActive,
+  isEphemeralCircleActive,
+  isEphemeralLineActive,
+  isDrawingInProgress,
+  setShapeChangeCallback,
+  toggleShapeVisibility,
+  renameShape,
+  deleteShapeById,
+  zoomToShape
+} from './map/EphemeralDraw.js';
+import {
+  initNotationTool,
+  enableNotationTool,
+  disableNotationTool,
+  isNotationActive,
+  setNoteChangeCallback,
+  getNotes,
+  toggleNoteVisibility,
+  deleteNoteById,
+  editNoteById
+} from './map/NotationTool.js';
+import {
+  initGeoPointTool,
+  enableGeoPointTool,
+  disableGeoPointTool,
+  isGeoPointActive,
+  setGeoPointChangeCallback,
+  getGeoPoints,
+  deleteGeoPointById,
+  clearAllGeoPoints,
+  toggleGeoPointVisibility
+} from './map/GeoPointTool.js';
+import {
+  initRangeTool,
+  enableRangeTool,
+  disableRangeTool,
+  isRangeToolActive,
+  setRangeChangeCallback,
+  getRanges,
+  deleteRangeById,
+  clearAllRanges,
+  toggleRangeVisibility
+} from './map/RangeTool.js';
+import { buildSearchIndex, handleGlobalSearch, getSearchIndex } from './ui/SearchManager.js';
+import {
+  initToolbarManager, updateToolbarHighlights, syncMapCursor,
+  stopAllActiveTools, toggleToolbarPanel, wireToolbarPanels,
   wireSettingsPanel, wireResearchPanel,
   refreshGeoPointPanel, refreshNotationPanel, refreshRangePanel, refreshShapePanels
 } from './ui/ToolbarManager.js';
@@ -147,7 +169,7 @@ import {
 // ── Module-level references ──────────────────────────────────────────
 // Declared here so all handler functions below can access them
 // without them being passed around as arguments everywhere.
-let _map          = null;  // the Leaflet map instance
+let _map = null;  // the Leaflet map instance
 let _waypointLayer = null; // the waypoint LayerGroup from renderFixes()
 
 // Tracks the Leaflet layers for each saved procedure so we can toggle
@@ -166,6 +188,14 @@ let _editingOriginalProcId = null;
 // restriction entry in the inline form. Null when no point is pending.
 // Committed to DrawingState by _commitPendingPoint() when "Add Point" is clicked.
 let _pendingPoint = null;
+
+// Phase 21: sequential counter for auto-naming custom (non-fix) points.
+// Reset to 0 each time a new drawing session starts so names are fresh per procedure.
+let _customPointCounter = 0;
+
+// Phase 21: mousemove handler attached while "Drop Custom Point" is active.
+// Stored here so we can cleanly detach it when the mode is toggled off.
+let _customDropMoveHandler = null;
 
 // Phase 13: controls whether leg measurement labels are shown in Viewer mode.
 // Toggled by the "Leg Measurements" button in the Viewer tab header.
@@ -187,10 +217,10 @@ let _statusData = [];
 // These are populated after renderAerodromes(), renderNavaids(), and renderAirspaces()
 // complete at startup so the Objects and Airspaces sub-panel checkboxes can
 // add/remove the correct Leaflet LayerGroups when the user interacts with them.
-let _majorLayer    = null;  // Tier-1 major airports (ON by default)
+let _majorLayer = null;  // Tier-1 major airports (ON by default)
 let _regionalLayer = null;  // Tier-2 regional airports (OFF by default)
 let _heliportLayer = null;  // Tier-3 heliports (OFF by default)
-let _navaidLayer   = null;  // VOR/NDB NAVAIDs (ON by default)
+let _navaidLayer = null;  // VOR/NDB NAVAIDs (ON by default)
 
 // Phase 10.5 (revised) — holds all per-polygon references from renderAirspaces().
 // Structure: { tmaOuterLayer, tmaSectors, ctrPolygons, fizPolygons, atzPolygons }
@@ -242,7 +272,7 @@ const _initI18nToggle = () => {
 
     const lang = btn.dataset.lang;
     i18n.setLanguage(lang);
-    
+
     // Synchronize all toggle buttons on the page (Sidebar and Modal)
     document.querySelectorAll('.lang-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.lang === lang);
@@ -268,7 +298,7 @@ const _initI18nToggle = () => {
     if (inputEl && activeTab) {
       const category = activeTab.dataset.category;
       inputEl.placeholder = i18n.t(`ui.panels.research.placeholder_${category}`);
-      
+
       // If the result card is currently showing the "empty" message, refresh its translation too.
       const resultCard = document.getElementById('research-result-card');
       if (resultCard && resultCard.querySelector('.research-result-empty')) {
@@ -313,7 +343,7 @@ const handleLoadJSON = async () => {
   // null means the user dismissed the file picker without selecting anything.
   if (importedProcs === null) return;
 
-  const currentCount  = loadAll().length;
+  const currentCount = loadAll().length;
   const incomingCount = importedProcs.length;
 
   if (incomingCount === 0) {
@@ -350,16 +380,16 @@ const handleLoadJSON = async () => {
   importedProcs.forEach((proc) => {
     // saveProc handles backward-compat normalization for old schema shapes.
     const saved = saveProc({
-      name:    proc.name    || '(unnamed)',
-      type:    proc.type    || 'SID',
+      name: proc.name || '(unnamed)',
+      type: proc.type || 'SID',
       airport: proc.airport || '',
-      runway:  proc.runway  || '',
+      runway: proc.runway || '',
       lineStyle: {
         pattern: proc.pattern || proc.lineStyle?.pattern || 'solid',
-        color:   proc.color   || proc.lineStyle?.color   || '#3b9eff'
+        color: proc.color || proc.lineStyle?.color || '#3b9eff'
       },
       common_route: proc.common_route || proc.points || [],
-      transitions:  proc.transitions  || []
+      transitions: proc.transitions || []
     });
 
     if (!saved) {
@@ -390,7 +420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Phase 36: Initialize i18n right away so the UI translates
   _initI18nToggle();
-  
+
   // Phase 38: Initialize sidebar collapse functionality
   _initSidebarCollapse();
 
@@ -424,6 +454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // so ghost dots are visible as snap targets without the user having to
   // manually toggle them on.
   setBuilderUnlockCallback(() => {
+    // Auto-enable ghost fix layer checkboxes so snap targets are immediately visible.
     ['chk-ghost-t1', 'chk-ghost-t2', 'chk-ghost-t3', 'chk-ghost-t4'].forEach((id) => {
       const el = document.getElementById(id);
       if (el && !el.checked) {
@@ -431,12 +462,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         el.dispatchEvent(new Event('change'));
       }
     });
+    // Repopulate the procedures list that showMainMenu() just rendered.
+    // Without this, lock→unlock leaves #builder-saved-list empty: showMainMenu()
+    // re-renders the DOM but does not call _refreshBuilderSavedList itself.
+    _refreshBuilderSavedList();
   });
 
-  // Step 3: Initialize the restriction modal HTML (injected once into <body>).
-  initModal();
-
-  // Step 3b: Initialize the Measuring Vector tool DOM elements (telemetry label
+  // Step 3: Initialize the Measuring Vector tool DOM elements (telemetry label
   // and context menu). The module now manages its own button state directly via
   // document.getElementById('btn-mv-tool') — no callback needed.
   initMeasuringVector();
@@ -465,10 +497,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Resolve the correct LayerGroup for one search-index entry. Returns null
     // when no layer is known, in which case the entry is treated as hidden.
     const _layerForEntry = (entry) => {
-      if (entry.layer === 'navaid')    return _navaidLayer;
-      if (entry.layer === 'fix')       return _waypointLayer;
+      if (entry.layer === 'navaid') return _navaidLayer;
+      if (entry.layer === 'fix') return _waypointLayer;
       if (entry.layer === 'aerodrome') {
-        if (entry.tier === 'major')    return _majorLayer;
+        if (entry.tier === 'major') return _majorLayer;
         if (entry.tier === 'regional') return _regionalLayer;
         if (entry.tier === 'heliport') return _heliportLayer;
       }
@@ -484,8 +516,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     let bestNavaid = null, bestNavaidDist = maxNm;
-    let bestFix    = null, bestFixDist    = maxNm;
-    let bestApt    = null, bestAptDist    = maxNm;
+    let bestFix = null, bestFixDist = maxNm;
+    let bestApt = null, bestAptDist = maxNm;
 
     getSearchIndex().forEach(entry => {
       if (!_isVisible(entry)) return;   // hidden layer → not snappable
@@ -498,8 +530,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     if (bestNavaid) return { isAircraft: false, lat: bestNavaid.lat, lon: bestNavaid.lon, type: 'NAVAID', id: bestNavaid.ident };
-    if (bestFix)    return { isAircraft: false, lat: bestFix.lat,    lon: bestFix.lon,    type: 'FIX',    id: bestFix.ident };
-    if (bestApt)    return { isAircraft: false, lat: bestApt.lat,    lon: bestApt.lon,    type: 'APT',    id: bestApt.ident };
+    if (bestFix) return { isAircraft: false, lat: bestFix.lat, lon: bestFix.lon, type: 'FIX', id: bestFix.ident };
+    if (bestApt) return { isAircraft: false, lat: bestApt.lat, lon: bestApt.lon, type: 'APT', id: bestApt.ident };
 
     return null;
   });
@@ -511,7 +543,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Phase 20: Create the fixed cursor coordinate overlay div and append it to
   // <body>. It is shown/hidden inside the mousemove handler based on which tool
   // is currently active. The CSS class is defined in main.css (#cursor-coords).
-  _cursorCoordsEl    = document.createElement('div');
+  _cursorCoordsEl = document.createElement('div');
   _cursorCoordsEl.id = 'cursor-coords';
   document.body.appendChild(_cursorCoordsEl);
 
@@ -621,9 +653,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. ESC: De-activate any currently armed tool.
     if (e.key === 'Escape') {
       // Don't stop tools if the user is typing in a modal or notation note.
-      const isInputFocused = ['INPUT', 'TEXTAREA', 'SPAN'].includes(document.activeElement.tagName) || 
-                             document.activeElement.isContentEditable;
-      
+      const isInputFocused = ['INPUT', 'TEXTAREA', 'SPAN'].includes(document.activeElement.tagName) ||
+        document.activeElement.isContentEditable;
+
       if (!isInputFocused) {
         // Phase 36: Double-functioning ESC logic
         // If drawing is in progress, ESC cancels the current shape but stays in the tool mode.
@@ -631,16 +663,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isEphemeralDrawActive() && isDrawingInProgress()) {
           // Store which mode was active so we can restore it after force-cancelling
           const wasPolygon = isEphemeralPolygonActive();
-          const wasCircle  = isEphemeralCircleActive();
-          const wasLine    = isEphemeralLineActive();
+          const wasCircle = isEphemeralCircleActive();
+          const wasLine = isEphemeralLineActive();
 
           disableEphemeralDraw(true); // Discard current points (sets mode to null)
-          
+
           // Re-enable the same mode to continue drawing a new one if desired
           if (wasPolygon) enableEphemeralPolygon();
           else if (wasCircle) enableEphemeralCircle();
           else if (wasLine) enableEphemeralLine();
-          
+
           console.log('[main.js] ESC: Cancelled in-progress drawing.');
         } else {
           // No drawing in progress -> Stop tools AND ensure panel is closed
@@ -662,23 +694,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // is active. Hide it otherwise so it doesn't distract during normal navigation.
     if (
       isEphemeralPolygonActive() ||
-      isEphemeralCircleActive()  ||
-      isEphemeralLineActive()    ||
-      isNotationActive()         ||
-      isGeoPointActive()         ||
+      isEphemeralCircleActive() ||
+      isEphemeralLineActive() ||
+      isNotationActive() ||
+      isGeoPointActive() ||
       isRangeToolActive()
     ) {
       if (_cursorCoordsEl) {
         // Phase 25: UI Collision Detection
         // If the mouse is over the sidebar or toolbar, hide the coordinate badge.
         const target = e.originalEvent.target;
-        const isOverUI = target.closest('.map-toolbar') || 
-                         target.closest('.sidebar') || 
-                         target.closest('.toolbar-subpanel') ||
-                         target.closest('.mv-context-menu') ||
-                         target.closest('.notation-floating-bar') ||
-                         target.closest('#notation-context-menu') ||
-                         target.closest('.modal-overlay');
+        const isOverUI = target.closest('.map-toolbar') ||
+          target.closest('.sidebar') ||
+          target.closest('.toolbar-subpanel') ||
+          target.closest('.mv-context-menu') ||
+          target.closest('.notation-floating-bar') ||
+          target.closest('#notation-context-menu') ||
+          target.closest('.modal-overlay');
 
         if (isOverUI) {
           _cursorCoordsEl.classList.add('ui-collision');
@@ -690,8 +722,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}
           <div class="cursor-hint">Right-click to stop</div>
         `;
-        _cursorCoordsEl.style.left    = `${e.originalEvent.clientX + 18}px`;
-        _cursorCoordsEl.style.top     = `${e.originalEvent.clientY + 14}px`;
+        _cursorCoordsEl.style.left = `${e.originalEvent.clientX + 18}px`;
+        _cursorCoordsEl.style.top = `${e.originalEvent.clientY + 14}px`;
         _cursorCoordsEl.style.display = 'block';
       }
     } else if (_cursorCoordsEl) {
@@ -766,7 +798,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const aerodromes = await loadAerodromes();
   const aeroLayers = renderAerodromes(_map, aerodromes, thresholds);
   // Store refs so the Objects sub-panel checkboxes can toggle each tier.
-  _majorLayer    = aeroLayers.majorLayer;
+  _majorLayer = aeroLayers.majorLayer;
   _regionalLayer = aeroLayers.regionalLayer;
   _heliportLayer = aeroLayers.heliportLayer;
 
@@ -801,11 +833,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // so the checkbox handlers have valid polygon references to add/remove.
   wireToolbarPanels(
     {
-      waypointLayer:  _waypointLayer,
-      majorLayer:     _majorLayer,
-      regionalLayer:  _regionalLayer,
-      heliportLayer:  _heliportLayer,
-      navaidLayer:    _navaidLayer,
+      waypointLayer: _waypointLayer,
+      majorLayer: _majorLayer,
+      regionalLayer: _regionalLayer,
+      heliportLayer: _heliportLayer,
+      navaidLayer: _navaidLayer,
       airspaceLayers: _airspaceLayers,
       ghostFixLayers: _ghostFixLayers    // Phase 10.5: tiered ghost FIR fix dots
     },
@@ -913,14 +945,14 @@ const handleTabChange = (tab) => {
 // in Sidebar.js can show the route preview and per-branch sub-items.
 const _buildProcStates = () => {
   return loadAll().map((proc) => ({
-    id:           proc.id,
-    name:         proc.name,
-    type:         proc.type,
-    airport:      proc.airport || '',
-    runway:       proc.runway  || '',
-    visible:      _savedProcLayers[proc.id]?.visible ?? true,
+    id: proc.id,
+    name: proc.name,
+    type: proc.type,
+    airport: proc.airport || '',
+    runway: proc.runway || '',
+    visible: _savedProcLayers[proc.id]?.visible ?? true,
     common_route: proc.common_route || [],   // for accordion preview
-    transitions:  proc.transitions  || []    // for accordion sub-item list
+    transitions: proc.transitions || []    // for accordion sub-item list
   }));
 };
 
@@ -931,9 +963,9 @@ const _refreshViewTab = () => {
   const viewTab = document.querySelector('.tab[data-tab="view"]');
   if (!viewTab?.classList.contains('active')) return;
   updateViewTab(_buildProcStates(), {
-    onToggle:             handleToggleProcedure,
+    onToggle: handleToggleProcedure,
     onToggleMeasurements: handleToggleViewerMeasurements,
-    measVisible:          _viewerMeasVisible
+    measVisible: _viewerMeasVisible
   });
 };
 
@@ -942,9 +974,9 @@ const _refreshViewTab = () => {
 // If the container doesn't exist (user is in Drawing panel etc.) this is a no-op.
 const _refreshBuilderSavedList = () => {
   refreshBuilderSavedList(_buildProcStates(), {
-    onToggle:          handleToggleProcedure,
-    onDelete:          handleDeleteProcedure,
-    onEdit:            handleEditProcedure,
+    onToggle: handleToggleProcedure,
+    onDelete: handleDeleteProcedure,
+    onEdit: handleEditProcedure,
     onDeleteTransition: handleDeleteTransition  // Phase 12: per-branch delete
   });
 };
@@ -1007,14 +1039,17 @@ const handleEditProcedure = (id) => {
   // means a mid-edit tab switch can re-render it instead of losing it permanently.
   _editingOriginalProcId = id;
 
+  // Phase 21: reset the custom-point counter so edit sessions start fresh.
+  _customPointCounter = 0;
+
   // Load the procedure's metadata into a fresh DrawingState session
   DrawingState.start(
     proc.name,
     proc.type,
     proc.pattern || 'solid',
-    proc.color   || '#3b9eff',
+    proc.color || '#3b9eff',
     proc.airport || '',
-    proc.runway  || ''
+    proc.runway || ''
   );
 
   // Re-populate the points array from the saved data.
@@ -1028,18 +1063,18 @@ const handleEditProcedure = (id) => {
   const editPoints = proc.common_route || proc.points || [];
   editPoints.forEach((pt) => {
     DrawingState.addPoint({
-      ident:          pt.ident,
-      lat:            pt.lat,
-      lon:            pt.lon,
-      isFix:          pt.isFix ?? true,
-      tipo:           pt.tipo  || 'ICAO',
+      ident: pt.ident,
+      lat: pt.lat,
+      lon: pt.lon,
+      isFix: pt.isFix ?? true,
+      tipo: pt.tipo || 'ICAO',
       levelCondition: pt.levelCondition || '',
-      levelValue:     pt.levelValue     || '',
+      levelValue: pt.levelValue || '',
       speedCondition: pt.speedCondition || '',
-      speedValue:     pt.speedValue     || '',
-      isHolding:      pt.isHolding      || false,
+      speedValue: pt.speedValue || '',
+      isHolding: pt.isHolding || false,
       holdingBearing: pt.holdingBearing || '',
-      holdingSide:    pt.holdingSide    || 'RIGHT'
+      holdingSide: pt.holdingSide || 'RIGHT'
     });
 
     // Phase 8.4: recreate draggable markers for any custom (non-fix) points in the
@@ -1065,8 +1100,9 @@ const handleEditProcedure = (id) => {
           const idx = _draggableMarkers.indexOf(savedMarker);
           console.log(`[AeroProc] (Edit) Custom point at index ${idx} drag completed: (${newLat.toFixed(6)}, ${newLng.toFixed(6)}).`);
           refreshSequenceList(DrawingState, _sequenceCallbacks());
-          updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
-        }
+          updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+        },
+        pt.ident
       );
       _draggableMarkers.push(savedMarker);
     } else {
@@ -1077,7 +1113,7 @@ const handleEditProcedure = (id) => {
   // Phase 8.2: Rebuild holding markers now that the sequence is fully loaded.
   // This ensures any existing holding fixes in the procedure show their "H" badge
   // on the map immediately when the user opens a procedure for editing.
-  updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+  updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
 
   // Enable the drawing mode that matches the procedure type.
   // Route types (SID/STAR/IAC) use snap-to-fix; area types use free-draw.
@@ -1089,21 +1125,21 @@ const handleEditProcedure = (id) => {
     enableGhostSnapMode(_map, (fixData) => {
       _triggerPointAdded({
         ident: fixData.ident,
-        lat:   fixData.lat,
-        lon:   fixData.lon,
-        tipo:  fixData.tipo || 'ICAO',
+        lat: fixData.lat,
+        lon: fixData.lon,
+        tipo: fixData.tipo || 'ICAO',
         isFix: true
       });
     });
 
     setContextMenuCallbacks({
-      isInSequence:     (ident) => DrawingState.points.some(
+      isInSequence: (ident) => DrawingState.points.some(
         (p) => p.ident.toUpperCase() === ident.toUpperCase()
       ),
-      onRemove:         handleContextMenuRemove,
-      onEdit:           handleContextMenuEdit,
-      onAddTransition:  handleContextMenuAddTransition,
-      procedureType:    () => DrawingState.metadata.type,
+      onRemove: handleContextMenuRemove,
+      onEdit: handleContextMenuEdit,
+      onAddTransition: handleContextMenuAddTransition,
+      procedureType: () => DrawingState.metadata.type,
       isInTransitionMode: () => DrawingState._inTransitionMode
     });
   }
@@ -1117,26 +1153,27 @@ const handleEditProcedure = (id) => {
     filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color, true);
   }
 
-  // Open the Drawing Panel with the full sequence already populated
+  // Open the Drawing Panel with the full sequence already populated.
+  // isEdit: true → the finalize button reads "Save Procedure" instead of "Create Procedure".
   showDrawingPanel(DrawingState, {
-    onPointRemove:        handlePointRemove,
-    onPointMoveUp:        handlePointMoveUp,
-    onPointMoveDown:      handlePointMoveDown,
-    onPointEdit:          handlePointEdit,
-    onManualAdd:          handleManualAdd,
-    onSave:               handleSave,
-    onCancel:             handleCancel,
-    onSearch:             handleSearch,
-    onSearchEnter:        handleSearchEnter,
+    onPointRemove: handlePointRemove,
+    onPointMoveUp: handlePointMoveUp,
+    onPointMoveDown: handlePointMoveDown,
+    onPointEdit: handlePointEdit,
+    onManualAdd: handleManualAdd,
+    onSave: handleSave,
+    onCancel: handleCancel,
+    onSearch: handleSearch,
+    onSearchEnter: handleSearchEnter,
     onMeasurementsToggle: handleMeasurementsToggle,
-    onDropCustomToggle:   handleDropCustomToggle
-  });
+    onDropCustomToggle: handleDropCustomToggle
+  }, { isEdit: true });
 
   // Phase 10: Restore any previously saved transition branches back into DrawingState.
   // These are loaded as already-completed branches — the user can add NEW transitions
   // on top of them, but existing ones are preserved as read-only history.
   DrawingState.transitions = (proc.transitions || []).map((t) => ({
-    name:   t.name,
+    name: t.name,
     points: (t.points || []).slice()  // defensive copy
   }));
 
@@ -1187,6 +1224,14 @@ const handleToggleProcedure = (id) => {
 //
 // 'id' — the unique id string assigned by ProcedureDatabase.saveProc()
 const handleDeleteProcedure = (id) => {
+  const proc = loadAll().find((p) => p.id === id);
+  const procName = proc?.name || id;
+
+  const confirmed = window.confirm(
+    `Delete procedure "${procName}"?\n\nThis cannot be undone.`
+  );
+  if (!confirmed) return;
+
   const entry = _savedProcLayers[id];
   if (entry) {
     _map.removeLayer(entry.layer);
@@ -1199,7 +1244,7 @@ const handleDeleteProcedure = (id) => {
   deleteProc(id);
   _refreshViewTab();
   _refreshBuilderSavedList();
-  console.log(`[AeroProc] Procedure "${id}" deleted from database and map.`);
+  console.log(`[AeroProc] Procedure "${procName}" deleted from database and map.`);
 };
 
 
@@ -1230,7 +1275,29 @@ const handleToggleViewerMeasurements = () => {
 // mode, and switches the sidebar to the drawing panel view.
 //
 // 'metadata' — { name, type, pattern, color } from the form
+// Converts a zero-based counter to a base-26 letter suffix: 0→'a', 1→'b', …, 25→'z', 26→'aa', etc.
+// Used by _nextCustomPointName() to generate unique, readable idents for custom points.
+const _customPointSuffix = (n) => {
+  let s = '';
+  let idx = n;
+  do {
+    s = String.fromCharCode(97 + (idx % 26)) + s;
+    idx = Math.floor(idx / 26) - 1;
+  } while (idx >= 0);
+  return s;
+};
+
+// Returns the next auto-generated name for a custom (non-fix) point.
+// Format: '[Procedure Name] [letter]' — e.g. 'ABBEY 3A a', then 'ABBEY 3A b', etc.
+const _nextCustomPointName = () => {
+  const procName = DrawingState.metadata.name || 'PT';
+  return `${procName} ${_customPointSuffix(_customPointCounter++)}`;
+};
+
+
 const handleStartDrawing = (metadata) => {
+  _customPointCounter = 0;   // fresh counter for each new procedure session
+
   DrawingState.start(
     metadata.name, metadata.type, metadata.pattern, metadata.color,
     metadata.airport || '', metadata.runway || ''
@@ -1242,8 +1309,8 @@ const handleStartDrawing = (metadata) => {
     enableFreeDrawMode(_map, (latLon) => {
       _triggerPointAdded({
         ident: 'Custom Point',
-        lat:   latLon.lat,
-        lon:   latLon.lon,
+        lat: latLon.lat,
+        lon: latLon.lon,
         isFix: false
       });
     });
@@ -1253,39 +1320,39 @@ const handleStartDrawing = (metadata) => {
     enableGhostSnapMode(_map, (fixData) => {
       _triggerPointAdded({
         ident: fixData.ident,
-        lat:   fixData.lat,
-        lon:   fixData.lon,
-        tipo:  fixData.tipo || 'ICAO',
+        lat: fixData.lat,
+        lon: fixData.lon,
+        tipo: fixData.tipo || 'ICAO',
         isFix: true
       });
     });
 
     // Wire context-menu callbacks for right-click on in-sequence markers.
     setContextMenuCallbacks({
-      isInSequence:     (ident) => DrawingState.points.some(
+      isInSequence: (ident) => DrawingState.points.some(
         (p) => p.ident.toUpperCase() === ident.toUpperCase()
       ),
-      onRemove:         handleContextMenuRemove,
-      onEdit:           handleContextMenuEdit,
-      onAddTransition:  handleContextMenuAddTransition,
-      procedureType:    () => DrawingState.metadata.type,
+      onRemove: handleContextMenuRemove,
+      onEdit: handleContextMenuEdit,
+      onAddTransition: handleContextMenuAddTransition,
+      procedureType: () => DrawingState.metadata.type,
       isInTransitionMode: () => DrawingState._inTransitionMode
     });
   }
 
   // Show the drawing panel in the sidebar with all required callbacks.
   showDrawingPanel(DrawingState, {
-    onPointRemove:        handlePointRemove,
-    onPointMoveUp:        handlePointMoveUp,
-    onPointMoveDown:      handlePointMoveDown,
-    onPointEdit:          handlePointEdit,
-    onManualAdd:          handleManualAdd,
-    onSave:               handleSave,
-    onCancel:             handleCancel,
-    onSearch:             handleSearch,
-    onSearchEnter:        handleSearchEnter,
+    onPointRemove: handlePointRemove,
+    onPointMoveUp: handlePointMoveUp,
+    onPointMoveDown: handlePointMoveDown,
+    onPointEdit: handlePointEdit,
+    onManualAdd: handleManualAdd,
+    onSave: handleSave,
+    onCancel: handleCancel,
+    onSearch: handleSearch,
+    onSearchEnter: handleSearchEnter,
     onMeasurementsToggle: handleMeasurementsToggle,
-    onDropCustomToggle:   handleDropCustomToggle
+    onDropCustomToggle: handleDropCustomToggle
   });
 };
 
@@ -1318,22 +1385,22 @@ const handleSearchEnter = (searchTerm) => {
   if (hits.length !== 1) return;   // 0 = nothing to select; >1 = ambiguous, wait for more typing
   _triggerPointAdded({
     ident: hits[0].ident,
-    lat:   hits[0].lat,
-    lon:   hits[0].lon,
+    lat: hits[0].lat,
+    lon: hits[0].lon,
     isFix: true
   });
 };
 
 
-// Called when the user clicks "+ Add" for manual coordinates in the drawing panel.
-// Validates the numbers, then feeds the point through the same restriction prompt
-// that snap/free-draw points go through.
+// Called when the user submits lat/lon coordinates via the inline coordinate fields
+// in the drawing panel. Feeds the point through the same restriction prompt that
+// snap/free-draw points go through. The auto-naming counter assigns a unique ident.
 //
-// 'lat' — parsed float from the Lat input
-// 'lon' — parsed float from the Lon input
+// 'lat' — decimal latitude from the Lat field
+// 'lon' — decimal longitude from the Lon field
 const handleManualAdd = (lat, lon) => {
   _triggerPointAdded({
-    ident: 'Custom Point',
+    ident: _nextCustomPointName(),
     lat,
     lon,
     isFix: false
@@ -1410,15 +1477,11 @@ const _triggerPointAdded = (rawData) => {
       _commitPendingPoint(restrictions);
     },
 
-    // "Erase / Reset" — clears only the restriction fields (keeps the pending fix selected).
-    // Requires a brief confirmation so accidental clicks don't wipe entered data.
+    // "Cancel Point" — dismisses the pending fix selection and returns the sidebar
+    // to its idle state. No confirmation needed; the user simply de-selected the fix.
     onErase: () => {
-      const confirmed = window.confirm(
-        `Clear restriction fields for "${rawData.ident}"?\n\nThe fix remains selected; only the restriction values will be reset.`
-      );
-      if (!confirmed) return;
-      // Re-render the form with all fields empty by passing the same callbacks.
-      showPendingPointRestrictions(rawData, _inlineCallbacks);
+      _pendingPoint = null;
+      clearPendingPointRestrictions(true);
     },
 
     // "Create Procedure" (from pending state) — commits the pending point first,
@@ -1429,6 +1492,14 @@ const _triggerPointAdded = (rawData) => {
     }
   };
   showPendingPointRestrictions(rawData, _inlineCallbacks);
+
+  // For custom (non-fix) points, immediately preview the segment AND place a
+  // temporary pending marker so the user sees the point before clicking "Add Point".
+  if (!rawData.isFix) {
+    updateActiveShape(_map, DrawingState, rawData);
+    clearPendingCustomMarker(_map);
+    showPendingCustomMarker(_map, rawData.lat, rawData.lon, DrawingState.metadata.color, rawData.ident);
+  }
 };
 
 
@@ -1443,19 +1514,22 @@ const _commitPendingPoint = (restrictions, refocusSearch = true) => {
   const point = _pendingPoint;
   _pendingPoint = null;
 
+  // Remove the temporary pending marker; the real draggable one is created in _afterPointAdded.
+  clearPendingCustomMarker(_map);
+
   DrawingState.addPoint({
-    ident:           point.ident,
-    lat:             point.lat,
-    lon:             point.lon,
-    isFix:           point.isFix,
-    altReq:          restrictions.altReq          ?? null,
-    altVal:          restrictions.altVal          ?? null,
-    spdReq:          restrictions.spdReq          ?? null,
-    spdVal:          restrictions.spdVal          ?? null,
-    isHolding:       restrictions.isHolding       ?? false,
-    holdingBearing:  restrictions.holdingBearing  ?? null,
-    holdingTurn:     restrictions.holdingTurn     ?? null,
-    holdingOBS:      restrictions.holdingOBS      ?? null,
+    ident: point.ident,
+    lat: point.lat,
+    lon: point.lon,
+    isFix: point.isFix,
+    levelCondition: restrictions.levelCondition ?? null,
+    levelValue: restrictions.levelValue ?? null,
+    speedCondition: restrictions.speedCondition ?? null,
+    speedValue: restrictions.speedValue ?? null,
+    isHolding: restrictions.isHolding ?? false,
+    holdingBearing: restrictions.holdingBearing ?? null,
+    holdingSide: restrictions.holdingSide ?? null,
+    holdingOBS: restrictions.holdingOBS ?? null,
   });
 
   _afterPointAdded(point);
@@ -1507,8 +1581,9 @@ const _afterPointAdded = (rawData) => {
         const idx = _draggableMarkers.indexOf(savedMarker);
         console.log(`[AeroProc] Custom point at index ${idx} drag completed: (${newLat.toFixed(6)}, ${newLng.toFixed(6)}).`);
         refreshSequenceList(DrawingState, _sequenceCallbacks());
-        updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
-      }
+        updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+      },
+      rawData.ident
     );
 
     _draggableMarkers.push(savedMarker);
@@ -1522,8 +1597,8 @@ const _afterPointAdded = (rawData) => {
   updateActiveShape(_map, DrawingState);
   updateMeasurementLabels(_map, DrawingState);
 
-  // Rebuild holding markers — the new point may be a holding fix.
-  updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+  // Rebuild the active procedure marker overlay (glowing dots for all committed points).
+  updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
 
   // Refresh the sidebar sequence list.
   refreshSequenceList(DrawingState, _sequenceCallbacks());
@@ -1554,7 +1629,7 @@ const handlePointRemove = (index) => {
   DrawingState.removePoint(index);
   updateActiveShape(_map, DrawingState);
   updateMeasurementLabels(_map, DrawingState);
-  updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+  updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
   if (_waypointLayer) {
     filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color, true);
   }
@@ -1571,12 +1646,12 @@ const handlePointMoveUp = (index) => {
   // Phase 8.4: keep _draggableMarkers in sync with DrawingState after the move.
   if (index > 0) {
     [_draggableMarkers[index], _draggableMarkers[index - 1]] =
-    [_draggableMarkers[index - 1], _draggableMarkers[index]];
+      [_draggableMarkers[index - 1], _draggableMarkers[index]];
   }
   DrawingState.movePoint(index, 'up');
   updateActiveShape(_map, DrawingState);
   updateMeasurementLabels(_map, DrawingState);
-  updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+  updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
   refreshSequenceList(DrawingState, _sequenceCallbacks());
 };
 
@@ -1589,53 +1664,95 @@ const handlePointMoveDown = (index) => {
   // Phase 8.4: keep _draggableMarkers in sync.
   if (index < _draggableMarkers.length - 1) {
     [_draggableMarkers[index], _draggableMarkers[index + 1]] =
-    [_draggableMarkers[index + 1], _draggableMarkers[index]];
+      [_draggableMarkers[index + 1], _draggableMarkers[index]];
   }
   DrawingState.movePoint(index, 'down');
   updateActiveShape(_map, DrawingState);
   updateMeasurementLabels(_map, DrawingState);
-  updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+  updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
   refreshSequenceList(DrawingState, _sequenceCallbacks());
 };
 
 
 // Called when the user clicks the "✎" (edit) button on a sequence item.
-// Re-opens the restriction modal pre-populated with the point's current values.
-// On confirm, updates only the restriction data — not the ident or coordinates.
+// Re-opens the inline restriction panel (in edit mode) pre-populated with the
+// point's current values. On confirm, updates only the restriction data —
+// not the ident or coordinates.
 //
 // 'index' — the zero-based index of the point to edit
 const handlePointEdit = (index) => {
   const pt = DrawingState.points[index];
   if (!pt) return;
 
-  showRestrictionModal(
-    pt.ident,
+  // Map the stored condition strings back to the inline form's symbol format.
+  const levelCondMap = { 'At': '@', 'Above': '+', 'Below': '-' };
+  const speedCondMap = {
+    'At': '@', 'Less Than': '<', 'Less Than Or Equal': '<=',
+    'Greater Than': '>', 'At Least': '>='
+  };
 
-    // onConfirm: update the point's restrictions (including holding data) and refresh.
-    (restrictions) => {
-      DrawingState.updatePoint(index, restrictions);
-      // Rebuild holding markers — the user may have just toggled a holding designation.
-      updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
-      if (_waypointLayer) {
-        filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color, true);
-      }
-      refreshSequenceList(DrawingState, _sequenceCallbacks());
-    },
+  // Parse a stored altitude value string back into a numeric value and unit.
+  // 'FL100' → { altVal:'100', altUnit:'FL' }  |  '5000ft' → { altVal:'5000', altUnit:'ft' }
+  const parseAltValue = (val) => {
+    if (!val) return { altVal: '', altUnit: 'ft' };
+    const fl = val.match(/^FL(\d+)$/i);
+    if (fl) return { altVal: fl[1], altUnit: 'FL' };
+    const m = val.match(/^(\d+)m$/i);
+    if (m) return { altVal: m[1], altUnit: 'm' };
+    const ft = val.match(/^(\d+)ft$/i);
+    if (ft) return { altVal: ft[1], altUnit: 'ft' };
+    return { altVal: val, altUnit: 'ft' };
+  };
 
-    // onSkip: user cancelled the edit — no changes to anything.
-    () => {},
+  // Parse a stored speed value string back into a numeric value and unit.
+  // '250KT' → { spdVal:'250', spdUnit:'KT' }
+  const parseSpdValue = (val) => {
+    if (!val) return { spdVal: '', spdUnit: 'KT' };
+    const mach = val.match(/^([\d.]+)MACH$/i);
+    if (mach) return { spdVal: mach[1], spdUnit: 'MACH' };
+    const kmhr = val.match(/^(\d+)KM\/HR$/i);
+    if (kmhr) return { spdVal: kmhr[1], spdUnit: 'KM/HR' };
+    const kt = val.match(/^(\d+)KT$/i);
+    if (kt) return { spdVal: kt[1], spdUnit: 'KT' };
+    return { spdVal: val, spdUnit: 'KT' };
+  };
 
-    // initialValues: pre-populate all modal fields with the point's current values.
-    // Phase 8.2: holding fields are now included so the user sees the existing holding
-    // designation when editing, not just a blank checkbox every time.
+  const { altVal, altUnit } = parseAltValue(pt.levelValue);
+  const { spdVal, spdUnit } = parseSpdValue(pt.speedValue);
+
+  showPendingPointRestrictions(
+    pt,
     {
-      levelCondition: pt.levelCondition || '',
-      levelValue:     pt.levelValue     || '',
-      speedCondition: pt.speedCondition || '',
-      speedValue:     pt.speedValue     || '',
-      isHolding:      pt.isHolding      || false,
-      holdingBearing: pt.holdingBearing || '',
-      holdingSide:    pt.holdingSide    || 'RIGHT'
+      // onAdd doubles as the "Update Point" action in edit mode.
+      // Applies the collected restrictions to the existing point and closes the panel.
+      onAdd: (restrictions) => {
+        DrawingState.updatePoint(index, restrictions);
+        updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+        if (_waypointLayer) {
+          filterWaypoints(_waypointLayer, '', DrawingState.points, DrawingState.metadata.color, true);
+        }
+        refreshSequenceList(DrawingState, _sequenceCallbacks());
+        clearPendingPointRestrictions(true);
+      },
+      // onErase doubles as "Cancel Edit" — discard changes, return to idle state.
+      onErase: () => {
+        clearPendingPointRestrictions(true);
+      }
+    },
+    {
+      isEdit: true,
+      initialValues: {
+        altReq: levelCondMap[pt.levelCondition] || '',
+        altVal,
+        altUnit,
+        spdReq: speedCondMap[pt.speedCondition] || '',
+        spdVal,
+        spdUnit,
+        isHolding: pt.isHolding || false,
+        holdingBearing: pt.holdingBearing || '',
+        holdingSide: pt.holdingSide || 'RIGHT',
+        holdingOBS: pt.holdingOBS || ''
+      }
     }
   );
 };
@@ -1657,10 +1774,10 @@ const handleMeasurementsToggle = (visible) => {
 // Phase 12: onAddTransition is no longer used by the sidebar (right-click replaces it),
 // but onEndTransition is still needed for the sidebar's "End Transition" button.
 const _sequenceCallbacks = () => ({
-  onPointRemove:   handlePointRemove,
-  onPointMoveUp:   handlePointMoveUp,
+  onPointRemove: handlePointRemove,
+  onPointMoveUp: handlePointMoveUp,
   onPointMoveDown: handlePointMoveDown,
-  onPointEdit:     handlePointEdit,
+  onPointEdit: handlePointEdit,
   onEndTransition: handleEndTransition
 });
 
@@ -1719,12 +1836,12 @@ const handleEndTransition = () => {
   if (DrawingState.points.length === 0) {
     // Nothing was drawn — quietly cancel the transition without saving it.
     console.log('[AeroProc] Transition cancelled (no points added).');
-    DrawingState._inTransitionMode     = false;
+    DrawingState._inTransitionMode = false;
     DrawingState._activeTransitionName = '';
-    DrawingState._transitionDirection  = null;
+    DrawingState._transitionDirection = null;
     DrawingState.convergencePointIdent = null;
-    DrawingState.points                = DrawingState.common_route.slice();
-    DrawingState.activeShape           = null;
+    DrawingState.points = DrawingState.common_route.slice();
+    DrawingState.activeShape = null;
   } else {
     // Prompt the user for the transition name at completion.
     // Pre-fill with a sensible default (T1, T2, …) in case they just press Enter.
@@ -1756,7 +1873,7 @@ const handleEndTransition = () => {
   // Redraw the common route as the live active shape.
   updateActiveShape(_map, DrawingState);
   updateMeasurementLabels(_map, DrawingState);
-  updateHoldingMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+  updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
 
   // Restore waypoint layer highlight for the common-route sequence.
   if (_waypointLayer) {
@@ -1837,6 +1954,9 @@ const handleSave = () => {
 // Removes the partial shape from the map, disables drawing modes,
 // resets the DrawingState, and returns to the main menu.
 const handleCancel = () => {
+  if (DrawingState.points.length > 0) {
+    if (!window.confirm('Cancel this procedure?\n\nAll unsaved changes will be lost.')) return;
+  }
   clearActiveShape(_map, DrawingState);
   _cleanupDrawingMode();
   clearMeasurementLabels(_map);
@@ -1868,6 +1988,7 @@ const _cleanupDrawingMode = () => {
   // Phase 14: discard any pending point without committing it.
   _pendingPoint = null;
   clearPendingPointRestrictions(false);
+  clearPendingCustomMarker(_map);
 
   // Phase 15: clear any DivIcon glow highlights left from the builder search bar.
   clearGlobalSearchHighlights(_map);
@@ -1876,6 +1997,14 @@ const _cleanupDrawingMode = () => {
   disableGhostSnapMode();
   disableFreeDrawMode(_map);
   disableCustomDropOverlay(_map);   // stop any active drop-point overlay
+
+  // Phase 21: clean up drop-custom mousemove listener and crosshair cursor.
+  if (_customDropMoveHandler) {
+    _map.off('mousemove', _customDropMoveHandler);
+    _customDropMoveHandler = null;
+  }
+  _map.getContainer().style.cursor = '';
+  _customPointCounter = 0;
   setContextMenuCallbacks(null);    // clear right-click callbacks so old session doesn't leak
 
   // Phase 8.4: remove every draggable custom-point marker from the map.
@@ -1884,8 +2013,8 @@ const _cleanupDrawingMode = () => {
   });
   _draggableMarkers = [];
 
-  // Phase 8.2: remove all holding "H" badge markers from the map.
-  clearHoldingMarkers(_map);
+  // Remove the active procedure marker overlay (glowing dots for committed sequence points).
+  clearProcedureMarkers(_map);
 
   // Phase 10: remove the common-route ghost line if the session ended mid-transition.
   clearCommonRouteGhost(_map);
@@ -1967,13 +2096,13 @@ const handleDeleteTransition = (procId, transitionIndex) => {
 
   // Re-save using the same metadata. saveProc() assigns a new id automatically.
   const newProc = saveProc({
-    name:    proc.name,
-    type:    proc.type,
+    name: proc.name,
+    type: proc.type,
     airport: proc.airport || '',
-    runway:  proc.runway  || '',
+    runway: proc.runway || '',
     lineStyle: { pattern: proc.pattern || 'solid', color: proc.color || '#3b9eff' },
     common_route: proc.common_route || [],
-    transitions:  updatedTransitions
+    transitions: updatedTransitions
   });
 
   if (newProc) {
@@ -1997,19 +2126,41 @@ const handleDeleteTransition = (procId, transitionIndex) => {
 // Enables or disables a map-click overlay that lets the user drop free-coordinate
 // points alongside snapped waypoints in the same route procedure.
 //
+// When active:
+//   • Sets a crosshair cursor on the map container.
+//   • Wires a mousemove listener that feeds live geo-coordinates into the sidebar
+//     lat/lon fields so the user always sees where the next click will land.
+//   • Each map click auto-names the dropped point using the procedure name + a letter suffix.
+//
 // 'active' — true = drop overlay is now ON, false = it was toggled off
 const handleDropCustomToggle = (active) => {
   if (active) {
+    _map.getContainer().style.cursor = 'crosshair';
+
     enableCustomDropOverlay(_map, (latLon) => {
       _triggerPointAdded({
-        ident: 'Custom Point',
-        lat:   latLon.lat,
-        lon:   latLon.lon,
+        ident: _nextCustomPointName(),
+        lat: latLon.lat,
+        lon: latLon.lon,
         isFix: false
       });
     });
+
+    // Mirror live cursor position into the sidebar lat/lon coordinate fields.
+    _customDropMoveHandler = (e) => {
+      updateDropCustomCoords(e.latlng.lat, e.latlng.lng);
+    };
+    _map.on('mousemove', _customDropMoveHandler);
   } else {
+    _map.getContainer().style.cursor = '';
     disableCustomDropOverlay(_map);
+
+    if (_customDropMoveHandler) {
+      _map.off('mousemove', _customDropMoveHandler);
+      _customDropMoveHandler = null;
+    }
+    // Clear the coordinate fields now that live tracking is off.
+    updateDropCustomCoords(null, null);
   }
 };
 // Phase 38: Sidebar Collapse Logic
@@ -2028,7 +2179,7 @@ const _initSidebarCollapse = () => {
     e.stopPropagation();
     const collapsed = sidebar.classList.toggle('collapsed');
     localStorage.setItem('aeroproc_sidebar_collapsed', collapsed);
-    
+
     // Leaflet needs to know the map size changed. 
     // We update it smoothly during the 300ms transition to avoid "jumping".
     const startTime = performance.now();
