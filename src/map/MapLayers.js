@@ -1212,15 +1212,6 @@ const renderSavedProcedure = (mapInstance, procedure) => {
           iconAnchor: [0, 0]
         });
         L.marker([pt.lat, pt.lon], { icon: holdingIcon, interactive: false }).addTo(group);
-
-        // Phase 24: Aeronautical holding pattern diagram (indicative racetrack SVG)
-        const patternIcon = L.divIcon({
-          className: 'holding-pattern-marker',
-          html: _buildHoldingPatternSvg(pt.holdingBearing, pt.holdingSide, procedure.color),
-          iconSize: [0, 0],
-          iconAnchor: [0, 0]
-        });
-        L.marker([pt.lat, pt.lon], { icon: patternIcon, interactive: false }).addTo(group);
       }
     });
   };
@@ -2465,15 +2456,6 @@ const updateHoldingMarkers = (mapInstance, activePoints, sequenceColor = '#4ddb8
     // Use the dedicated holdingPane so the badge always renders above ghost fix labels.
     L.marker([pt.lat, pt.lon], { icon, interactive: false, pane: 'holdingPane' })
       .addTo(_holdingMarkersLayer);
-
-    // Phase 24: Aeronautical holding pattern diagram (indicative racetrack SVG)
-    const patternIcon = L.divIcon({
-      className: 'holding-pattern-marker',
-      html: _buildHoldingPatternSvg(pt.holdingBearing, pt.holdingSide, sequenceColor),
-      iconSize: [0, 0],
-      iconAnchor: [0, 0]
-    });
-    L.marker([pt.lat, pt.lon], { icon: patternIcon, interactive: false, pane: 'holdingPane' })
       .addTo(_holdingMarkersLayer);
 
 
@@ -3845,57 +3827,6 @@ const disableGhostSnapMode = () => {
   _ghostMapRef = null;
   console.log('[MapLayers] Ghost snap mode DISABLED.');
 };
-
-
-
-// ── PHASE 24: AERONAUTICAL HOLDING PATTERN SVG ──────────────────────────────
-// Generates an indicative (non-scaled) racetrack holding pattern diagram styled
-// after aeronautical instrument charts.
-//
-// 'bearingMag' — inbound magnetic bearing (degrees)
-// 'side'       — 'RIGHT' or 'LEFT'
-// 'color'      — hex color string
-const _buildHoldingPatternSvg = (bearingMag, side, color) => {
-  const LEG = 44;
-  const R   = 14;
-  const W   = 1.6;
-  const isRight = (side || 'RIGHT').toUpperCase() !== 'LEFT';
-  const sx = isRight ? R : -R;
-
-  const sw1 = isRight ? 1 : 0;
-  const sw2 = isRight ? 1 : 0;
-
-  const path = `M 0 0 A ${R} ${R} 0 0 ${sw1} ${sx*2} 0 L ${sx*2} ${-LEG} A ${R} ${R} 0 0 ${sw2} 0 ${-LEG} L 0 0`;
-
-  const arrow = (cx, cy, angleDeg) => {
-    const a = angleDeg * Math.PI / 180;
-    const f = 6;
-    const tip_x = cx + Math.sin(a) * f;
-    const tip_y = cy - Math.cos(a) * f;
-    const l_x   = cx - Math.cos(a) * f + Math.sin(a) * -f;
-    const l_y   = cy - Math.sin(a) * f - Math.cos(a) * -f;
-    const r_x   = cx + Math.cos(a) * f + Math.sin(a) * -f;
-    const r_y   = cy + Math.sin(a) * f - Math.cos(a) * -f;
-    return `<polyline points="${l_x.toFixed(1)},${l_y.toFixed(1)} ${tip_x.toFixed(1)},${tip_y.toFixed(1)} ${r_x.toFixed(1)},${r_y.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${W}" stroke-linecap="round" stroke-linejoin="round"/>`;
-  };
-
-  const arrowInbound  = arrow(0, -LEG/2, 0);
-  const arrowOutbound = arrow(sx*2, -LEG/2, 180);
-  const arrowTurn1    = arrow(sx, R, isRight ? 90 : -90);
-  const arrowTurn2    = arrow(sx, -LEG - R, isRight ? -90 : 90);
-
-  const rot = typeof bearingMag === 'number' ? bearingMag : 0;
-  const vbSize = LEG + R * 2 + 10;
-
-  return (
-    `<svg viewBox="${-vbSize/2} ${-vbSize} ${vbSize*1.5} ${vbSize*1.5}" width="80" height="80" xmlns="http://www.w3.org/2000/svg" style="transform:translate(-50%,-50%) rotate(${rot}deg);display:block;overflow:visible;pointer-events:none;opacity:0.85;">` +
-    `<path d="${path}" fill="${color}1a" stroke="${color}" stroke-width="${W}" stroke-linejoin="round" fill-rule="evenodd"/>` +
-    `<circle cx="0" cy="0" r="3" fill="${color}" stroke="#ffffff" stroke-width="0.8"/>` +
-    arrowInbound + arrowOutbound + arrowTurn1 + arrowTurn2 +
-    `</svg>`
-  );
-};
-
 
 export {
   renderAirports,
