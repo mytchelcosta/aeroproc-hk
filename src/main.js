@@ -209,6 +209,10 @@ let _viewerMeasVisible = true;
 // When points are removed or reordered, we splice/swap this array in sync with DrawingState.
 let _draggableMarkers = [];
 
+// Phase 32 — Tracks the index of the point currently open in the sidebar edit panel.
+// Used to ensure the selection ring highlight tracks the marker during drag.
+let _editingPointIndex = -1;
+
 // Phase 9.7 — Data Currency Warning System
 // Stores the processed manifest data so the badge button's click handler can
 // re-open the modal at any time without re-fetching the manifest.
@@ -1468,6 +1472,9 @@ const _triggerPointAdded = (rawData) => {
   // The modal (showRestrictionModal) is no longer used for new point additions.
   _pendingPoint = rawData;
 
+  // Phase 32: Show the selection ring for the pending point immediately.
+  showEditingHighlight(_map, rawData.lat, rawData.lon, rawData.ident, DrawingState.metadata.color);
+
   // Define callbacks as a named object so onErase can re-open the same form
   // (resetting all fields) by calling showPendingPointRestrictions again with the
   // same callbacks reference — forming a self-referential but non-recursive cycle.
@@ -1482,6 +1489,7 @@ const _triggerPointAdded = (rawData) => {
     // to its idle state. No confirmation needed; the user simply de-selected the fix.
     onErase: () => {
       _pendingPoint = null;
+      clearEditingHighlight(_map);
       clearPendingPointRestrictions(true);
     },
 
@@ -1517,6 +1525,7 @@ const _commitPendingPoint = (restrictions, refocusSearch = true) => {
 
   // Remove the temporary pending marker; the real draggable one is created in _afterPointAdded.
   clearPendingCustomMarker(_map);
+  clearEditingHighlight(_map);
 
   DrawingState.addPoint({
     ident: point.ident,
@@ -1574,6 +1583,11 @@ const _afterPointAdded = (rawData) => {
           DrawingState.updatePointCoords(idx, newLat, newLng);
           updateActiveShape(_map, DrawingState);
           updateMeasurementLabels(_map, DrawingState);
+
+          // Phase 32: if this point is currently being edited, update the selection ring highlight.
+          if (idx === _editingPointIndex) {
+            showEditingHighlight(_map, newLat, newLng, rawData.ident, DrawingState.metadata.color);
+          }
         }
       },
 
@@ -1726,6 +1740,7 @@ const handlePointEdit = (index) => {
 
   // Tell updateProcedureMarkers to skip the hit-area for this index so the
   // draggable custom marker beneath can receive drag events unobstructed.
+  _editingPointIndex = index;
   setEditingPoint(index);
 
   // Show a persistent selection ring on the map at this point's position.
@@ -1740,10 +1755,16 @@ const handlePointEdit = (index) => {
       onLiveChange: (liveRestrictions) => {
         DrawingState.updatePoint(index, liveRestrictions);
         updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+
+        // Phase 32 fix: Re-render the editing highlight during live changes to ensure
+        // persistence if other layers are cleared or refreshed during the edit session.
+        const latestPt = DrawingState.points[index];
+        showEditingHighlight(_map, latestPt.lat, latestPt.lon, latestPt.ident, DrawingState.metadata.color);
       },
       // onAdd doubles as the "Update Point" action in edit mode.
       // Applies the collected restrictions to the existing point and closes the panel.
       onAdd: (restrictions) => {
+        _editingPointIndex = -1;
         setEditingPoint(-1);
         clearEditingHighlight(_map);
         DrawingState.updatePoint(index, restrictions);
@@ -1756,6 +1777,7 @@ const handlePointEdit = (index) => {
       },
       // onErase doubles as "Cancel Edit" — roll back live changes, clear highlight.
       onErase: () => {
+        _editingPointIndex = -1;
         setEditingPoint(-1);
         clearEditingHighlight(_map);
         DrawingState.updatePoint(index, originalPt);

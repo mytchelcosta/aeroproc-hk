@@ -759,11 +759,15 @@ Finalizing the builder's visual feedback by implementing persistent highlights f
 
 Resolving the issue where the persistent highlight (selection ring) fails to appear on the map while a waypoint is being edited in the sidebar.
 
-- [ ] **Pane Initialization Audit**: Verify that `procEditPane` (z=702) is correctly initialized and appended to the Leaflet map container. Check for any CSS overrides that might be hiding the pane.
-- [ ] **Coordinate Tracking Verification**: Ensure `showEditingHighlight` is receiving the correct `lat/lon` coordinates, especially for custom points that may have been moved.
-- [ ] **Render Loop Persistence**: Validate that `updateProcedureMarkers` (called during `onLiveChange`) does not accidentally clear or overwrite the `procEditPane` content.
-- [ ] **Visual Weight Review**: Increase the stroke weight and glow intensity of the edit highlight to ensure it is "striking" and clearly visible against the dark aeronautical background.
+- [x] **Pane Initialization Audit**: Verify that `procEditPane` (z=1200) is correctly initialized and elevated above all other markers (including draggable markers at z=1100).
+- [x] **Coordinate Tracking Verification**: Ensure `showEditingHighlight` is receiving the correct `lat/lon` coordinates, specifically for custom points that may have been moved, and that it tracks during drag.
+- [x] **Render Loop Persistence**: Validate that `updateProcedureMarkers` (called during `onLiveChange`) does not accidentally clear or overwrite the `procEditPane` content.
+- [x] **Visual Weight Review**: Increase the stroke weight (4px) and glow intensity of the edit highlight and add a white secondary border to ensure it is "striking" and clearly visible.
+- [x] **Pending Point Highlight**: Ensure the selection ring appears immediately when a new point is clicked (Pending state), not just when re-editing.
 
+
+
+PHASE X (DO NOT IMPLEMENT FOR NOW)
 - [ ] **Builder Airspaces**: Re-integrate Airspace selection options into the Procedural Builder (hidden during Phase 14).
 - [ ] **Builder Transitions**: Develop the transitions logic and UI for connecting distinct procedure segments in the builder.
 
@@ -801,6 +805,6 @@ Resolving the issue where the persistent highlight (selection ring) fails to app
 | **Final Interaction Handshake & Hitbox Unification** | 100% | Done |
 | **Absolute Hitbox Decoupling & Unified Snap Engine** | 100% | Done |
 | **Editing Persistence & Custom UX Finalization** | 100% | Done |
-| **Editing Highlight Visibility Debug** | 10% | Active |
+| **Editing Highlight Visibility Debug** | 100% | Done |
 
 *Last Updated: 2026-05-11 — Phase 32 Active*

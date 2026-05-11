@@ -1180,15 +1180,40 @@ const showEditingHighlight = (mapInstance, lat, lon, ident, color) => {
   if (!mapInstance || lat == null || lon == null) return;
   _ensureProcEditPane(mapInstance);
 
-  // Render a selection ring (not a filled dot) so the regular proc marker beneath
-  // remains visible through the transparent center. The ring clearly signals that
-  // this specific point is open for editing.
-  // Size: 25px ring sits just outside the 17px proc dot + 2px white border (19px total).
-  const glow = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
-  const ring = `<div style="width:25px;height:25px;border-radius:50%;border:2px solid ${color};box-shadow:${glow};pointer-events:none;"></div>`;
-  const html = `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-12.5px);pointer-events:none;">${ring}</div>`;
-  const icon = L.divIcon({ className: 'fix-edit-ring', html, iconSize: [0, 0], iconAnchor: [0, 0] });
-  _editHighlightMarker = L.marker([lat, lon], { icon, interactive: false, pane: 'procEditPane' });
+  // Use a fallback color if metadata color is missing.
+  const ringColor = color || '#3b9eff';
+
+  // Render a striking selection ring. 
+  // We use a dual-border approach (white border outside the colored ring) 
+  // to ensure visibility against both dark map tiles and bright UI elements.
+  const glow = `0 0 10px ${ringColor}, 0 0 20px ${ringColor}88`;
+  const ring = `
+    <div style="
+      width: 28px; 
+      height: 28px; 
+      border-radius: 50%; 
+      border: 4px solid ${ringColor}; 
+      outline: 2px solid rgba(255, 255, 255, 0.4);
+      box-shadow: ${glow}; 
+      pointer-events: none;
+      box-sizing: border-box;
+    "></div>`;
+
+  // Standardize centering using iconSize/iconAnchor instead of manual transforms.
+  const icon = L.divIcon({ 
+    className: 'fix-edit-ring', 
+    html: ring, 
+    iconSize: [28, 28], 
+    iconAnchor: [14, 14] 
+  });
+
+  // Use a very high zIndexOffset to ensure it stays on top of markers within its pane.
+  _editHighlightMarker = L.marker([lat, lon], { 
+    icon, 
+    interactive: false, 
+    pane: 'procEditPane',
+    zIndexOffset: 2000
+  });
   _editHighlightMarker.addTo(mapInstance);
 };
 
@@ -1211,12 +1236,13 @@ const setEditingPoint = (index = -1) => {
 
 
 // Creates the procEditPane used exclusively by the persistent editing highlight.
-// Sits at z=702 (above procMarkersPane=700 and procHoverPane=701) with
-// pointer-events:none so it never intercepts mouse or drag events.
+// Sits at z=1200 (well above standard markers at 600, proc markers at 700, 
+// and even draggable markers at 1100) with pointer-events:none so it 
+// never intercepts mouse or drag events.
 const _ensureProcEditPane = (mapInstance) => {
   if (mapInstance.getPane('procEditPane')) return;
   const pane = mapInstance.createPane('procEditPane');
-  pane.style.zIndex = '702';
+  pane.style.zIndex = '1200';
   pane.style.pointerEvents = 'none';
 };
 

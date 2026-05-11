@@ -654,18 +654,6 @@ const showMetadataForm = (onStart) => {
     customLabel.classList.add('active');
   });
 
-  // When the type changes, auto-select the matching color preset
-  const typeSelect = document.getElementById('proc-type');
-  typeSelect.addEventListener('change', () => {
-    const autoColor = _TYPE_COLOR_MAP[typeSelect.value];
-    if (!autoColor) return;
-    selectedColor = autoColor;
-    document.querySelectorAll('.color-swatch[data-color]').forEach((s) => {
-      s.classList.toggle('active', s.dataset.color === autoColor);
-    });
-    document.getElementById('custom-swatch-label').classList.remove('active');
-  });
-
   // Back button returns to main menu
   document.getElementById('btn-back').addEventListener('click', showMainMenu);
 

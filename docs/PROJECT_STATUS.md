@@ -51,10 +51,19 @@ AeroProc HK is a high-fidelity aeronautical visualization tool for the Hong Kong
 - **Phase 29: Final Interaction Handshake & Hitbox Unification**: 100% 🟢
 - **Phase 30: Absolute Hitbox Decoupling & Unified Snap Engine**: 100% 🟢
 - **Phase 31: Reactive Builder UX & Persistent Highlights**: 100% 🟢
-- **Phase 32: Editing Highlight Visibility Debug**: 10% 🟡
+- [x] **Phase 32: Editing Highlight Visibility Debug** (Completed)
+  - Resolved persistent selection ring visibility by elevating `procEditPane` to `z-index: 1200`.
+  - Implemented real-time coordinate tracking for highlights during waypoint drag.
+  - Extended highlight rendering to "Pending" points (newly added waypoints).
+  - Enhanced visual contrast with dual-border styling (white/color) and increased weight (4px).
+
+## 🚀 Upcoming Focus
+- [ ] **Phase 33: Builder Airspaces & Transitions**
+  - Re-integrate Airspace selection options into the Procedural Builder.
+  - Finalize transitions logic for complex branch connections.
 
 ## 📝 Recent Notes
-- **2026-05-11**: Phase 32 Active. Debugging the failure of the edit highlight to appear on the chart. Initial investigation suggests a potential issue with the `procEditPane` initialization or coordinate synchronization for custom waypoints.
+- **2026-05-11**: Phase 32 Complete. Resolved persistent selection ring visibility by elevating `procEditPane` to `z-index: 1200`, implemented real-time coordinate tracking, extended rendering to pending points, and enhanced highlight contrast.
 - **2026-05-11**: Phase 31 Complete. Successfully implemented real-time reactive updates for sidebar edits and decommissioned legacy black tooltips for custom points.
 - **2026-05-11**: Phase 25 Complete. Resolved the point-addition failure by declaring `_procMarkersLayer` at the module level and correcting the field name mapping for restrictions (`altReq` → `levelCondition`). Verified stable commitment flow.
 - **2026-05-11**: Phase 24 Complete. Implemented standard aeronautical holding pattern SVG drawing (rotated racetrack with direction arrows). Resolved "blue H" badge artifact in saved procedures. Fixed custom point rendering lag by adding a temporary "pending" diamond marker. Added visual feedback for the holding toggle in the sidebar.
