@@ -39,6 +39,7 @@ import {
   renderNavaids,
   renderAirspaces,
   updateProcedureMarkers, clearProcedureMarkers,
+  showEditingHighlight, clearEditingHighlight, setEditingPoint,
   createDraggableCustomMarker, removeDraggableMarker,
   showPendingCustomMarker, clearPendingCustomMarker,
   renderGlobalSearchHighlights,
@@ -1130,7 +1131,7 @@ const handleEditProcedure = (id) => {
         tipo: fixData.tipo || 'ICAO',
         isFix: true
       });
-    });
+    }, DrawingState.metadata.color);
 
     setContextMenuCallbacks({
       isInSequence: (ident) => DrawingState.points.some(
@@ -1325,7 +1326,7 @@ const handleStartDrawing = (metadata) => {
         tipo: fixData.tipo || 'ICAO',
         isFix: true
       });
-    });
+    }, DrawingState.metadata.color);
 
     // Wire context-menu callbacks for right-click on in-sequence markers.
     setContextMenuCallbacks({
@@ -1684,6 +1685,9 @@ const handlePointEdit = (index) => {
   const pt = DrawingState.points[index];
   if (!pt) return;
 
+  // Snapshot the original state so we can restore it if the user cancels.
+  const originalPt = { ...pt };
+
   // Map the stored condition strings back to the inline form's symbol format.
   const levelCondMap = { 'At': '@', 'Above': '+', 'Below': '-' };
   const speedCondMap = {
@@ -1720,12 +1724,28 @@ const handlePointEdit = (index) => {
   const { altVal, altUnit } = parseAltValue(pt.levelValue);
   const { spdVal, spdUnit } = parseSpdValue(pt.speedValue);
 
+  // Tell updateProcedureMarkers to skip the hit-area for this index so the
+  // draggable custom marker beneath can receive drag events unobstructed.
+  setEditingPoint(index);
+
+  // Show a persistent selection ring on the map at this point's position.
+  showEditingHighlight(_map, pt.lat, pt.lon, pt.ident, DrawingState.metadata.color);
+
   showPendingPointRestrictions(
     pt,
     {
+      // onLiveChange fires on every keystroke or toggle so the map updates in real time.
+      // We apply the live restrictions directly to DrawingState and re-render markers —
+      // onErase (Cancel) rolls back to originalPt so no data is permanently changed.
+      onLiveChange: (liveRestrictions) => {
+        DrawingState.updatePoint(index, liveRestrictions);
+        updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
+      },
       // onAdd doubles as the "Update Point" action in edit mode.
       // Applies the collected restrictions to the existing point and closes the panel.
       onAdd: (restrictions) => {
+        setEditingPoint(-1);
+        clearEditingHighlight(_map);
         DrawingState.updatePoint(index, restrictions);
         updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
         if (_waypointLayer) {
@@ -1734,8 +1754,12 @@ const handlePointEdit = (index) => {
         refreshSequenceList(DrawingState, _sequenceCallbacks());
         clearPendingPointRestrictions(true);
       },
-      // onErase doubles as "Cancel Edit" — discard changes, return to idle state.
+      // onErase doubles as "Cancel Edit" — roll back live changes, clear highlight.
       onErase: () => {
+        setEditingPoint(-1);
+        clearEditingHighlight(_map);
+        DrawingState.updatePoint(index, originalPt);
+        updateProcedureMarkers(_map, DrawingState.points, DrawingState.metadata.color);
         clearPendingPointRestrictions(true);
       }
     },

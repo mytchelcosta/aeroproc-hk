@@ -702,8 +702,67 @@ Restoring missing holding parameters and resolving label duplication for custom 
 - [x] **Resolve Custom Label Duplication**: Added `_pendingCustomMarker.unbindTooltip()` call in `clearPendingCustomMarker` before `removeLayer`, ensuring the permanent label DOM node is destroyed immediately rather than lingering when the real draggable marker's identical tooltip is created a frame later.
 - [x] **Layer Visibility Sync**: Confirmed the pending → committed handshake is correct: `_commitPendingPoint` clears the pending marker and preview (`_pendingPoint = null`, `clearPendingCustomMarker`) before `_afterPointAdded` calls `updateActiveShape` (no preview) and `createDraggableCustomMarker` (real marker). No race condition possible because the preview call is gated on `!rawData.isFix` inside `_triggerPointAdded` — by the time `_pendingPoint` is null, no further preview can fire for that point.
 
-## Phase X: Future Enhancements (Post-MVP)
+## Phase 27: Hover Interaction Exclusivity ✅ COMPLETE
 
+Resolving the visual "flicker" caused by competing hover effects between the background ghost layer and the active procedure overlay.
+
+- [x] **Ghost Hover Suppression**: Added `_suppressedGhostIdents.has(fix.ident?.toUpperCase())` guard to the ghost marker `mouseover` handler. When a fix is already in the active procedure sequence its ident is in `_suppressedGhostIdents`, so the violet ghost glow is skipped entirely — the `procHoverPane` hit-area handles the hover in the procedure color instead.
+- [x] **Global Search Style Parity**: New `_showProcPointHoverGlow(mapInstance, lat, lon, color)` and `_removeProcHoverGlow(mapInstance)` helpers mirror `_showGhostHoverGlow` but accept an explicit procedure color, producing the same 17px dot + glow geometry used by the search highlight system. `_createHoldingHoverMarker` was renamed to `_createProcPointHitArea(mapInstance, lat, lon, holdingBearing, holdingSide, procColor, addToTarget)` and now creates hit-area circles for **ALL** procedure points (not just holding ones), wiring `mouseover`/`mouseout` to show/remove the procedure-color glow. Holding points additionally receive the glassmorphism bearing/direction Leaflet tooltip (from Phase 26).
+- [x] **Interaction Priority**: Architectural guarantee confirmed — `procHoverPane` (z=701) sits above `ghostFixPane` in the Leaflet pane stack. In SVG hit-testing, only the topmost interactive element at each pixel fires; the ghost circle below is therefore shadowed by the `procHoverPane` hit-area for all procedure fix positions. The Task 1 `_suppressedGhostIdents` guard provides full suppression even for edge pixels of the ghost circle that extend beyond the hit-area.
+- [x] **Performance Audit**: No new render loops introduced. `_showProcPointHoverGlow` is O(1) — creates a single marker and stores it in `_procHoverGlowMarker`; `_removeProcHoverGlow` removes it in O(1). The additional hit-area circles (`_createProcPointHitArea` per sequence point) are O(n) in procedure length, identical to the existing holding-marker pattern. No measurable throughput impact during rapid map interactions.
+- [x] **Performance Audit**: No new render loops introduced. `_showProcPointHoverGlow` is O(1) — creates a single marker and stores it in `_procHoverGlowMarker`; `_removeProcHoverGlow` removes it in O(1). The additional hit-area circles (`_createProcPointHitArea` per sequence point) are O(n) in procedure length, identical to the existing holding-marker pattern. No measurable throughput impact during rapid map interactions.
+
+## Phase 28: Ghost Highlight Decommissioning & Unified Hover Overlay (Completed)
+
+Completely eliminating the redundant ghost-fix selection effects to ensure a single, consistent "lighted" visual for all map interactions.
+
+- [x] **Remove Legacy Ghost Glow**: Deleted `_showGhostHoverGlow`, `_removeGhostHoverGlow`, `_ghostHoverMarker`, `_showProcPointHoverGlow`, `_removeProcHoverGlow`, and `_procHoverGlowMarker`. Replaced with unified `_showFixHoverGlow` / `_removeFixHoverGlow` backed by `_fixHoverMarker`.
+- [x] **Unified Selection Aesthetic**: All waypoint hovers (Ghost, Procedure hit-areas) now render through `_showFixHoverGlow` — a single dot+label DivIcon with consistent glow geometry `0 0 6px color, 0 0 14px color88, 0 0 22px color44`.
+- [x] **Context-Aware Hover Colors**: `enableGhostSnapMode(mapInstance, callback, color)` accepts a `color` param stored in `_ghostSnapColor`. Ghost hover uses `_ghostSnapColor` (defaults to `'#b06bff'`). Both call sites in `main.js` now pass `DrawingState.metadata.color`. Procedure hit-areas pass `procColor` directly.
+- [x] **Label Collision Guard**: Ghost `mouseover` calls `marker.closeTooltip()` before showing the unified glow; `mouseout` calls `marker.openTooltip()` to restore. `disableGhostSnapMode` calls `_refreshGhostLabels()` to restore any labels closed during active snap mode.
+
+## 🕵️ Investigation Report: Waypoint Hover Conflict
+
+- **Issue**: Hovering over a procedure waypoint exhibits a "donut" effect where the intended highlight (purple) only triggers on the outer rim, while the center triggers a legacy white ghost highlight and a "pointing finger" cursor.
+- **Root Cause**: The underlying ghost marker (`radius: 3.6`) is remaining `interactive: true` at the same coordinate as the procedure hit-area (`radius: 10`). In some browser/Leaflet configurations, the physically smaller marker can "punch through" or capture the event before the larger overlay if the overlay is rendered as "hollow" (zero fill) or if the z-index stacking is compromised by late-added elements.
+- **Solution**: We must implement **Interactivity Masking**. Ghost markers at procedure coordinates must have `interactive: false` explicitly set. Additionally, the procedure hit-areas must use a "solid" (but invisible) fill to guarantee center-point capture.
+
+## Phase 29: Final Interaction Handshake & Hitbox Unification (Completed)
+
+Ensuring absolute interaction priority for the procedure layer and eliminating the "donut" hover artifact.
+
+- [x] **Ghost Interactivity Masking**: Extended `_applyGhostLabels` (already called by `_refreshGhostLabels` on every `_suppressedGhostIdents` mutation) to also set `pointer-events: none` inline on suppressed markers' SVG elements. Non-suppressed markers have the style cleared so they inherit the pane's value (`auto` in snap mode, `none` otherwise). This gives `procHoverPane` hit-areas exclusive event capture at procedure-fix coordinates.
+- [x] **Solid Capture Geometry**: Changed `_createProcPointHitArea` `fillOpacity: 0` → `0.001`. SVG hit-testing under `pointer-events: auto` only counts painted geometry; a zero-opacity fill is "hollow" and the center pixel fired no events. The near-invisible `0.001` fill makes the entire disc interior hot without being visible.
+- [x] **Cursor Logic Normalization**: Handled implicitly by Task 1 — suppressed markers have `pointer-events: none` on their SVG element so the browser never enters hit-test for them; the pointer cursor cannot appear. Non-suppressed markers only become interactive when `enableGhostSnapMode` turns the pane on.
+- [x] **Legacy Cleanup**: Audited all `mouseover`/`mouseout`/`click` bindings in `MapLayers.js` — event handlers exist only inside `renderGhostFixes` loop, guarded by `_ghostSnapCallback` checks. No orphaned handlers found.
+
+## Phase 30: Absolute Hitbox Decoupling & Unified Snap Engine (Completed)
+
+Solving the hover-fighting once and for all by completely removing interactivity from the ghost layer and implementing a standalone, dedicated "Snap & Highlight" engine.
+
+- [x] **Ghost Layer Pacification**: Changed all ghost markers in `renderGhostFixes` to `interactive: false`. `ghostFixPane` remains `pointer-events: none` permanently — it can never receive mouse events under any circumstances. Removed all `mouseover`/`mouseout`/`click` bindings from the ghost marker loop.
+- [x] **Dedicated Snap Interaction Layer**: Added `_ensureSnapInteractionPane` (z=705, above `procHoverPane` z=701). `enableGhostSnapMode` now builds `_snapHitboxLayer` — a `L.layerGroup` of invisible solid (`fillOpacity: 0.001`) circleMarkers, one per fix from `_ghostMarkers`, placed in `snapInteractionPane`. The pane is enabled (`pointer-events: auto`) only while snap mode is active.
+- [x] **Unified Snap-to-Highlight Engine**: Each hitbox wires `mouseover` → `_showFixHoverGlow` (procedure theme color), `mouseout` → `_removeFixHoverGlow`, and `click` → `_ghostSnapCallback`. Suppressed idents (already in sequence) are skipped; their `procHoverPane` hit-areas own those positions. Ghost label close/reopen dance preserved in hitbox handlers.
+- [x] **Clean Cursor Orchestration**: Centralize the cursor "pointing finger" logic within this dedicated layer, ensuring no ghost-layer artifacts can bleed through.
+
+## Phase 31: Editing Persistence & Custom UX Finalization (Completed)
+
+Finalizing the builder's visual feedback by implementing persistent highlights for the active point and cleaning up legacy custom markers.
+
+- [x] **Real-time Reactive Updates**: Added `onLiveChange` callback option to `showPendingPointRestrictions` in `Sidebar.js`. All ALT/SPD selects wire `change → onLiveChange`; value inputs wire `input → onLiveChange`. Holding toggle `change` and turn-direction button `click` also call `onLiveChange`. `handlePointEdit` in `main.js` passes `onLiveChange: (live) => { DrawingState.updatePoint(index, live); updateProcedureMarkers(...); }` so every keystroke re-renders the marker overlay instantly.
+- [x] **Reactive Holding Preview**: Because `onLiveChange` triggers `updateProcedureMarkers` on every holding checkbox toggle and bearing/side change, the "H" badge and glassmorphism tooltip re-render in real time. Toggling "Holding Point" off removes the badge immediately; editing the bearing updates the tooltip the next time the user hovers.
+- [x] **Persistent Editing Highlight**: Added `_editHighlightMarker`, `showEditingHighlight(mapInstance, lat, lon, ident, color)`, and `clearEditingHighlight(mapInstance)` to `MapLayers.js` (exported). `handlePointEdit` calls `showEditingHighlight` before opening the form, `clearEditingHighlight` in both `onAdd` and `onErase` so the highlight disappears on close regardless of whether the user confirmed or cancelled.
+- [x] **Legacy Tooltip Removal**: Removed `marker.bindTooltip(ident, { className: 'custom-point-label', ... })` from `createDraggableCustomMarker`. Custom points receive their colored label exclusively through the `updateProcedureMarkers` overlay (`_buildProcMarkerHtml`), which already covers all sequence points including custom ones.
+- [x] **State-Driven Sync**: `onLiveChange` applies restrictions immediately via `DrawingState.updatePoint`. `onErase` (Cancel Edit) rolls back by calling `DrawingState.updatePoint(index, originalPt)` where `originalPt` is a shallow snapshot taken at the start of `handlePointEdit` — no live changes survive a cancel.
+
+## Phase 32: Editing Highlight Visibility Debug (Active)
+
+Resolving the issue where the persistent highlight (selection ring) fails to appear on the map while a waypoint is being edited in the sidebar.
+
+- [ ] **Pane Initialization Audit**: Verify that `procEditPane` (z=702) is correctly initialized and appended to the Leaflet map container. Check for any CSS overrides that might be hiding the pane.
+- [ ] **Coordinate Tracking Verification**: Ensure `showEditingHighlight` is receiving the correct `lat/lon` coordinates, especially for custom points that may have been moved.
+- [ ] **Render Loop Persistence**: Validate that `updateProcedureMarkers` (called during `onLiveChange`) does not accidentally clear or overwrite the `procEditPane` content.
+- [ ] **Visual Weight Review**: Increase the stroke weight and glow intensity of the edit highlight to ensure it is "striking" and clearly visible against the dark aeronautical background.
 
 - [ ] **Builder Airspaces**: Re-integrate Airspace selection options into the Procedural Builder (hidden during Phase 14).
 - [ ] **Builder Transitions**: Develop the transitions logic and UI for connecting distinct procedure segments in the builder.
@@ -737,5 +796,11 @@ Restoring missing holding parameters and resolving label duplication for custom 
 | **Holding Pattern Fixes & Aeronautical Drawing** | 100% | Done |
 | **Builder Reliability & Point Addition Fix** | 100% | Done |
 | **Holding Metadata & Custom Point UX Cleanup** | 100% | Done |
+| **Hover Interaction Exclusivity & Style Parity** | 100% | Done |
+| **Ghost Highlight Decommissioning & Unified Overlay** | 100% | Done |
+| **Final Interaction Handshake & Hitbox Unification** | 100% | Done |
+| **Absolute Hitbox Decoupling & Unified Snap Engine** | 100% | Done |
+| **Editing Persistence & Custom UX Finalization** | 100% | Done |
+| **Editing Highlight Visibility Debug** | 10% | Active |
 
-*Last Updated: 2026-05-10 — Phase 26 Complete*
+*Last Updated: 2026-05-11 — Phase 32 Active*

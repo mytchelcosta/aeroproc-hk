@@ -167,6 +167,25 @@ let _suppressedGhostIdents = new Set();
 // the restriction form. Replaced by the real draggable marker on commit.
 let _pendingCustomMarker = null;
 
+// Single DivIcon used for ALL fix hover glows (ghost snap + procedure point).
+// Only one hover can be visible at a time, so one marker covers both use-cases.
+let _fixHoverMarker = null;
+
+// Separate persistent highlight shown while a point is open in the edit panel.
+// Unlike _fixHoverMarker it is never removed by mouseover/mouseout — only by
+// clearEditingHighlight() when the panel closes (Update or Cancel).
+let _editHighlightMarker = null;
+
+// Index of the DrawingState point currently open in the edit panel, or -1 when none.
+// updateProcedureMarkers skips the procHoverPane hit-area for this index so the
+// draggable custom marker below (markerPane z=600) can receive drag events normally.
+let _editingPointIndex = -1;
+
+// Color stored by enableGhostSnapMode — hover glow for ghost snap uses the active
+// procedure's theme color instead of a hardcoded violet so the preview matches
+// what the fix will look like once it's part of the procedure.
+let _ghostSnapColor = '#b06bff';
+
 // ── Highlight system (normal / viewer mode) ───────────────────────────────
 // Set of ident strings (uppercase) that the user has clicked to highlight.
 // Clicking a fix in normal mode (no active drawing) highlights it in place
@@ -222,15 +241,15 @@ let _crossLayerOccupiedCoords = [];  // [lat, lon] pairs — quantum-agnostic
 let _currentLabelQuantum = null;
 
 // ── Ghost snap mode (Builder) ─────────────────────────────────────────────
-// Ghost dots (renderGhostFixes) serve as the click/hover targets in builder
-// snap mode. The pane starts with pointer-events:none; enabling ghost snap mode
-// sets it to auto so Leaflet events reach the individual marker SVG paths.
-// Individual markers are created with interactive:true so their SVG paths
-// respond once the pane allows events.
-let _ghostMarkers = [];     // every marker created by renderGhostFixes
-let _ghostSnapCallback = null;   // set by enableGhostSnapMode; null otherwise
-let _ghostMapRef = null;   // map ref kept for hover glow management
-let _ghostHoverMarker = null;   // single DivIcon shown over hovered ghost dot
+// Ghost dots (renderGhostFixes) are PURELY VISUAL — they are always non-interactive.
+// When the builder enters snap mode, enableGhostSnapMode() builds a separate
+// snapInteractionPane (z=705) containing invisible solid hitboxes for every fix.
+// Those hitboxes are the ONLY click/hover targets; the ghost layer can never
+// intercept mouse events, eliminating all ghost-vs-procedure hover conflicts.
+let _ghostMarkers = [];        // every visual marker created by renderGhostFixes
+let _snapHitboxLayer = null;   // L.layerGroup of hitboxes created by enableGhostSnapMode
+let _ghostSnapCallback = null; // set by enableGhostSnapMode; null otherwise
+let _ghostMapRef = null;       // map ref kept for hover glow management
 
 
 // ── Phase 39: VFR Corridors (REA/REH) ──────────────────────────────────────
@@ -1110,6 +1129,98 @@ const _buildProcMarkerHtml = (ident, color, isHolding, restrLine) => {
 };
 
 
+// ── UNIFIED FIX HOVER GLOW ────────────────────────────────────────────────
+// Single glow-overlay system used for both ghost-snap hovers and procedure-point
+// hovers. Matches the visual geometry of _buildHighlightHtml (dot + optional label).
+//
+// 'showLabel' — true for ghost snap hovers (permanent label was hidden; glow provides
+//               the only ident text). false for procedure-point hovers (the procedure
+//               marker already carries a visible colored label immediately below).
+const _showFixHoverGlow = (mapInstance, lat, lon, ident, color, showLabel = true) => {
+  if (!mapInstance) return;
+  _removeFixHoverGlow(mapInstance);
+  const glow = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
+  const dot =
+    `<div style="width:17px;height:17px;border-radius:50%;background:${color};` +
+    `border:2px solid #ffffff;box-shadow:${glow};pointer-events:none;"></div>`;
+  const label = showLabel
+    ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;` +
+      `line-height:1.2;color:${color};white-space:nowrap;text-align:center;margin-top:3px;` +
+      `text-shadow:-1px -1px 0 rgba(0,0,0,0.95),1px -1px 0 rgba(0,0,0,0.95),` +
+      `-1px 1px 0 rgba(0,0,0,0.95),1px 1px 0 rgba(0,0,0,0.95),` +
+      `0 0 6px rgba(0,0,0,0.8);">${_safeEscape(ident)}</div>`
+    : '';
+  const html =
+    `<div style="display:flex;flex-direction:column;align-items:center;` +
+    `transform:translate(-50%,-8.5px);pointer-events:none;">${dot}${label}</div>`;
+  const icon = L.divIcon({ className: 'fix-hover-glow', html, iconSize: [0, 0], iconAnchor: [0, 0] });
+  _fixHoverMarker = L.marker([lat, lon], { icon, interactive: false, zIndexOffset: 501 });
+  _fixHoverMarker.addTo(mapInstance);
+};
+
+const _removeFixHoverGlow = (mapInstance) => {
+  if (_fixHoverMarker && mapInstance) {
+    mapInstance.removeLayer(_fixHoverMarker);
+    _fixHoverMarker = null;
+  }
+};
+
+
+// Shows a persistent "lighted" highlight at the position of the point currently
+// open in the sidebar edit panel. Uses the same dot+glow geometry as _showFixHoverGlow
+// but lives in _editHighlightMarker so it is independent of hover state — mouse
+// movements will not remove it. clearEditingHighlight() removes it when the panel closes.
+//
+// 'mapInstance' — the Leaflet map
+// 'lat', 'lon'  — position of the point being edited
+// 'ident'       — fix ident to display in the label (empty string hides the label)
+// 'color'       — procedure theme color for the glow
+const showEditingHighlight = (mapInstance, lat, lon, ident, color) => {
+  clearEditingHighlight(mapInstance);
+  if (!mapInstance || lat == null || lon == null) return;
+  _ensureProcEditPane(mapInstance);
+
+  // Render a selection ring (not a filled dot) so the regular proc marker beneath
+  // remains visible through the transparent center. The ring clearly signals that
+  // this specific point is open for editing.
+  // Size: 25px ring sits just outside the 17px proc dot + 2px white border (19px total).
+  const glow = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
+  const ring = `<div style="width:25px;height:25px;border-radius:50%;border:2px solid ${color};box-shadow:${glow};pointer-events:none;"></div>`;
+  const html = `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-12.5px);pointer-events:none;">${ring}</div>`;
+  const icon = L.divIcon({ className: 'fix-edit-ring', html, iconSize: [0, 0], iconAnchor: [0, 0] });
+  _editHighlightMarker = L.marker([lat, lon], { icon, interactive: false, pane: 'procEditPane' });
+  _editHighlightMarker.addTo(mapInstance);
+};
+
+// Removes the persistent editing highlight. Call when the edit panel closes (on
+// both "Update Point" and "Cancel Edit").
+const clearEditingHighlight = (mapInstance) => {
+  if (_editHighlightMarker && mapInstance) {
+    mapInstance.removeLayer(_editHighlightMarker);
+    _editHighlightMarker = null;
+  }
+};
+
+// Sets the index of the DrawingState point currently open in the edit panel.
+// Pass -1 (or call with no argument) to clear. updateProcedureMarkers reads this
+// to skip creating a procHoverPane hit-area for that index, allowing the draggable
+// custom marker beneath (markerPane z=600) to receive drag events unobstructed.
+const setEditingPoint = (index = -1) => {
+  _editingPointIndex = (index == null || index < 0) ? -1 : index;
+};
+
+
+// Creates the procEditPane used exclusively by the persistent editing highlight.
+// Sits at z=702 (above procMarkersPane=700 and procHoverPane=701) with
+// pointer-events:none so it never intercepts mouse or drag events.
+const _ensureProcEditPane = (mapInstance) => {
+  if (mapInstance.getPane('procEditPane')) return;
+  const pane = mapInstance.createPane('procEditPane');
+  pane.style.zIndex = '702';
+  pane.style.pointerEvents = 'none';
+};
+
+
 // ── HOLDING FIX HOVER TOOLTIP SYSTEM ──────────────────────────────────────
 // Ensures the 'procHoverPane' Leaflet pane exists. This pane has
 // pointer-events: auto so invisible hit-area markers inside it can receive
@@ -1122,44 +1233,53 @@ const _ensureProcHoverPane = (mapInstance) => {
   }
 };
 
-// Creates an invisible interactive circle at a holding fix position.
-// Hovering over it shows a glassmorphism tooltip with bearing and turn direction.
-// Click events are re-dispatched to the Leaflet map so Measuring Vector snapping
-// continues to work correctly when the user clicks on a holding fix position.
+// Creates an invisible interactive hit-area circle for any procedure fix position.
 //
+// For ALL points: mouseover shows a procedure-color glow matching the global search
+// highlight style (Task 2: Global Search Style Parity). Click events are re-dispatched
+// to the Leaflet map so Measuring Vector snapping still works (Task 4 handshake).
+//
+// For HOLDING points additionally: a glassmorphism Leaflet tooltip shows bearing/direction
+// on hover.
+//
+// 'procColor'   — hex color of the procedure (used for hover glow and holding tooltip)
 // 'addToTarget' — either _procMarkersLayer (active session) or a L.layerGroup (saved procedure)
-const _createHoldingHoverMarker = (mapInstance, lat, lon, holdingBearing, holdingSide, addToTarget) => {
+const _createProcPointHitArea = (mapInstance, lat, lon, holdingBearing, holdingSide, procColor, addToTarget) => {
   if (!mapInstance || lat == null || lon == null) return;
   _ensureProcHoverPane(mapInstance);
 
-  const bearingText = holdingBearing ? `${_safeEscape(String(holdingBearing))}°` : '---';
-  const sideText = _safeEscape(holdingSide || 'RIGHT');
-
-  const tooltipHtml =
-    `<span class="hht-bearing">${bearingText}</span>` +
-    `<span class="hht-side">${sideText}</span>`;
-
-  // Transparent circle sized to cover the 17px visual dot in screen space.
+  // Nearly-transparent circle sized to cover the 17px visual dot in screen space.
+  // fillOpacity: 0.001 (not 0) keeps the fill "painted" in SVG terms so hit-testing
+  // captures the entire disc interior — a truly transparent fill (0) is "hollow" and
+  // only the 1px stroke path fires events, producing a donut dead-zone at the center.
   const hitArea = L.circleMarker([lat, lon], {
     radius: 10,
     color: 'rgba(0,0,0,0)',
     fillColor: 'rgba(0,0,0,0)',
-    fillOpacity: 0,
+    fillOpacity: 0.001,
     weight: 0,
     interactive: true,
     pane: 'procHoverPane'
   });
 
-  hitArea.bindTooltip(tooltipHtml, {
-    permanent: false,
-    sticky: false,
-    direction: 'top',
-    offset: [0, -14],
-    className: 'holding-hover-tip'
-  });
+  // All procedure points: show procedure-color glow on hover so the visual language
+  // matches the global search highlight (same dot-with-glow geometry and color logic).
+  // Procedure-point hover: dot-only glow (no label — the procedure marker already has one).
+  hitArea.on('mouseover', () => _showFixHoverGlow(mapInstance, lat, lon, '', procColor, false));
+  hitArea.on('mouseout', () => _removeFixHoverGlow(mapInstance));
+
+  // Holding points additionally: glassmorphism tooltip shows bearing and turn direction.
+  if (holdingBearing != null || holdingSide != null) {
+    const bearingText = holdingBearing ? `${_safeEscape(String(holdingBearing))}°` : '---';
+    const sideText = _safeEscape(holdingSide || 'RIGHT');
+    hitArea.bindTooltip(
+      `<span class="hht-bearing">${bearingText}</span><span class="hht-side">${sideText}</span>`,
+      { permanent: false, sticky: false, direction: 'top', offset: [0, -14], className: 'holding-hover-tip' }
+    );
+  }
 
   // Re-dispatch click to the map so Measuring Vector and other map click handlers
-  // still receive the event when the user clicks on a holding fix position.
+  // still receive the event when the user clicks on a procedure fix position.
   hitArea.on('click', (e) => {
     L.DomEvent.stopPropagation(e);
     mapInstance.fire('click', { latlng: e.latlng, originalEvent: e.originalEvent });
@@ -1280,11 +1400,14 @@ const renderSavedProcedure = (mapInstance, procedure) => {
       });
       L.marker([pt.lat, pt.lon], { icon, interactive: false }).addTo(group);
 
-      // For holding fixes, add an invisible interactive circle on top so hovering
-      // over the H-dot shows the glassmorphism bearing/direction tooltip.
-      if (pt.isHolding) {
-        _createHoldingHoverMarker(mapInstance, pt.lat, pt.lon, pt.holdingBearing, pt.holdingSide, group);
-      }
+      // Add a hit-area circle for every procedure fix so hovering shows the procedure-
+      // color glow. Holding fixes additionally get the bearing/direction tooltip.
+      _createProcPointHitArea(
+        mapInstance, pt.lat, pt.lon,
+        pt.isHolding ? pt.holdingBearing : null,
+        pt.isHolding ? pt.holdingSide : null,
+        procedure.color, group
+      );
     });
   };
 
@@ -2508,7 +2631,7 @@ const updateProcedureMarkers = (mapInstance, activePoints, sequenceColor = '#4dd
     }
   });
 
-  points.forEach((pt) => {
+  points.forEach((pt, idx) => {
     if (pt.lat == null || pt.lon == null) return;
 
     // Suppress the ghost label for this fix ident.
@@ -2535,11 +2658,20 @@ const updateProcedureMarkers = (mapInstance, activePoints, sequenceColor = '#4dd
     L.marker([pt.lat, pt.lon], { icon, interactive: false, pane: 'procMarkersPane' })
       .addTo(_procMarkersLayer);
 
-    // For holding fixes, add a hover hit-area marker in procHoverPane so the
-    // glassmorphism bearing/direction tooltip appears on mouse-over.
-    if (pt.isHolding) {
-      _createHoldingHoverMarker(mapInstance, pt.lat, pt.lon, pt.holdingBearing, pt.holdingSide, _procMarkersLayer);
-    }
+    // Skip the hover hit-area for the point currently open in the edit panel.
+    // The procHoverPane hit-area circle (interactive:true, z=701) would intercept
+    // mousedown before it reaches the draggable custom marker (markerPane z=600),
+    // preventing drag. The persistent edit ring already covers this point visually.
+    if (idx === _editingPointIndex) return;
+
+    // Add a hit-area circle for every other procedure fix so hovering shows the
+    // procedure-color glow. Holding fixes additionally get the bearing/direction tooltip.
+    _createProcPointHitArea(
+      mapInstance, pt.lat, pt.lon,
+      pt.isHolding ? pt.holdingBearing : null,
+      pt.isHolding ? pt.holdingSide : null,
+      sequenceColor, _procMarkersLayer
+    );
   });
 
   if (labelsChanged) _refreshGhostLabels();
@@ -2678,9 +2810,9 @@ const createDraggableCustomMarker = (mapInstance, lat, lon, color, onDrag, onDra
   });
 
   marker.addTo(mapInstance);
-  if (ident) {
-    marker.bindTooltip(ident, { permanent: true, direction: 'bottom', offset: [0, 12], className: 'custom-point-label' });
-  }
+  // Label is provided by the updateProcedureMarkers overlay (_buildProcMarkerHtml),
+  // which renders glowing colored labels for ALL sequence points including custom ones.
+  // A separate bindTooltip here would create a duplicate blackish label on top.
   console.log(`[MapLayers] Draggable custom marker created at (${lat.toFixed(4)}, ${lon.toFixed(4)}).`);
   return marker;
 };
@@ -3650,39 +3782,8 @@ const _calculateHeading = (p1, p2) => {
 // pointerEvents: 'none' on the pane element ensures no mouse activity reaches
 // these decorative dots even if the individual marker options were somehow wrong.
 
-// Renders a violet glow DivIcon at the ghost dot's position so the user gets clear
-// visual feedback before clicking. The DivIcon itself is non-interactive (pointer-events:none
-// on inner HTML) so the ghost dot underneath still receives the click.
-const _showGhostHoverGlow = (fix) => {
-  if (!_ghostMapRef) return;
-  _removeGhostHoverGlow();
-  const color = '#b06bff';
-  const glow = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
-  const dot =
-    `<div style="width:17px;height:17px;border-radius:50%;` +
-    `background:${color};border:2px solid #ffffff;` +
-    `box-shadow:${glow};pointer-events:none;"></div>`;
-  const label =
-    `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;` +
-    `line-height:1.2;color:${color};white-space:nowrap;text-align:center;margin-top:3px;` +
-    `text-shadow:-1px -1px 0 rgba(0,0,0,0.95), 1px -1px 0 rgba(0,0,0,0.95),` +
-    `-1px 1px 0 rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.95),` +
-    `0 0 6px rgba(0,0,0,0.8);">${_safeEscape(fix.ident)}</div>`;
-  const html =
-    `<div style="display:flex;flex-direction:column;align-items:center;` +
-    `transform:translate(-50%,-8.5px);pointer-events:none;">` +
-    dot + label + `</div>`;
-  const icon = L.divIcon({ className: 'ghost-hover-glow', html, iconSize: [0, 0], iconAnchor: [0, 0] });
-  _ghostHoverMarker = L.marker([fix.lat, fix.lon], { icon, interactive: false, zIndexOffset: 500 });
-  _ghostHoverMarker.addTo(_ghostMapRef);
-};
-
-const _removeGhostHoverGlow = () => {
-  if (_ghostHoverMarker && _ghostMapRef) {
-    _ghostMapRef.removeLayer(_ghostHoverMarker);
-    _ghostHoverMarker = null;
-  }
-};
+// Legacy _showGhostHoverGlow / _removeGhostHoverGlow replaced by _showFixHoverGlow /
+// _removeFixHoverGlow (Phase 28 — Ghost Highlight Decommissioning & Unified Overlay).
 
 // Re-evaluates ghost fix label visibility using a zoom-dependent quantum.
 // Low zoom (≤9): coarse 667 quantum (~165 m cells) — avoids label noise.
@@ -3705,9 +3806,11 @@ const _applyGhostLabels = (quantum) => {
     const fix = marker._fixData;
     if (!fix) continue;
     const key = cellKey(fix.lat, fix.lon);
+    const isSuppressed = _suppressedGhostIdents.has(fix.ident?.toUpperCase());
+
     // Skip if already claimed by the dedup grid, OR if suppressed by a holding badge —
     // the "H" marker is the primary label for holding fixes; showing both clutters the map.
-    if (!seen.has(key) && !_suppressedGhostIdents.has(fix.ident?.toUpperCase())) {
+    if (!seen.has(key) && !isSuppressed) {
       seen.add(key);
       marker.bindTooltip(fix.ident, {
         permanent: true,
@@ -3733,7 +3836,18 @@ const _ensureGhostFixPane = (mapInstance) => {
   if (mapInstance.getPane('ghostFixPane')) return;   // already created — nothing to do
   const pane = mapInstance.createPane('ghostFixPane');
   pane.style.zIndex = '390';    // just below overlayPane=400
-  pane.style.pointerEvents = 'none';  // purely decorative — no mouse interaction
+  pane.style.pointerEvents = 'none';  // purely decorative — never receives mouse events
+};
+
+// Creates the dedicated snap interaction pane that hosts invisible hitboxes during
+// builder snap mode. Sits above procHoverPane (z=701) so hitboxes are the topmost
+// event target across all fix positions. Kept pointer-events:none until snap mode
+// is activated so it has zero cost outside the builder.
+const _ensureSnapInteractionPane = (mapInstance) => {
+  if (mapInstance.getPane('snapInteractionPane')) return;
+  const pane = mapInstance.createPane('snapInteractionPane');
+  pane.style.zIndex = '705';
+  pane.style.pointerEvents = 'none';
 };
 
 
@@ -3806,7 +3920,7 @@ const renderGhostFixes = (mapInstance, waypointData) => {
       fillOpacity: 0.45,
       weight: 1,
       opacity: 0.45,
-      interactive: true,   // SVG path responds when pane pointer-events is 'auto'
+      interactive: false,  // purely decorative — snapInteractionPane handles all events
       bubblingMouseEvents: false,
       pane: 'ghostFixPane',
       className: `ghost-fix-marker ghost-fix-t${tier}`
@@ -3818,24 +3932,6 @@ const renderGhostFixes = (mapInstance, waypointData) => {
     marker._fixData = fix;
     marker.tier = tier;
     layerMap[tier].addLayer(marker);
-
-    // Builder snap mode: hover shows glow, click adds fix.
-    // Handlers are bound once at render time and guarded by _ghostSnapCallback.
-    marker.on('mouseover', () => {
-      if (!_ghostSnapCallback) return;
-      _ghostMapRef = mapInstance;
-      _showGhostHoverGlow(fix);
-    });
-    marker.on('mouseout', () => {
-      if (!_ghostSnapCallback) return;
-      _removeGhostHoverGlow();
-    });
-    marker.on('click', (e) => {
-      L.DomEvent.stop(e);
-      if (!_ghostSnapCallback) return;
-      _removeGhostHoverGlow();
-      _ghostSnapCallback({ ident: fix.ident, lat: fix.lat, lon: fix.lon, isFix: true });
-    });
     _ghostMarkers.push(marker);
   }
 
@@ -3870,29 +3966,89 @@ const renderGhostFixes = (mapInstance, waypointData) => {
 };
 
 
-// Activates ghost-dot click/hover mode for builder snap-to-fix.
-// Enables pointer events on the ghostFixPane so the interactive SVG paths respond.
-// 'mapInstance' — the Leaflet map (used to look up the pane and manage hover glows)
-// 'callback'    — called with { ident, lat, lon, isFix:true } when a ghost dot is clicked
-const enableGhostSnapMode = (mapInstance, callback) => {
+// Activates builder snap-to-fix mode using the dedicated snapInteractionPane.
+//
+// Instead of making the ghost dots interactive (which caused hover conflicts with
+// procHoverPane), this function builds a parallel layer of invisible solid hitbox
+// circles — one per fix in _ghostMarkers — placed in snapInteractionPane (z=705).
+// Those hitboxes are the sole event targets during snap mode; the ghost dot layer
+// stays pointer-events:none permanently and can never interfere.
+//
+// 'mapInstance' — the Leaflet map
+// 'callback'    — called with { ident, lat, lon, isFix:true } when a hitbox is clicked
+// 'color'       — the active procedure's theme color used for the hover glow
+const enableGhostSnapMode = (mapInstance, callback, color) => {
   _ghostSnapCallback = callback;
   _ghostMapRef = mapInstance;
-  const pane = mapInstance.getPane('ghostFixPane');
+  _ghostSnapColor = color || '#b06bff';
+  _ensureSnapInteractionPane(mapInstance);
+
+  // Build one hitbox per fix so the snap layer mirrors the ghost dot positions.
+  // We keep a ghost marker reference in each handler closure so we can manage
+  // the ghost label (close on hover, reopen on mouseout) to prevent label stacking.
+  _snapHitboxLayer = L.layerGroup();
+  for (const ghost of _ghostMarkers) {
+    const fix = ghost._fixData;
+    if (!fix) continue;
+
+    // fillOpacity:0.001 keeps the fill "painted" in SVG terms so the entire disc
+    // interior captures events, not just the 1px stroke ring.
+    const hitbox = L.circleMarker([fix.lat, fix.lon], {
+      radius: 8,
+      fillColor: 'rgba(0,0,0,0)',
+      fillOpacity: 0.001,
+      color: 'rgba(0,0,0,0)',
+      weight: 0,
+      interactive: true,
+      bubblingMouseEvents: false,
+      pane: 'snapInteractionPane'
+    });
+
+    hitbox.on('mouseover', () => {
+      // Suppressed fixes are owned by procHoverPane hit-areas — skip.
+      if (_suppressedGhostIdents.has(fix.ident?.toUpperCase())) return;
+      // Hide the ghost dot's permanent label so the glow overlay's label is the
+      // only text visible — prevents white ghost label stacking with the glow label.
+      ghost.closeTooltip();
+      _showFixHoverGlow(mapInstance, fix.lat, fix.lon, fix.ident, _ghostSnapColor, true);
+    });
+    hitbox.on('mouseout', () => {
+      _removeFixHoverGlow(mapInstance);
+      if (ghost.getTooltip()) ghost.openTooltip();
+    });
+    hitbox.on('click', (e) => {
+      L.DomEvent.stop(e);
+      if (_suppressedGhostIdents.has(fix.ident?.toUpperCase())) return;
+      _removeFixHoverGlow(mapInstance);
+      _ghostSnapCallback({ ident: fix.ident, lat: fix.lat, lon: fix.lon, isFix: true });
+    });
+
+    _snapHitboxLayer.addLayer(hitbox);
+  }
+
+  _snapHitboxLayer.addTo(mapInstance);
+  const pane = mapInstance.getPane('snapInteractionPane');
   if (pane) pane.style.pointerEvents = 'auto';
-  console.log('[MapLayers] Ghost snap mode ENABLED.');
+  console.log('[MapLayers] Ghost snap mode ENABLED (snapInteractionPane).');
 };
 
-// Deactivates ghost-dot snap mode and restores the pane to its default
-// non-interactive state. Removes any hover glow left on screen.
+// Deactivates snap mode: removes all hitboxes, disables the pane, clears hover glow.
+// Also force-refreshes ghost labels to reopen any tooltip that was closed during hover.
 const disableGhostSnapMode = () => {
   _ghostSnapCallback = null;
-  _removeGhostHoverGlow();
+  _removeFixHoverGlow(_ghostMapRef);
   if (_ghostMapRef) {
-    const pane = _ghostMapRef.getPane('ghostFixPane');
+    const pane = _ghostMapRef.getPane('snapInteractionPane');
     if (pane) pane.style.pointerEvents = 'none';
+    if (_snapHitboxLayer) {
+      _ghostMapRef.removeLayer(_snapHitboxLayer);
+      _snapHitboxLayer = null;
+    }
   }
+  // Reopen any ghost labels closed mid-hover so the map is clean after exit.
+  _refreshGhostLabels();
   _ghostMapRef = null;
-  console.log('[MapLayers] Ghost snap mode DISABLED.');
+  console.log('[MapLayers] Ghost snap mode DISABLED (snapInteractionPane cleaned up).');
 };
 
 export {
@@ -3920,6 +4076,9 @@ export {
   buildAerodromeLayerControl,
   updateProcedureMarkers,
   clearProcedureMarkers,
+  showEditingHighlight,
+  clearEditingHighlight,
+  setEditingPoint,
   createDraggableCustomMarker,
   removeDraggableMarker,
   renderGlobalSearchHighlights,

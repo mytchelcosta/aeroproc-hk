@@ -1915,6 +1915,7 @@ const showPendingPointRestrictions = (pendingPoint, callbacks, options = {}) => 
     if (holdChk.checked) document.getElementById('inline-hold-bearing')?.focus();
     const toggleRow = document.getElementById('inline-hold-toggle-row');
     if (toggleRow) toggleRow.classList.toggle('inline-hold-toggle-active', holdChk.checked);
+    if (callbacks?.onLiveChange) callbacks.onLiveChange(collectInlineRestrictions());
   });
 
   // ── Turn direction toggle buttons ─────────────────────────────────────────────
@@ -1923,7 +1924,21 @@ const showPendingPointRestrictions = (pendingPoint, callbacks, options = {}) => 
     if (!btn) return;
     document.querySelectorAll('#inline-turn-dir .inline-turn-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
+    if (callbacks?.onLiveChange) callbacks.onLiveChange(collectInlineRestrictions());
   });
+
+  // ── Live-change wiring: fire onLiveChange on every ALT/SPD/Holding input event ─
+  // This powers the real-time map feedback while the user types or selects values,
+  // so the glow dot, "H" badge, and restriction annotation update instantly.
+  if (callbacks?.onLiveChange) {
+    const live = () => callbacks.onLiveChange(collectInlineRestrictions());
+    ['inline-alt-req', 'inline-alt-unit', 'inline-spd-req', 'inline-spd-unit'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('change', live);
+    });
+    ['inline-alt-val', 'inline-spd-val', 'inline-hold-bearing', 'inline-hold-obs'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('input', live);
+    });
+  }
 
   // ── Tab from SPD unit to Holding checkbox (keyboard navigation improvement) ───
   document.getElementById('inline-spd-unit')?.addEventListener('keydown', (e) => {
