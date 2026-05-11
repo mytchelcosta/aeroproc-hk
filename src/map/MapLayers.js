@@ -1083,6 +1083,24 @@ const clearMeasurementLabels = (mapInstance) => {
 };
 
 
+// ── PREMIUM PROCEDURE MARKER BUILDER ──────────────────────────────────────
+// Generates the HTML for a procedure fix marker (Image 2 style).
+// Includes a glowing dot, ident label, and optional holding "H" badge.
+const _buildProcMarkerHtml = (ident, color, isHolding, restrLine) => {
+  const glow = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
+  
+  const dot = `<div style="width:17px;height:17px;border-radius:50%;background:${color};border:2px solid #ffffff;box-shadow:${glow};pointer-events:none;"></div>`;
+  
+  const hBadge = isHolding 
+    ? `<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;color:${color};text-shadow:0 0 8px ${color}aa;">H</div>`
+    : '';
+
+  const label = `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;line-height:1.2;color:${color};white-space:nowrap;text-align:center;margin-top:4px;text-shadow:-1px -1px 0 rgba(0,0,0,0.95), 1px -1px 0 rgba(0,0,0,0.95), -1px 1px 0 rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.8);">${_safeEscape(ident)}${restrLine ? '<div style="font-size:8.5px;margin-top:1px;opacity:0.9;">' + restrLine + '</div>' : ''}</div>`;
+
+  return `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-8.5px);pointer-events:none;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">${hBadge}${dot}${label}</div>`;
+};
+
+
 // Renders a previously saved procedure from the database onto the map as a permanent
 // Leaflet LayerGroup. Called at startup (to restore saved procedures across page reloads)
 // and after every save so the newly saved procedure immediately appears in View mode.
@@ -3791,24 +3809,6 @@ const disableGhostSnapMode = () => {
   _ghostMapRef = null;
   console.log('[MapLayers] Ghost snap mode DISABLED.');
 };
-
-// ── PREMIUM PROCEDURE MARKER BUILDER ──────────────────────────────────────
-// Generates the HTML for a procedure fix marker (Image 2 style).
-// Includes a glowing dot, ident label, and optional holding "H" badge.
-const _buildProcMarkerHtml = (ident, color, isHolding, restrLine) => {
-  const glow = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
-  
-  const dot = `<div style="width:17px;height:17px;border-radius:50%;background:${color};border:2px solid #ffffff;box-shadow:${glow};pointer-events:none;"></div>`;
-  
-  const hBadge = isHolding 
-    ? `<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;color:${color};text-shadow:0 0 8px ${color}aa;">H</div>`
-    : '';
-
-  const label = `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;line-height:1.2;color:${color};white-space:nowrap;text-align:center;margin-top:4px;text-shadow:-1px -1px 0 rgba(0,0,0,0.95), 1px -1px 0 rgba(0,0,0,0.95), -1px 1px 0 rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.8);">${_safeEscape(ident)}${restrLine ? '<div style="font-size:8.5px;margin-top:1px;opacity:0.9;">' + restrLine + '</div>' : ''}</div>`;
-
-  return `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-8.5px);pointer-events:none;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">${hBadge}${dot}${label}</div>`;
-};
-
 
 export {
   renderAirports,
