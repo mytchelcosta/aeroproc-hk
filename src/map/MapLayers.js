@@ -457,10 +457,10 @@ const _styleFixMarker = (marker, ident, activeMap, isFiltering, term, sequenceCo
     const holdingLine = pt.isHolding
       ? `<div class="fix-label-holding">H: ${_safeEscape(pt.holdingBearing || '---')}° ${_safeEscape(pt.holdingSide || 'RIGHT')}</div>`
       : '';
-    // Phase 24 Fix: Ident labels for in-sequence fixes are now considered unnecessary/redundant
-    // as the Ghost Dot Layer (Phase 11) already provides names for all fixes.
-    // The procedure point tooltip now only shows restrictions and holding info.
-    const labelHtml = `${restrLine}${holdingLine}`.trim();
+    // Phase 24 Revision: Restore ident labels for in-sequence fixes so they are clearly 
+    // visible during procedure building, but color them to match the procedure theme.
+    const identHtml = `<div class="fix-label-ident" style="color:${sequenceColor} !important;">${_safeEscape(ident)}</div>`;
+    const labelHtml = `${identHtml}${restrLine}${holdingLine}`;
 
     marker.unbindTooltip();
     if (labelHtml) {
@@ -2452,22 +2452,11 @@ const updateHoldingMarkers = (mapInstance, activePoints, sequenceColor = '#4ddb8
       iconSize: [0, 0],
       iconAnchor: [0, 0]
     });
-
     // Use the dedicated holdingPane so the badge always renders above ghost fix labels.
     L.marker([pt.lat, pt.lon], { icon, interactive: false, pane: 'holdingPane' })
       .addTo(_holdingMarkersLayer);
-      .addTo(_holdingMarkersLayer);
 
-
-    // Suppress the ghost fix label at this position so the "H" badge is the sole
-    // identifier. _refreshGhostLabels() below will apply the suppression to the DOM.
-    if (pt.ident) {
-      const up = pt.ident.toUpperCase();
-      if (!_suppressedGhostIdents.has(up)) {
-        _suppressedGhostIdents.add(up);
-        labelsChanged = true;
-      }
-    }
+    // Note: suppression logic removed per user request to maintain ghost layer presentation.
   });
 
   // Re-render ghost labels only if the suppression set changed to avoid unnecessary DOM work.
