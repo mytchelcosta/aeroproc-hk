@@ -457,15 +457,10 @@ const _styleFixMarker = (marker, ident, activeMap, isFiltering, term, sequenceCo
     const holdingLine = pt.isHolding
       ? `<div class="fix-label-holding">H: ${_safeEscape(pt.holdingBearing || '---')}° ${_safeEscape(pt.holdingSide || 'RIGHT')}</div>`
       : '';
-    // Phase 24 Revision: Restore ident labels for in-sequence fixes so they are clearly 
-    // visible during procedure building, but color them to match the procedure theme.
-    const identHtml = `<div class="fix-label-ident" style="color:${sequenceColor} !important;">${_safeEscape(ident)}</div>`;
-    const labelHtml = `${identHtml}${restrLine}${holdingLine}`;
-
+    // Phase 24 Revision: Ident labels for in-sequence fixes are now rendered via the
+    // Procedure Overlay layer (Image 2 style) for a glowing 'lighted' effect.
+    // The ghost marker's own tooltip is cleared to avoid duplication.
     marker.unbindTooltip();
-    if (labelHtml) {
-      marker.bindTooltip(labelHtml, { permanent: true, direction: 'top', className: 'fix-label', offset: [0, -4] });
-    }
     marker.setStyle({ color: '#ffffff', fillColor: sequenceColor, fillOpacity: 1, opacity: 1, weight: 2.5 });
     if (marker.setRadius) marker.setRadius(Math.max(baseRadius + 3, 6));
     const newEl = marker.getTooltip()?.getElement();
@@ -1185,34 +1180,21 @@ const renderSavedProcedure = (mapInstance, procedure) => {
       // Skip the text label if this fix was already labeled in another part of the procedure.
       if (skipIdents.has((pt.ident || '').toUpperCase())) return;
 
-      // Build restriction text using ATC notation.
+      // Phase 24 Revision: Use the premium Glowing Marker style (Image 2) for saved procedures.
       const levelHtml = _tooltipLevelHtml(pt.levelCondition, pt.levelValue);
       const speedHtml = _tooltipSpeedHtml(pt.speedCondition, pt.speedValue);
       const restrParts = [levelHtml, speedHtml].filter(Boolean);
-      const restrLine = restrParts.length
-        ? `<div class="fix-label-restriction">${restrParts.join(' · ')}</div>`
-        : '';
+      const restrLine = restrParts.join(' · ');
 
       const icon = L.divIcon({
         className: 'proc-fix-label',
-        html: `${restrLine}`,
+        html: _buildProcMarkerHtml(pt.ident, procedure.color, pt.isHolding, restrLine),
         iconSize: [0, 0],
         iconAnchor: [0, 0]
       });
       L.marker([pt.lat, pt.lon], { icon, interactive: false }).addTo(group);
 
-      // "H" badge with bearing/side text for holding fixes.
-      if (pt.isHolding) {
-        const bearingStr = pt.holdingBearing ? `${pt.holdingBearing}°` : '---';
-        const sideStr = pt.holdingSide || 'RIGHT';
-        const holdingIcon = L.divIcon({
-          className: 'holding-badge-marker',
-          html: `<div class="holding-badge-inner"><span class="holding-badge-h" style="color:${_safeEscape(procedure.color)};">H</span></div>`,
-          iconSize: [0, 0],
-          iconAnchor: [0, 0]
-        });
-        L.marker([pt.lat, pt.lon], { icon: holdingIcon, interactive: false }).addTo(group);
-      }
+      // Note: marker already rendered via _buildProcMarkerHtml above.
     });
   };
 
@@ -2406,32 +2388,26 @@ const clearCommonRouteGhost = (mapInstance) => {
 // 'mapInstance'   — the Leaflet map
 // 'activePoints'  — DrawingState.points array
 // 'sequenceColor' — the procedure color; used to tint the badge border
-const updateHoldingMarkers = (mapInstance, activePoints, sequenceColor = '#4ddb8d') => {
+const updateProcedureMarkers = (mapInstance, activePoints, sequenceColor = '#4ddb8d') => {
   if (!mapInstance) return;
 
-  // Create a dedicated Leaflet pane for holding badges the first time it is needed.
-  // z-index 700 sits above markerPane (600) and tooltipPane (650), so the "H" badge
-  // is always rendered on top of any ghost fix label at the same position.
-  if (!mapInstance.getPane('holdingPane')) {
-    const hp = mapInstance.createPane('holdingPane');
-    hp.style.zIndex = '700';
-    hp.style.pointerEvents = 'none';
+  if (!mapInstance.getPane('procMarkersPane')) {
+    const pane = mapInstance.createPane('procMarkersPane');
+    pane.style.zIndex = '700';
+    pane.style.pointerEvents = 'none';
   }
 
-  // Create the layer on first call.
-  if (!_holdingMarkersLayer) {
-    _holdingMarkersLayer = L.layerGroup();
+  if (!_procMarkersLayer) {
+    _procMarkersLayer = L.layerGroup();
   }
 
-  // Wipe the old markers — we always rebuild from scratch so the markers
-  // always match the live sequence perfectly, even after edits or reorders.
-  _holdingMarkersLayer.clearLayers();
+  _procMarkersLayer.clearLayers();
 
-  // Build a marker for every point that is flagged as a holding fix.
-  const holdingPoints = (activePoints || []).filter((pt) => pt.isHolding);
-  const newIdents = new Set(holdingPoints.map((pt) => pt.ident?.toUpperCase()).filter(Boolean));
+  const points = (activePoints || []);
+  const newIdents = new Set(points.map((pt) => pt.ident?.toUpperCase()).filter(Boolean));
 
-  // Restore ghost labels for any idents that are no longer holding.
+  // Sync ghost label suppression - we suppress the ghost label for ALL procedure points
+  // because the procedure marker now provides its own high-contrast glowing label.
   let labelsChanged = false;
   _suppressedGhostIdents.forEach((ident) => {
     if (!newIdents.has(ident)) {
@@ -2440,56 +2416,55 @@ const updateHoldingMarkers = (mapInstance, activePoints, sequenceColor = '#4ddb8
     }
   });
 
-  holdingPoints.forEach((pt) => {
+  points.forEach((pt) => {
     if (pt.lat == null || pt.lon == null) return;
 
-    const bearingStr = pt.holdingBearing ? `${pt.holdingBearing}°` : '---';
-    const sideStr = pt.holdingSide || 'RIGHT';
+    // Suppress the ghost label for this fix ident.
+    if (pt.ident) {
+      const up = pt.ident.toUpperCase();
+      if (!_suppressedGhostIdents.has(up)) {
+        _suppressedGhostIdents.add(up);
+        labelsChanged = true;
+      }
+    }
+
+    const levelHtml = _tooltipLevelHtml(pt.levelCondition, pt.levelValue);
+    const speedHtml = _tooltipSpeedHtml(pt.speedCondition, pt.speedValue);
+    const restrParts = [levelHtml, speedHtml].filter(Boolean);
+    const restrLine = restrParts.join(' · ');
 
     const icon = L.divIcon({
-      className: 'holding-badge-marker',
-      html: `<div class="holding-badge-inner"><span class="holding-badge-h" style="color:${_safeEscape(sequenceColor)};">H</span></div>`,
+      className: 'proc-active-marker',
+      html: _buildProcMarkerHtml(pt.ident || '?', sequenceColor, pt.isHolding, restrLine),
       iconSize: [0, 0],
       iconAnchor: [0, 0]
     });
-    // Use the dedicated holdingPane so the badge always renders above ghost fix labels.
-    L.marker([pt.lat, pt.lon], { icon, interactive: false, pane: 'holdingPane' })
-      .addTo(_holdingMarkersLayer);
 
-    // Note: suppression logic removed per user request to maintain ghost layer presentation.
+    L.marker([pt.lat, pt.lon], { icon, interactive: false, pane: 'procMarkersPane' })
+      .addTo(_procMarkersLayer);
   });
 
-  // Re-render ghost labels only if the suppression set changed to avoid unnecessary DOM work.
   if (labelsChanged) _refreshGhostLabels();
 
-  // Add the layer if there are holdings; remove it if the list is empty.
-  // This prevents an invisible empty layer from sitting on the map unnecessarily.
-  if (holdingPoints.length > 0) {
-    if (!mapInstance.hasLayer(_holdingMarkersLayer)) {
-      _holdingMarkersLayer.addTo(mapInstance);
+  if (points.length > 0) {
+    if (!mapInstance.hasLayer(_procMarkersLayer)) {
+      _procMarkersLayer.addTo(mapInstance);
     }
   } else {
-    if (mapInstance.hasLayer(_holdingMarkersLayer)) {
-      mapInstance.removeLayer(_holdingMarkersLayer);
+    if (mapInstance && mapInstance.hasLayer(_procMarkersLayer)) {
+      mapInstance.removeLayer(_procMarkersLayer);
     }
   }
 };
 
 
-// Removes all holding markers and takes the layer off the map.
-// Called when the drawing session ends (save or cancel) so no stale
-// holding badges are left behind from the previous build session.
-// Also restores any ghost fix labels that were suppressed by the holding badges.
-//
-// 'mapInstance' — the Leaflet map
-const clearHoldingMarkers = (mapInstance) => {
-  if (_holdingMarkersLayer) {
-    if (mapInstance && mapInstance.hasLayer(_holdingMarkersLayer)) {
-      mapInstance.removeLayer(_holdingMarkersLayer);
+const clearProcedureMarkers = (mapInstance) => {
+  if (_procMarkersLayer) {
+    if (mapInstance && mapInstance.hasLayer(_procMarkersLayer)) {
+      mapInstance.removeLayer(_procMarkersLayer);
     }
-    _holdingMarkersLayer.clearLayers();
+    _procMarkersLayer.clearLayers();
   }
-  // Restore ghost labels for all previously suppressed idents.
   if (_suppressedGhostIdents.size > 0) {
     _suppressedGhostIdents.clear();
     _refreshGhostLabels();
@@ -3817,6 +3792,24 @@ const disableGhostSnapMode = () => {
   console.log('[MapLayers] Ghost snap mode DISABLED.');
 };
 
+// ── PREMIUM PROCEDURE MARKER BUILDER ──────────────────────────────────────
+// Generates the HTML for a procedure fix marker (Image 2 style).
+// Includes a glowing dot, ident label, and optional holding "H" badge.
+const _buildProcMarkerHtml = (ident, color, isHolding, restrLine) => {
+  const glow = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
+  
+  const dot = `<div style="width:17px;height:17px;border-radius:50%;background:${color};border:2px solid #ffffff;box-shadow:${glow};pointer-events:none;"></div>`;
+  
+  const hBadge = isHolding 
+    ? `<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;color:${color};text-shadow:0 0 8px ${color}aa;">H</div>`
+    : '';
+
+  const label = `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;line-height:1.2;color:${color};white-space:nowrap;text-align:center;margin-top:4px;text-shadow:-1px -1px 0 rgba(0,0,0,0.95), 1px -1px 0 rgba(0,0,0,0.95), -1px 1px 0 rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.8);">${_safeEscape(ident)}${restrLine ? '<div style="font-size:8.5px;margin-top:1px;opacity:0.9;">' + restrLine + '</div>' : ''}</div>`;
+
+  return `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-8.5px);pointer-events:none;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">${hBadge}${dot}${label}</div>`;
+};
+
+
 export {
   renderAirports,
   renderFixes,
@@ -3840,8 +3833,8 @@ export {
   renderAerodromes,
   renderNavaids,
   buildAerodromeLayerControl,
-  updateHoldingMarkers,
-  clearHoldingMarkers,
+  updateProcedureMarkers,
+  clearProcedureMarkers,
   createDraggableCustomMarker,
   removeDraggableMarker,
   renderGlobalSearchHighlights,
