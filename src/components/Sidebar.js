@@ -7,10 +7,10 @@ import { i18n } from '../utils/i18n.js';
 // ── Module-level references ──────────────────────────────────────────
 // These are set once during initialization and used by all views.
 
-let _map            = null;  // the Leaflet map instance
-let _waypointLayer  = null;  // the waypoint LayerGroup (controlled by tab switching)
+let _map = null;  // the Leaflet map instance
+let _waypointLayer = null;  // the waypoint LayerGroup (controlled by tab switching)
 let _onNewProcedure = null;  // callback from main.js: fired when "+ New" is clicked
-let _onTabChange    = null;  // callback from main.js: fired when View/Builder tab changes
+let _onTabChange = null;  // callback from main.js: fired when View/Builder tab changes
 
 // ── Persistent event-listener tracking ──────────────────────────────
 // We use delegated click listeners on stable container elements.
@@ -19,12 +19,13 @@ let _onTabChange    = null;  // callback from main.js: fired when View/Builder t
 // element across re-renders. Without this, any click on a non-button area
 // would silently consume a { once: true } handler and break all future clicks
 // until the UI happened to re-render.
-let _builderSavedListEl      = null;  // the #builder-saved-list element being listened to
+let _builderSavedListEl = null;  // the #builder-saved-list element being listened to
 let _builderSavedListHandler = null;  // the handler currently attached to that element
-let _viewTabEl               = null;  // the #tab-content element being listened to
-let _viewTabHandler          = null;  // the handler currently attached to that element
-let _sequenceListWrapperEl   = null;  // the #sequence-list-wrapper element being listened to
-let _sequenceListHandler     = null;  // the handler currently attached to that element
+let _viewTabEl = null;  // the #tab-content element being listened to
+let _viewTabHandler = null;  // the handler currently attached to that element
+let _sequenceListWrapperEl = null;  // the #sequence-list-wrapper element being listened to
+let _sequenceListHandler = null;  // the handler currently attached to that element
+let _isEditSession = false; // true when the drawing panel is open for an existing procedure (edit flow)
 
 // Master Lock state. When true, the "+ New Procedure" button is disabled and
 // the user cannot accidentally start a new build session. Toggle with the lock
@@ -64,7 +65,7 @@ let _viewerSortMode = 'aerodrome-type';
 // Cached args from the last updateViewTab() call so the sort dropdown can
 // re-render without requiring a round-trip through main.js.
 let _lastViewProcStates = null;
-let _lastViewCallbacks  = null;
+let _lastViewCallbacks = null;
 
 // The type → default color mapping. When the user changes the Type dropdown,
 // the matching color preset is auto-selected.
@@ -108,11 +109,11 @@ const _formatLevelHtml = (condition, value) => {
 const _formatSpeedHtml = (condition, value) => {
   if (!condition || !value) return '';
   const safe = _escapeHtml(value);
-  if (condition === 'At')                return `@${safe}`;
-  if (condition === 'Less Than')         return `&lt;${safe}`;
+  if (condition === 'At') return `@${safe}`;
+  if (condition === 'Less Than') return `&lt;${safe}`;
   if (condition === 'Less Than Or Equal') return `&le;${safe}`;
-  if (condition === 'Greater Than')      return `&gt;${safe}`;
-  if (condition === 'At Least')          return `&ge;${safe}`;
+  if (condition === 'Greater Than') return `&gt;${safe}`;
+  if (condition === 'At Least') return `&ge;${safe}`;
   return safe;
 };
 
@@ -206,7 +207,7 @@ const getGlobalSearchCategoryFilter = () => {
 // into the DOM. Safe to call multiple times — the listeners are re-attached
 // to freshly rendered DOM elements each time the View tab renders.
 const _wireGlobalSearch = () => {
-  const input    = document.getElementById('global-search');
+  const input = document.getElementById('global-search');
   const clearBtn = document.getElementById('global-search-clear');
   if (!input) return;
 
@@ -330,9 +331,9 @@ const buildLayerControls = (mapInstance, waypointLayer, count, onTabChange, onNe
     console.error('[Sidebar] buildLayerControls: mapInstance or waypointLayer is missing.');
     return;
   }
-  _map            = mapInstance;
-  _waypointLayer  = waypointLayer;
-  _onTabChange    = onTabChange;
+  _map = mapInstance;
+  _waypointLayer = waypointLayer;
+  _onTabChange = onTabChange;
   _onNewProcedure = onNewProcedure;
 
   const contentArea = document.querySelector('.sidebar-content');
@@ -619,8 +620,8 @@ const showMetadataForm = (onStart) => {
       if (next) next.focus();
     });
   };
-  _advanceOnEnter('proc-name',    'proc-type');
-  _advanceOnEnter('proc-type',    'proc-airport');
+  _advanceOnEnter('proc-name', 'proc-type');
+  _advanceOnEnter('proc-type', 'proc-airport');
   _advanceOnEnter('proc-airport', 'proc-runway');
 
   // Enter on the runway field fires Start Drawing
@@ -646,7 +647,7 @@ const showMetadataForm = (onStart) => {
 
   // Custom color picker: selecting a custom color marks the "+" swatch active
   const customPicker = document.getElementById('custom-color-picker');
-  const customLabel  = document.getElementById('custom-swatch-label');
+  const customLabel = document.getElementById('custom-swatch-label');
   customPicker.addEventListener('input', () => {
     selectedColor = customPicker.value;
     document.querySelectorAll('.color-swatch').forEach((s) => s.classList.remove('active'));
@@ -671,7 +672,7 @@ const showMetadataForm = (onStart) => {
   // Start Drawing: validate and fire the onStart callback
   document.getElementById('btn-start-drawing').addEventListener('click', () => {
     const nameInput = document.getElementById('proc-name');
-    const name      = nameInput.value.trim();
+    const name = nameInput.value.trim();
 
     if (!name) {
       // Highlight the name field to signal it's required
@@ -683,11 +684,11 @@ const showMetadataForm = (onStart) => {
 
     onStart({
       name,
-      type:    document.getElementById('proc-type').value,
+      type: document.getElementById('proc-type').value,
       pattern: document.getElementById('proc-pattern').value,
-      color:   selectedColor,
+      color: selectedColor,
       airport: document.getElementById('proc-airport').value,
-      runway:  document.getElementById('proc-runway').value.trim()
+      runway: document.getElementById('proc-runway').value.trim()
     });
   });
 };
@@ -705,16 +706,21 @@ const showMetadataForm = (onStart) => {
 // 'callbacks'    — object with: { onPointRemove, onManualAdd, onSave, onCancel,
 //                                 onSearch, onMeasurementsToggle, onDropCustomToggle,
 //                                 onAddTransition, onEndTransition }
-const showDrawingPanel = (drawingState, callbacks) => {
+// 'options' — optional: { isEdit: boolean } — when true the finalize button reads
+//             "Save Procedure" instead of "Create Procedure".
+const showDrawingPanel = (drawingState, callbacks, options = {}) => {
   // Always reset the drop-custom state when opening a new drawing panel so the
   // button starts un-toggled for every session (fresh draw or edit).
   _dropCustomActive = false;
+
+  // Track whether this is an edit session so button labels update accordingly.
+  _isEditSession = !!options.isEdit;
 
   // Cache the callbacks so the inline restriction panel can re-wire them after
   // clearing a pending point without requiring another call from main.js.
   _drawingCallbacks = callbacks;
 
-  const isRoute  = !drawingState.isAreaType();
+  const isRoute = !drawingState.isAreaType();
   // Area procedures show a brief usage hint; route procedures have a search bar
   // directly above the sequence list so the hint text there was redundant.
   const modeHint = drawingState.isAreaType()
@@ -741,19 +747,21 @@ const showDrawingPanel = (drawingState, callbacks) => {
     </div>
   ` : '';
 
-  // The "Drop Custom Point" toggle and "Manual Point" button are only shown for route
-  // procedures. Drop Custom lets the user click blank map areas; Manual Point opens
-  // a modal for typing an exact lat/lon coordinate.
+  // The "Drop Custom Point" toggle and lat/lon coordinate fields are only shown for
+  // route procedures. Activating "Drop Custom Point" sets a crosshair cursor and
+  // mirrors live cursor coords into the Lat/Lon fields. The user can also type exact
+  // coordinates and click "+" to place a point without using the map cursor.
   const dropPointHtml = isRoute ? `
     <div class="drop-point-section">
       <button class="drop-point-btn" id="btn-drop-custom" title="Toggle: click anywhere on map to drop a custom point">
         <span class="drop-point-dot"></span>
         <span data-i18n="sidebar.builder.panel.drop_custom">Drop Custom Point</span>
       </button>
-      <button class="drop-point-btn" id="btn-manual-point" title="Enter exact coordinates manually">
-        <span class="drop-point-dot manual-dot">+</span>
-        <span>Manual Point</span>
-      </button>
+      <div class="drop-coords-row" id="drop-coords-row">
+        <input type="number" id="drop-lat" class="drop-coord-input" placeholder="Lat" step="any" tabindex="-1">
+        <input type="number" id="drop-lon" class="drop-coord-input" placeholder="Lon" step="any" tabindex="-1">
+        <button class="drop-coord-add-btn" id="btn-drop-coords" title="Add point at these coordinates">+</button>
+      </div>
     </div>
   ` : '';
 
@@ -790,7 +798,7 @@ const showDrawingPanel = (drawingState, callbacks) => {
 
       <div id="inline-restriction-panel" class="inline-restriction-panel inline-panel-idle">
         <div class="inline-action-row">
-          <button class="builder-action-btn primary" id="btn-create-procedure">✓ Create Procedure</button>
+          <button class="builder-action-btn primary" id="btn-create-procedure">✓ ${_isEditSession ? 'Save Procedure' : 'Create Procedure'}</button>
           <button class="builder-action-btn danger"  id="btn-cancel-drawing">✕ Cancel</button>
         </div>
       </div>
@@ -827,10 +835,27 @@ const showDrawingPanel = (drawingState, callbacks) => {
     });
   }
 
-  // Phase 15: Manual Point button opens a modal for exact lat/lon entry instead of
-  // the old inline input fields. Keeps the sidebar clean during the drawing workflow.
-  document.getElementById('btn-manual-point')?.addEventListener('click', () => {
-    _showManualPointModal(callbacks.onManualAdd);
+  // Phase 21: Wire the inline lat/lon coordinate fields. Pressing Enter in the Lat
+  // field moves focus to Lon; Enter in Lon (or clicking "+") submits the coordinates.
+  // main.js validates range and feeds the point through the restriction panel.
+  const _submitDropCoords = () => {
+    const latEl = document.getElementById('drop-lat');
+    const lonEl = document.getElementById('drop-lon');
+    const lat = parseFloat(latEl?.value);
+    const lon = parseFloat(lonEl?.value);
+    if (isNaN(lat) || isNaN(lon)) return;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
+    if (callbacks.onManualAdd) callbacks.onManualAdd(lat, lon);
+  };
+
+  document.getElementById('btn-drop-coords')?.addEventListener('click', _submitDropCoords);
+
+  document.getElementById('drop-lat')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('drop-lon')?.focus(); }
+  });
+
+  document.getElementById('drop-lon')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); _submitDropCoords(); }
   });
 
   // Wire up the measurement toggle checkbox
@@ -886,10 +911,10 @@ const refreshSequenceList = (drawingState, callbacks) => {
     _sequenceListWrapperEl.removeEventListener('click', _sequenceListHandler);
   }
   _sequenceListWrapperEl = wrapper;
-  _sequenceListHandler   = null;
+  _sequenceListHandler = null;
 
-  const points   = drawingState.points;
-  const lastIdx  = points.length - 1;
+  const points = drawingState.points;
+  const lastIdx = points.length - 1;
 
   if (points.length === 0) {
     // In transition mode, tell the user specifically what to do and where the branch ends.
@@ -926,7 +951,7 @@ const refreshSequenceList = (drawingState, callbacks) => {
         : (pt.isFix ? '◆' : '◇');
 
     // Up/Down buttons are disabled at the boundary positions to prevent out-of-bounds moves
-    const upDisabled   = i === 0       ? 'disabled' : '';
+    const upDisabled = i === 0 ? 'disabled' : '';
     const downDisabled = i === lastIdx ? 'disabled' : '';
 
     return `
@@ -967,15 +992,15 @@ const refreshSequenceList = (drawingState, callbacks) => {
   // re-render. The module-level _sequenceListHandler reference lets us cleanly
   // remove the old listener before the next refreshSequenceList call.
   _sequenceListHandler = (e) => {
-    const upBtn     = e.target.closest('[data-move-up]');
-    const downBtn   = e.target.closest('[data-move-down]');
-    const editBtn   = e.target.closest('[data-edit-index]');
+    const upBtn = e.target.closest('[data-move-up]');
+    const downBtn = e.target.closest('[data-move-down]');
+    const editBtn = e.target.closest('[data-edit-index]');
     const removeBtn = e.target.closest('[data-remove-index]');
 
-    if (upBtn     && callbacks.onPointMoveUp)   callbacks.onPointMoveUp(parseInt(upBtn.dataset.moveUp, 10));
-    if (downBtn   && callbacks.onPointMoveDown) callbacks.onPointMoveDown(parseInt(downBtn.dataset.moveDown, 10));
-    if (editBtn   && callbacks.onPointEdit)     callbacks.onPointEdit(parseInt(editBtn.dataset.editIndex, 10));
-    if (removeBtn && callbacks.onPointRemove)   callbacks.onPointRemove(parseInt(removeBtn.dataset.removeIndex, 10));
+    if (upBtn && callbacks.onPointMoveUp) callbacks.onPointMoveUp(parseInt(upBtn.dataset.moveUp, 10));
+    if (downBtn && callbacks.onPointMoveDown) callbacks.onPointMoveDown(parseInt(downBtn.dataset.moveDown, 10));
+    if (editBtn && callbacks.onPointEdit) callbacks.onPointEdit(parseInt(editBtn.dataset.editIndex, 10));
+    if (removeBtn && callbacks.onPointRemove) callbacks.onPointRemove(parseInt(removeBtn.dataset.removeIndex, 10));
   };
   wrapper.addEventListener('click', _sequenceListHandler);
 
@@ -1076,7 +1101,7 @@ const _showManualPointModal = (onConfirm) => {
 
   const latInput = document.getElementById('mpt-lat');
   const lonInput = document.getElementById('mpt-lon');
-  const errDiv   = document.getElementById('mpt-error');
+  const errDiv = document.getElementById('mpt-error');
 
   const _close = () => overlay.remove();
 
@@ -1087,17 +1112,17 @@ const _showManualPointModal = (onConfirm) => {
 
     if (isNaN(latVal) || isNaN(lonVal)) {
       errDiv.textContent = 'Latitude and Longitude must be valid numbers.';
-      errDiv.className   = 'manual-pt-error';
+      errDiv.className = 'manual-pt-error';
       return;
     }
     if (latVal < -90 || latVal > 90) {
       errDiv.textContent = `Latitude ${latVal} is out of range (−90 to 90).`;
-      errDiv.className   = 'manual-pt-error';
+      errDiv.className = 'manual-pt-error';
       return;
     }
     if (lonVal < -180 || lonVal > 180) {
       errDiv.textContent = `Longitude ${lonVal} is out of range (−180 to 180).`;
-      errDiv.className   = 'manual-pt-error';
+      errDiv.className = 'manual-pt-error';
       return;
     }
 
@@ -1113,8 +1138,8 @@ const _showManualPointModal = (onConfirm) => {
 
   // Enter key submits, Escape cancels
   overlay.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter')  { e.preventDefault(); _submit(); }
-    if (e.key === 'Escape') { e.preventDefault(); _close();  }
+    if (e.key === 'Enter') { e.preventDefault(); _submit(); }
+    if (e.key === 'Escape') { e.preventDefault(); _close(); }
   });
 
   // Auto-focus the Lat field
@@ -1127,7 +1152,11 @@ const _showManualPointModal = (onConfirm) => {
 // search for the next waypoint without manually clearing the field.
 const clearSearch = () => {
   const input = document.getElementById('waypoint-search');
-  if (input) input.value = '';
+  if (input) {
+    input.value = '';
+    // Phase 24 fix: trigger the input event logic so main.js clears highlights
+    input.dispatchEvent(new Event('input'));
+  }
 };
 
 
@@ -1145,7 +1174,7 @@ const showSequenceWarning = (message) => {
   if (existing) existing.remove();
 
   const banner = document.createElement('div');
-  banner.id        = 'seq-warning-banner';
+  banner.id = 'seq-warning-banner';
   banner.className = 'seq-warning-banner';
   banner.textContent = message;  // textContent auto-escapes, no XSS risk
   wrapper.prepend(banner);
@@ -1184,16 +1213,16 @@ const showSequenceWarning = (message) => {
 // 'showEdit'      — whether to render the Edit button (true for Builder, false for Viewer)
 // 'showDelTrans'  — whether to render per-transition delete buttons (Builder only)
 const _buildProcAccordionRow = (proc, showDelete, showEdit, showDelTrans) => {
-  const eyeIcon  = proc.visible ? '&#128065;' : '&#128683;';
+  const eyeIcon = proc.visible ? '&#128065;' : '&#128683;';
   const subLabel = [proc.airport, proc.runway].filter(Boolean).join(' · ');
   const transitions = proc.transitions || [];
 
   // Build a short "Common: FIX1 → FIX2 → FIX3" preview (max 5 fixes before truncating).
   // Phase 29: fullRoute contains ALL idents for the title attribute so the user can
   // hover over a truncated preview and see the complete sequence in a native tooltip.
-  const routePts   = proc.common_route || [];
+  const routePts = proc.common_route || [];
   const previewPts = routePts.slice(0, 5).map((p) => _escapeHtml(p.ident || '?')).join(' → ');
-  const fullRoute  = routePts.map((p) => p.ident || '?').join(' → ');
+  const fullRoute = routePts.map((p) => p.ident || '?').join(' → ');
   const commonPreview = routePts.length > 0
     ? `<div class="proc-common-preview" title="${fullRoute}">
          <span data-i18n="sidebar.view.proc_item.common">${i18n.t('sidebar.view.proc_item.common')}</span>: ${previewPts}${routePts.length > 5 ? ` … +${routePts.length - 5}` : ''}
@@ -1204,17 +1233,17 @@ const _buildProcAccordionRow = (proc, showDelete, showEdit, showDelTrans) => {
   const transitionsHtml = transitions.length > 0
     ? `<div class="proc-transitions-list">
          ${transitions.map((t, tIdx) => {
-           const dirIcon = t.direction === 'inbound'  ? '&#8594;' :
-                           t.direction === 'outbound' ? '&#8592;' : '&#8906;';
-           const keyFix  = t.convergence_fix || t.divergence_fix || '';
-           const ptCount = t.points ? t.points.length : 0;
-           const delBtn  = showDelTrans
-             ? `<button class="proc-action-btn proc-delete-btn"
+      const dirIcon = t.direction === 'inbound' ? '&#8594;' :
+        t.direction === 'outbound' ? '&#8592;' : '&#8906;';
+      const keyFix = t.convergence_fix || t.divergence_fix || '';
+      const ptCount = t.points ? t.points.length : 0;
+      const delBtn = showDelTrans
+        ? `<button class="proc-action-btn proc-delete-btn"
                   data-proc-id="${proc.id}" data-transition-idx="${tIdx}" data-action="delete-transition"
                   title="${i18n.t('sidebar.view.proc_item.delete_trans')}"
                 >&#10005;</button>`
-             : '';
-           return `
+        : '';
+      return `
              <div class="proc-transition-item">
                <span class="proc-transition-icon">${dirIcon}</span>
                <div class="proc-transition-body">
@@ -1225,7 +1254,7 @@ const _buildProcAccordionRow = (proc, showDelete, showEdit, showDelTrans) => {
                ${delBtn}
              </div>
            `;
-         }).join('')}
+    }).join('')}
        </div>`
     : '';
 
@@ -1308,9 +1337,9 @@ const refreshBuilderSavedList = (procStates, callbacks) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const { procId, action, transitionIdx } = btn.dataset;
-    if (action === 'toggle'           && callbacks?.onToggle)          callbacks.onToggle(procId);
-    if (action === 'delete'           && callbacks?.onDelete)          callbacks.onDelete(procId);
-    if (action === 'edit'             && callbacks?.onEdit)            callbacks.onEdit(procId);
+    if (action === 'toggle' && callbacks?.onToggle) callbacks.onToggle(procId);
+    if (action === 'delete' && callbacks?.onDelete) callbacks.onDelete(procId);
+    if (action === 'edit' && callbacks?.onEdit) callbacks.onEdit(procId);
     if (action === 'delete-transition' && callbacks?.onDeleteTransition) {
       callbacks.onDeleteTransition(procId, parseInt(transitionIdx, 10));
     }
@@ -1359,8 +1388,8 @@ const _buildViewerList = (procStates) => {
   // ── Grouped modes ──────────────────────────────────────────────────────────
   // Determine the two grouping keys.
   const TYPE_ORDER = ['SID', 'STAR', 'IAC', 'CTR', 'FIS', 'TMA', 'ATZ'];
-  const key1 = (p) => _viewerSortMode === 'aerodrome-type' ? (p.airport || '—')  : (p.type || '—');
-  const key2 = (p) => _viewerSortMode === 'aerodrome-type' ? (p.type   || '—')  : (p.airport || '—');
+  const key1 = (p) => _viewerSortMode === 'aerodrome-type' ? (p.airport || '—') : (p.type || '—');
+  const key2 = (p) => _viewerSortMode === 'aerodrome-type' ? (p.type || '—') : (p.airport || '—');
 
   // Group into Map<key1 → Map<key2 → proc[]>>
   const groups = new Map();
@@ -1383,17 +1412,17 @@ const _buildViewerList = (procStates) => {
   };
 
   const k1IsType = _viewerSortMode === 'type-aerodrome';
-  const k1Keys   = sortKeys([...groups.keys()], k1IsType);
+  const k1Keys = sortKeys([...groups.keys()], k1IsType);
   const k2IsType = !k1IsType;
 
   return k1Keys.map((k1) => {
-    const subMap  = groups.get(k1);
-    const k2Keys  = sortKeys([...subMap.keys()], k2IsType);
+    const subMap = groups.get(k1);
+    const k2Keys = sortKeys([...subMap.keys()], k2IsType);
     const groupId = `vg-${k1.replace(/[^a-z0-9]/gi, '_')}`;
 
     const subGroupsHtml = k2Keys.map((k2) => {
-      const procs   = subMap.get(k2);
-      const subId   = `${groupId}-${k2.replace(/[^a-z0-9]/gi, '_')}`;
+      const procs = subMap.get(k2);
+      const subId = `${groupId}-${k2.replace(/[^a-z0-9]/gi, '_')}`;
       const rowsHtml = procs.map(rowHtml).join('');
       return `
         <div class="viewer-subgroup" data-subgroup="${subId}">
@@ -1428,7 +1457,7 @@ const _buildViewerList = (procStates) => {
 const updateViewTab = (procStates, callbacks) => {
   // Cache params so the sort dropdown can trigger a re-render without main.js.
   _lastViewProcStates = procStates;
-  _lastViewCallbacks  = callbacks;
+  _lastViewCallbacks = callbacks;
 
   const content = document.getElementById('tab-content');
   if (!content) return;
@@ -1448,7 +1477,7 @@ const updateViewTab = (procStates, callbacks) => {
     return;
   }
 
-  const measActive  = callbacks?.measVisible !== false;
+  const measActive = callbacks?.measVisible !== false;
   const measBtnClass = measActive ? 'viewer-meas-btn active' : 'viewer-meas-btn';
 
   content.innerHTML =
@@ -1477,10 +1506,10 @@ const updateViewTab = (procStates, callbacks) => {
       <div class="viewer-sort-row">
         <label class="viewer-sort-label" for="viewer-sort-select" data-i18n="sidebar.view.sort_label">${i18n.t('sidebar.view.sort_label')}</label>
         <select id="viewer-sort-select" class="viewer-sort-select">
-          <option value="aerodrome-type"  ${_viewerSortMode === 'aerodrome-type'  ? 'selected' : ''} data-i18n="sidebar.view.sort_options.ad_type">${i18n.t('sidebar.view.sort_options.ad_type')}</option>
-          <option value="type-aerodrome"  ${_viewerSortMode === 'type-aerodrome'  ? 'selected' : ''} data-i18n="sidebar.view.sort_options.type_ad">${i18n.t('sidebar.view.sort_options.type_ad')}</option>
-          <option value="alpha-asc"       ${_viewerSortMode === 'alpha-asc'       ? 'selected' : ''} data-i18n="sidebar.view.sort_options.alpha_asc">${i18n.t('sidebar.view.sort_options.alpha_asc')}</option>
-          <option value="alpha-desc"      ${_viewerSortMode === 'alpha-desc'      ? 'selected' : ''} data-i18n="sidebar.view.sort_options.alpha_desc">${i18n.t('sidebar.view.sort_options.alpha_desc')}</option>
+          <option value="aerodrome-type"  ${_viewerSortMode === 'aerodrome-type' ? 'selected' : ''} data-i18n="sidebar.view.sort_options.ad_type">${i18n.t('sidebar.view.sort_options.ad_type')}</option>
+          <option value="type-aerodrome"  ${_viewerSortMode === 'type-aerodrome' ? 'selected' : ''} data-i18n="sidebar.view.sort_options.type_ad">${i18n.t('sidebar.view.sort_options.type_ad')}</option>
+          <option value="alpha-asc"       ${_viewerSortMode === 'alpha-asc' ? 'selected' : ''} data-i18n="sidebar.view.sort_options.alpha_asc">${i18n.t('sidebar.view.sort_options.alpha_asc')}</option>
+          <option value="alpha-desc"      ${_viewerSortMode === 'alpha-desc' ? 'selected' : ''} data-i18n="sidebar.view.sort_options.alpha_desc">${i18n.t('sidebar.view.sort_options.alpha_desc')}</option>
         </select>
       </div>
       <div class="saved-proc-list" id="view-proc-list">${_buildViewerList(procStates)}</div>
@@ -1556,7 +1585,7 @@ const _wireViewClickHandler = (content, callbacks) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const { procId, action } = btn.dataset;
-    if (action === 'toggle'              && callbacks?.onToggle) callbacks.onToggle(procId);
+    if (action === 'toggle' && callbacks?.onToggle) callbacks.onToggle(procId);
     if (action === 'toggle-measurements' && callbacks?.onToggleMeasurements) callbacks.onToggleMeasurements();
   };
   content.addEventListener('click', _viewTabHandler);
@@ -1568,7 +1597,7 @@ const _wireGroupToggles = (content) => {
   content.querySelectorAll('[data-action="toggle-group"]').forEach((header) => {
     header.addEventListener('click', () => {
       const groupId = header.dataset.groupId;
-      const body    = document.getElementById(groupId);
+      const body = document.getElementById(groupId);
       if (!body) return;
       const collapsed = body.style.display === 'none';
       body.style.display = collapsed ? '' : 'none';
@@ -1601,10 +1630,10 @@ const updateTransitionUI = (drawingState, callbacks) => {
   if (drawingState._inTransitionMode) {
     // ── TRANSITION MODE: show status indicator + End button ──────────────────
     // The direction label tells the user whether they are drawing inbound or outbound.
-    const dir         = drawingState._transitionDirection;
-    const keyFix      = drawingState.convergencePointIdent || '?';
-    const dirLabel    = dir === 'inbound'  ? 'Inbound → ' :
-                        dir === 'outbound' ? 'Outbound ← ' : '';
+    const dir = drawingState._transitionDirection;
+    const keyFix = drawingState.convergencePointIdent || '?';
+    const dirLabel = dir === 'inbound' ? 'Inbound → ' :
+      dir === 'outbound' ? 'Outbound ← ' : '';
     const instruction = dir === 'inbound'
       ? `Click <strong>${_escapeHtml(keyFix)}</strong> on the map to auto-finish,<br>or press the button below.`
       : `Click "End Transition" when finished drawing the exit route.`;
@@ -1642,12 +1671,12 @@ const updateTransitionUI = (drawingState, callbacks) => {
          </div>
          <div class="transition-list">
            ${transitions.map((t) => {
-             const dirIcon = t.direction === 'inbound'  ? '&#8594;' :  // →
-                             t.direction === 'outbound' ? '&#8592;' :  // ←
-                             '&#8906;';                                  // ⌦ (old format)
-             const keyFix  = t.convergence_fix || t.divergence_fix || '';
-             const ptCount = t.points ? t.points.length : 0;
-             return `
+        const dirIcon = t.direction === 'inbound' ? '&#8594;' :  // →
+          t.direction === 'outbound' ? '&#8592;' :  // ←
+            '&#8906;';                                  // ⌦ (old format)
+        const keyFix = t.convergence_fix || t.divergence_fix || '';
+        const ptCount = t.points ? t.points.length : 0;
+        return `
                <div class="transition-item">
                  <span class="transition-item-icon">${dirIcon}</span>
                  <div class="transition-item-body">
@@ -1657,7 +1686,7 @@ const updateTransitionUI = (drawingState, callbacks) => {
                  <span class="transition-item-pts">${ptCount} pt${ptCount !== 1 ? 's' : ''}</span>
                </div>
              `;
-           }).join('')}
+      }).join('')}
          </div>`
       : '';
 
@@ -1698,8 +1727,8 @@ const setViewGlobalSearchCallback = (fn) => {
 // Returns a complete restrictions object in the same shape as DrawingState.addPoint expects.
 // Returns all-empty defaults when the panel is not in the active (pending) state.
 const collectInlineRestrictions = () => {
-  const altReq  = document.getElementById('inline-alt-req')?.value  || '';
-  const altVal  = document.getElementById('inline-alt-val')?.value  || '';
+  const altReq = document.getElementById('inline-alt-req')?.value || '';
+  const altVal = document.getElementById('inline-alt-val')?.value || '';
   const altUnit = document.getElementById('inline-alt-unit')?.value || 'ft';
 
   // Map the UI symbol back to the existing levelCondition string format.
@@ -1711,8 +1740,8 @@ const collectInlineRestrictions = () => {
     levelValue = altUnit === 'FL' ? `FL${altVal}` : `${altVal}${altUnit}`;
   }
 
-  const spdReq  = document.getElementById('inline-spd-req')?.value  || '';
-  const spdVal  = document.getElementById('inline-spd-val')?.value  || '';
+  const spdReq = document.getElementById('inline-spd-req')?.value || '';
+  const spdVal = document.getElementById('inline-spd-val')?.value || '';
   const spdUnit = document.getElementById('inline-spd-unit')?.value || 'KT';
 
   // Map UI symbols to speedCondition strings. 'Less Than Or Equal' and 'Greater Than'
@@ -1724,33 +1753,52 @@ const collectInlineRestrictions = () => {
     speedValue = `${spdVal}${spdUnit}`;
   }
 
-  const isHolding     = document.getElementById('inline-hold-chk')?.checked ?? false;
+  const isHolding = document.getElementById('inline-hold-chk')?.checked ?? false;
   const holdingBearing = document.getElementById('inline-hold-bearing')?.value || '';
-  const holdingSide    = document.querySelector('#inline-turn-dir .inline-turn-btn.active')?.dataset.dir || 'RIGHT';
-  const holdingOBS     = document.getElementById('inline-hold-obs')?.value || '';
+  const holdingSide = document.querySelector('#inline-turn-dir .inline-turn-btn.active')?.dataset.dir || 'RIGHT';
+  const holdingOBS = document.getElementById('inline-hold-obs')?.value || '';
 
   return { levelCondition, levelValue, speedCondition, speedValue, isHolding, holdingBearing, holdingSide, holdingOBS };
 };
 
 
 // Renders the inline restriction form for a pending (just-selected) fix into
-// the #inline-restriction-panel element. Called from main.js when a fix is clicked
-// or a custom point is placed — replacing the modal pop-up from earlier phases.
+// the #inline-restriction-panel element. Called from main.js when a fix is clicked,
+// a custom point is placed, or the pencil (edit) button is pressed.
 //
-// Shows: fix name header, ALT row (req/val/unit), SPD row (req/val/unit),
-//        Holding toggle (+ bearing/direction/OBS fields when active),
-//        and three action buttons: Add Point, Erase, Create Procedure.
+// In ADD mode (default): shows "Add Point" and "Cancel Point" buttons.
+//   "Add Point"    — commits the fix with collected restrictions.
+//   "Cancel Point" — dismisses the pending selection, returns to idle.
+//   "↺ Clear"      — resets ALT/SPD fields without dismissing the fix.
+//
+// In EDIT mode (options.isEdit = true): shows "Update Point" and "Cancel Edit" buttons.
+//   "Update Point" — applies changes to the existing sequence point.
+//   "Cancel Edit"  — discards changes, returns to idle.
+//   Fields are pre-populated from options.initialValues.
+//
+// Global keyboard shortcuts while the panel is focused:
+//   Enter  — triggers the primary action button (Add/Update).
+//   Escape — triggers the cancel button (Cancel Point/Edit).
+//   Tab after the last SPD unit dropdown → moves focus to the Holding checkbox.
 //
 // 'pendingPoint' — the raw fix/point object: { ident, lat, lon, isFix, ... }
-// 'callbacks'    — { onAdd(restrictions), onErase(), onCreate(restrictions) }
-const showPendingPointRestrictions = (pendingPoint, callbacks) => {
+// 'callbacks'    — { onAdd(restrictions), onErase() }
+// 'options'      — optional: { isEdit: boolean, initialValues: { altReq, altVal, altUnit,
+//                               spdReq, spdVal, spdUnit, isHolding, holdingBearing,
+//                               holdingSide, holdingOBS } }
+const showPendingPointRestrictions = (pendingPoint, callbacks, options = {}) => {
   const panel = document.getElementById('inline-restriction-panel');
   if (!panel) return;
 
-  const fixIcon  = pendingPoint.isFix ? '&#9670;' : '&#9671;';   // ◆ or ◇
+  const isEdit = !!options.isEdit;
+
+  const fixIcon = pendingPoint.isFix ? '&#9670;' : '&#9671;';   // ◆ or ◇
   const fixLabel = pendingPoint.isFix
     ? pendingPoint.ident
-    : `Custom (${pendingPoint.lat.toFixed(4)}, ${pendingPoint.lon.toFixed(4)})`;
+    : `Custom (${pendingPoint.lat != null ? pendingPoint.lat.toFixed(4) : '?'}, ${pendingPoint.lon != null ? pendingPoint.lon.toFixed(4) : '?'})`;
+
+  const primaryLabel = isEdit ? '&#10003; Update Point' : '&#10003; Add Point';
+  const cancelLabel  = isEdit ? '&#10005; Cancel Edit'  : '&#10005; Cancel Point';
 
   panel.className = 'inline-restriction-panel inline-panel-active';
   panel.innerHTML = `
@@ -1826,21 +1874,50 @@ const showPendingPointRestrictions = (pendingPoint, callbacks) => {
     </div>
 
     <div class="inline-action-row pending-action-row">
-      <button class="inline-action-btn primary" id="btn-add-point">&#10003; Add Point</button>
-      <button class="inline-action-btn secondary" id="btn-erase-pending">&#10005; Erase</button>
-      <button class="inline-action-btn save" id="btn-create-proc-pending">&#128190; Save</button>
+      <button class="inline-action-btn primary" id="btn-add-point">${primaryLabel}</button>
+      <button class="inline-action-btn secondary" id="btn-cancel-pending">${cancelLabel}</button>
     </div>
+    ${!isEdit ? `<div class="inline-clear-row"><button class="inline-clear-link" id="btn-clear-restrictions">&#8634; Clear restrictions</button></div>` : ''}
   `;
 
-  // ── Holding toggle: show/hide the bearing, direction, and OBS fields ────────
-  const holdChk    = document.getElementById('inline-hold-chk');
+  // ── Pre-populate fields from initialValues (edit mode or explicit pre-fill) ──
+  if (options.initialValues) {
+    const iv = options.initialValues;
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+    setVal('inline-alt-req',  iv.altReq  || '');
+    setVal('inline-alt-val',  iv.altVal  || '');
+    setVal('inline-alt-unit', iv.altUnit || 'ft');
+    setVal('inline-spd-req',  iv.spdReq  || '');
+    setVal('inline-spd-val',  iv.spdVal  || '');
+    setVal('inline-spd-unit', iv.spdUnit || 'KT');
+    const holdChkEl = document.getElementById('inline-hold-chk');
+    if (holdChkEl) {
+      holdChkEl.checked = !!iv.isHolding;
+      const hf = document.getElementById('inline-hold-fields');
+      if (hf) hf.style.display = iv.isHolding ? 'block' : 'none';
+      const toggleRow = document.getElementById('inline-hold-toggle-row');
+      if (toggleRow) toggleRow.classList.toggle('inline-hold-toggle-active', !!iv.isHolding);
+    }
+    setVal('inline-hold-bearing', iv.holdingBearing || '');
+    setVal('inline-hold-obs',     iv.holdingOBS     || '');
+    // Restore turn direction active state.
+    const side = iv.holdingSide || 'RIGHT';
+    document.querySelectorAll('#inline-turn-dir .inline-turn-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.dir === side);
+    });
+  }
+
+  // ── Holding toggle: show/hide the bearing, direction, and OBS fields ─────────
+  const holdChk = document.getElementById('inline-hold-chk');
   const holdFields = document.getElementById('inline-hold-fields');
   holdChk?.addEventListener('change', () => {
     holdFields.style.display = holdChk.checked ? 'block' : 'none';
     if (holdChk.checked) document.getElementById('inline-hold-bearing')?.focus();
+    const toggleRow = document.getElementById('inline-hold-toggle-row');
+    if (toggleRow) toggleRow.classList.toggle('inline-hold-toggle-active', holdChk.checked);
   });
 
-  // ── Turn direction toggle buttons ────────────────────────────────────────────
+  // ── Turn direction toggle buttons ─────────────────────────────────────────────
   document.getElementById('inline-turn-dir')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.inline-turn-btn');
     if (!btn) return;
@@ -1848,17 +1925,51 @@ const showPendingPointRestrictions = (pendingPoint, callbacks) => {
     btn.classList.add('active');
   });
 
-  // ── Action buttons ────────────────────────────────────────────────────────────
+  // ── Tab from SPD unit to Holding checkbox (keyboard navigation improvement) ───
+  document.getElementById('inline-spd-unit')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById('inline-hold-chk')?.focus();
+    }
+  });
+
+  // ── Primary action button ────────────────────────────────────────────────────
   document.getElementById('btn-add-point')?.addEventListener('click', () => {
     if (callbacks?.onAdd) callbacks.onAdd(collectInlineRestrictions());
   });
 
-  document.getElementById('btn-erase-pending')?.addEventListener('click', () => {
+  // ── Cancel button (Cancel Point / Cancel Edit) ───────────────────────────────
+  document.getElementById('btn-cancel-pending')?.addEventListener('click', () => {
     if (callbacks?.onErase) callbacks.onErase();
   });
 
-  document.getElementById('btn-create-proc-pending')?.addEventListener('click', () => {
-    if (callbacks?.onCreate) callbacks.onCreate(collectInlineRestrictions());
+  // ── Clear restrictions link (add mode only) ──────────────────────────────────
+  // Resets only the ALT and SPD fields without dismissing the pending fix.
+  document.getElementById('btn-clear-restrictions')?.addEventListener('click', () => {
+    const setDef = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    setDef('inline-alt-req', '');
+    setDef('inline-alt-val', '');
+    setDef('inline-alt-unit', 'ft');
+    setDef('inline-spd-req', '');
+    setDef('inline-spd-val', '');
+    setDef('inline-spd-unit', 'KT');
+    document.getElementById('inline-alt-req')?.focus();
+  });
+
+  // ── Panel-level keyboard shortcuts: Enter = primary action, ESC = cancel ─────
+  // The handler lives on the panel element so it only fires when focus is inside
+  // the restriction form. Select elements handle their own Enter (dropdown close),
+  // so we only intercept Enter for inputs and the holding checkbox.
+  panel.addEventListener('keydown', (e) => {
+    const tag = e.target.tagName;
+    if (e.key === 'Enter' && tag !== 'SELECT' && tag !== 'BUTTON') {
+      e.preventDefault();
+      document.getElementById('btn-add-point')?.click();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      document.getElementById('btn-cancel-pending')?.click();
+    }
   });
 
   // Auto-focus the ALT requirement dropdown so the user can navigate by keyboard immediately.
@@ -1873,10 +1984,11 @@ const clearPendingPointRestrictions = (refocusSearch = true) => {
   const panel = document.getElementById('inline-restriction-panel');
   if (!panel) return;
 
+  const finalizeBtnLabel = _isEditSession ? 'Save Procedure' : 'Create Procedure';
   panel.className = 'inline-restriction-panel inline-panel-idle';
   panel.innerHTML = `
     <div class="inline-action-row">
-      <button class="builder-action-btn primary" id="btn-create-procedure">&#10003; Create Procedure</button>
+      <button class="builder-action-btn primary" id="btn-create-procedure">&#10003; ${finalizeBtnLabel}</button>
       <button class="builder-action-btn danger"  id="btn-cancel-drawing">&#10005; Cancel</button>
     </div>
   `;
@@ -1920,7 +2032,7 @@ const updateViewGlobalSearchCount = (count) => {
   const el = document.getElementById('global-search-count');
   if (!el) return;
   if (count > 0) {
-    el.textContent  = `${count} result${count !== 1 ? 's' : ''}`;
+    el.textContent = `${count} result${count !== 1 ? 's' : ''}`;
     el.style.display = 'inline-block';
   } else {
     el.style.display = 'none';
@@ -1945,13 +2057,38 @@ const updateCategoryChipCounts = (counts) => {
     if (!el) return;
     const n = counts && typeof counts[cat] === 'number' ? counts[cat] : 0;
     if (counts && n > 0) {
-      el.textContent  = String(n);
+      el.textContent = String(n);
       el.style.display = 'inline-block';
     } else {
-      el.textContent  = '';
+      el.textContent = '';
       el.style.display = 'none';
     }
   });
+};
+
+
+// Updates the lat/lon coordinate input fields in the "Drop Custom Point" section.
+// Called from main.js on map mousemove while drop-custom mode is active, providing
+// live geo-coordinate feedback. When mode is toggled off, call with (null, null)
+// to clear the fields.
+//
+// The fields are only updated when they do not currently have user focus, so that
+// a user who is manually typing coordinates is never interrupted by the live feed.
+//
+// 'lat' — decimal latitude to display (or null to clear)
+// 'lon' — decimal longitude to display (or null to clear)
+const updateDropCustomCoords = (lat, lon) => {
+  const latEl = document.getElementById('drop-lat');
+  const lonEl = document.getElementById('drop-lon');
+  if (!latEl || !lonEl) return;
+  if (lat === null || lon === null) {
+    latEl.value = '';
+    lonEl.value = '';
+    return;
+  }
+  // Only update fields that the user is not currently focused on.
+  if (document.activeElement !== latEl) latEl.value = lat.toFixed(4);
+  if (document.activeElement !== lonEl) lonEl.value = lon.toFixed(4);
 };
 
 
@@ -1978,5 +2115,6 @@ export {
   setBuilderUnlockCallback,
   showPendingPointRestrictions,
   clearPendingPointRestrictions,
-  collectInlineRestrictions
+  collectInlineRestrictions,
+  updateDropCustomCoords
 };

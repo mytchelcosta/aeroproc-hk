@@ -48,14 +48,14 @@ const _hexToHsl = (hex) => {
   const b = parseInt(hex.slice(5, 7), 16) / 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  const l   = (max + min) / 2;
+  const l = (max + min) / 2;
   if (max === min) return [0, 0, l];  // achromatic (grey)
   const d = max - min;
   const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
   let h;
-  if      (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
   else if (max === g) h = ((b - r) / d + 2) / 6;
-  else                h = ((r - g) / d + 4) / 6;
+  else h = ((r - g) / d + 4) / 6;
   return [h * 360, s, l];
 };
 
@@ -73,7 +73,7 @@ const _hslToHex = (h, s, l) => {
   const p = 2 * l - q;
   const hNorm = h / 360;
   const r = Math.round(hue2rgb(p, q, hNorm + 1 / 3) * 255);
-  const g = Math.round(hue2rgb(p, q, hNorm)         * 255);
+  const g = Math.round(hue2rgb(p, q, hNorm) * 255);
   const b = Math.round(hue2rgb(p, q, hNorm - 1 / 3) * 255);
   return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
 };
@@ -107,8 +107,8 @@ const _tooltipLevelHtml = (condition, value) => {
 const _tooltipSpeedHtml = (condition, value) => {
   if (!condition || !value) return '';
   const safe = _safeEscape(value);
-  if (condition === 'At')        return `@${safe}`;
-  if (condition === 'At Least')  return `&gt;${safe}`;
+  if (condition === 'At') return `@${safe}`;
+  if (condition === 'At Least') return `&gt;${safe}`;
   if (condition === 'Less Than') return `&lt;${safe}`;
   return safe;
 };
@@ -142,7 +142,7 @@ const isAnyDrawingToolActive = () => {
 // A LayerGroup containing DivIcon markers placed at the midpoint of each
 // procedure segment. Each marker shows the distance (NM) and magnetic
 // bearing for that leg. Visibility is toggled by the user.
-let _measurementLayer    = null;
+let _measurementLayer = null;
 let _measurementsVisible = false;
 
 // ── Holding pattern markers ───────────────────────────────────────────
@@ -151,13 +151,23 @@ let _measurementsVisible = false;
 // the active sequence changes and cleared when the drawing session ends.
 let _holdingMarkersLayer = null;
 
+// Set of fix idents (uppercase) whose ghost fix labels should be hidden because
+// they are currently designated as holding points. The "H" badge already provides
+// the primary identification; the ghost label's white ident text behind it causes
+// visual clutter. Managed by updateHoldingMarkers / clearHoldingMarkers.
+let _suppressedGhostIdents = new Set();
+
+// Temporary non-draggable marker shown while a custom-drop point is pending
+// the restriction form. Replaced by the real draggable marker on commit.
+let _pendingCustomMarker = null;
+
 // ── Highlight system (normal / viewer mode) ───────────────────────────────
 // Set of ident strings (uppercase) that the user has clicked to highlight.
 // Clicking a fix in normal mode (no active drawing) highlights it in place
 // of the removed popup. Ctrl+Click adds to the set; clicking blank map space
 // clears all highlights.
-let _highlightedFixes  = new Set();
-let _waypointLayerRef  = null;  // stored so _clearHighlights() can iterate markers
+let _highlightedFixes = new Set();
+let _waypointLayerRef = null;  // stored so _clearHighlights() can iterate markers
 
 // ── Phase 14: Fix Virtualization ──────────────────────────────────────────────
 // Instead of creating all ~3 000+ Leaflet markers up-front, we keep the raw
@@ -169,8 +179,8 @@ let _waypointLayerRef  = null;  // stored so _clearHighlights() can iterate mark
 //
 // _lastFilterArgs caches the most recent filterWaypoints arguments so that the
 // viewport-change handler (map pan/zoom) can re-run the filter automatically.
-let _allFixData    = [];           // raw fix objects from renderFixes()
-let _fixMarkerMap  = new Map();    // ident.toUpperCase() → Leaflet circleMarker
+let _allFixData = [];           // raw fix objects from renderFixes()
+let _fixMarkerMap = new Map();    // ident.toUpperCase() → Leaflet circleMarker
 let _lastFilterArgs = null;        // { searchTerm, activePoints, sequenceColor }
 
 // ── Context menu ──────────────────────────────────────────────────────────
@@ -184,14 +194,14 @@ let _lastFilterArgs = null;        // { searchTerm, activePoints, sequenceColor 
 //   procedureType()                      — returns the current procedure type string
 //   isInTransitionMode()                 — returns true if already drawing a transition
 // Callbacks are provided by main.js via setContextMenuCallbacks().
-let _contextMenuEl        = null;
+let _contextMenuEl = null;
 let _contextMenuCallbacks = null;  // { isInSequence, onRemove, onEdit }
 
 // ── Custom drop overlay ───────────────────────────────────────────────────
 // When active, clicking blank map areas in snap mode drops a custom coordinate
 // point. Works alongside snap mode so snap and free-click can both be used
 // within the same route procedure drawing session.
-let _customDropCallback   = null;
+let _customDropCallback = null;
 let _customDropMapHandler = null;
 
 // ── Cross-layer label dedup ───────────────────────────────────────────────
@@ -211,20 +221,20 @@ let _currentLabelQuantum = null;
 // sets it to auto so Leaflet events reach the individual marker SVG paths.
 // Individual markers are created with interactive:true so their SVG paths
 // respond once the pane allows events.
-let _ghostMarkers        = [];     // every marker created by renderGhostFixes
-let _ghostSnapCallback   = null;   // set by enableGhostSnapMode; null otherwise
-let _ghostMapRef         = null;   // map ref kept for hover glow management
-let _ghostHoverMarker    = null;   // single DivIcon shown over hovered ghost dot
+let _ghostMarkers = [];     // every marker created by renderGhostFixes
+let _ghostSnapCallback = null;   // set by enableGhostSnapMode; null otherwise
+let _ghostMapRef = null;   // map ref kept for hover glow management
+let _ghostHoverMarker = null;   // single DivIcon shown over hovered ghost dot
 
 
 // ── Phase 39: VFR Corridors (REA/REH) ──────────────────────────────────────
 // Dedicated LayerGroups for VFR corridor polylines and forced waypoints.
-let _reaLayerGroup         = null;
-let _rehLayerGroup         = null;
-let _vfrWaypointsLayer     = null;
-let _vfrFlowLayer          = null;
-let _vfrData               = null;
-let _vfrLayersInitialized  = false;
+let _reaLayerGroup = null;
+let _rehLayerGroup = null;
+let _vfrWaypointsLayer = null;
+let _vfrFlowLayer = null;
+let _vfrData = null;
+let _vfrLayersInitialized = false;
 
 
 // ── RENDERING FUNCTIONS ─────────────────────────────────────
@@ -373,12 +383,12 @@ const _bindDelayedInfoPopup = (marker, latlng, html) => {
 // 'fix' — raw fix object from _allFixData: { ident, lat, lon, ... }
 const _createFixMarker = (fix) => {
   const marker = L.circleMarker([fix.lat, fix.lon], {
-    radius:      3,
-    color:       '#7ec8e3',
-    fillColor:   '#7ec8e3',
+    radius: 3,
+    color: '#7ec8e3',
+    fillColor: '#7ec8e3',
     fillOpacity: 0.75,
-    weight:      1,
-    className:   'fix-marker-svg'
+    weight: 1,
+    className: 'fix-marker-svg'
   });
 
   marker.defaultStyle = { color: '#7ec8e3', fillColor: '#7ec8e3', fillOpacity: 0.75, radius: 3, weight: 1 };
@@ -389,7 +399,7 @@ const _createFixMarker = (fix) => {
   _bindDelayedTooltip(marker, fix.ident, {
     direction: 'top',
     className: 'fix-tooltip',
-    offset:    [0, -4]
+    offset: [0, -4]
   });
 
   marker.on('click', (e) => {
@@ -432,25 +442,30 @@ const _createFixMarker = (fix) => {
 //                       label (caller provides a DivIcon highlight overlay instead)
 const _styleFixMarker = (marker, ident, activeMap, isFiltering, term, sequenceColor, suppressMatchLabel = false) => {
   const inSequence = activeMap.has(ident);
-  const tooltipEl  = marker.getTooltip()?.getElement();
+  const tooltipEl = marker.getTooltip()?.getElement();
   const baseRadius = marker.defaultStyle?.radius || 3;
 
   if (inSequence) {
     // Full-brightness permanent label with ATC restriction text.
-    const pt         = activeMap.get(ident);
-    const levelHtml  = _tooltipLevelHtml(pt.levelCondition, pt.levelValue);
-    const speedHtml  = _tooltipSpeedHtml(pt.speedCondition, pt.speedValue);
+    const pt = activeMap.get(ident);
+    const levelHtml = _tooltipLevelHtml(pt.levelCondition, pt.levelValue);
+    const speedHtml = _tooltipSpeedHtml(pt.speedCondition, pt.speedValue);
     const restrParts = [levelHtml, speedHtml].filter(Boolean);
-    const restrLine  = restrParts.length
+    const restrLine = restrParts.length
       ? `<div class="fix-label-restriction">${restrParts.join(' · ')}</div>`
       : '';
     const holdingLine = pt.isHolding
       ? `<div class="fix-label-holding">H: ${_safeEscape(pt.holdingBearing || '---')}° ${_safeEscape(pt.holdingSide || 'RIGHT')}</div>`
       : '';
-    const labelHtml = `<div class="fix-label-ident">${_safeEscape(ident)}</div>${restrLine}${holdingLine}`;
+    // Phase 24 Fix: Ident labels for in-sequence fixes are now considered unnecessary/redundant
+    // as the Ghost Dot Layer (Phase 11) already provides names for all fixes.
+    // The procedure point tooltip now only shows restrictions and holding info.
+    const labelHtml = `${restrLine}${holdingLine}`.trim();
 
     marker.unbindTooltip();
-    marker.bindTooltip(labelHtml, { permanent: true, direction: 'top', className: 'fix-label', offset: [0, -4] });
+    if (labelHtml) {
+      marker.bindTooltip(labelHtml, { permanent: true, direction: 'top', className: 'fix-label', offset: [0, -4] });
+    }
     marker.setStyle({ color: '#ffffff', fillColor: sequenceColor, fillOpacity: 1, opacity: 1, weight: 2.5 });
     if (marker.setRadius) marker.setRadius(Math.max(baseRadius + 3, 6));
     const newEl = marker.getTooltip()?.getElement();
@@ -467,7 +482,7 @@ const _styleFixMarker = (marker, ident, activeMap, isFiltering, term, sequenceCo
       _bindDelayedTooltip(marker, ident, { direction: 'top', className: 'fix-tooltip', offset: [0, -4] });
     } else {
       // Standard builder search: highlighted prefix in permanent label above the dot.
-      const matchLen    = term.length;
+      const matchLen = term.length;
       const highlighted =
         `<span class="fix-label-highlight">${_safeEscape(ident.slice(0, matchLen))}</span>` +
         _safeEscape(ident.slice(matchLen));
@@ -627,7 +642,7 @@ const enableSnapMode = (waypointLayer, callback) => {
 //
 // 'waypointLayer' — the same LayerGroup passed to enableSnapMode()
 const disableSnapMode = (waypointLayer) => {
-  _snapCallback  = null;
+  _snapCallback = null;
   _lastFilterArgs = null;
 
   // Remove every virtualized fix marker from the layer.
@@ -692,7 +707,11 @@ const disableFreeDrawMode = (mapInstance) => {
 //
 // 'mapInstance'  — the Leaflet map
 // 'drawingState' — the shared DrawingState singleton object from DrawingState.js
-const updateActiveShape = (mapInstance, drawingState) => {
+// 'pendingPreview' — optional { lat, lon } object for a point that has been placed but
+// not yet committed to DrawingState (e.g. a custom drop point pending the restriction form).
+// When provided, a dashed preview segment is drawn from the last committed point to this
+// position so the user gets immediate visual feedback without waiting for form submission.
+const updateActiveShape = (mapInstance, drawingState, pendingPreview = null) => {
   if (!mapInstance || !drawingState) {
     console.error('[MapLayers] updateActiveShape: mapInstance or drawingState is missing.');
     return;
@@ -700,6 +719,13 @@ const updateActiveShape = (mapInstance, drawingState) => {
 
   // Start with the live points array (transition branch or common route, depending on mode).
   let latLngs = drawingState.points.map((p) => [p.lat, p.lon]);
+
+  // Append the pending-preview coordinate so the polyline visually extends to the
+  // unconfirmed position. The preview segment is removed on the next updateActiveShape
+  // call (when the point is committed and latLngs is rebuilt from DrawingState.points).
+  if (pendingPreview && pendingPreview.lat != null && pendingPreview.lon != null) {
+    latLngs = [...latLngs, [pendingPreview.lat, pendingPreview.lon]];
+  }
 
   // Phase 12 — INBOUND transition preview: append the convergence fix to the rendered
   // path so the user can see the line they are drawing will connect to that specific
@@ -724,9 +750,9 @@ const updateActiveShape = (mapInstance, drawingState) => {
   // Map pattern names to Leaflet dashArray strings.
   const dashMap = { solid: null, dashed: '10, 8', dotted: '3, 6' };
   const shapeOptions = {
-    color:     drawingState.metadata.color,
-    weight:    2.5,
-    opacity:   0.9,
+    color: drawingState.metadata.color,
+    weight: 2.5,
+    opacity: 0.9,
     dashArray: dashMap[drawingState.metadata.pattern] ?? null
   };
 
@@ -753,7 +779,7 @@ const updateActiveShape = (mapInstance, drawingState) => {
     if (drawingState.isAreaType()) {
       drawingState.activeShape = L.polygon(latLngs, {
         ...shapeOptions,
-        fillColor:   drawingState.metadata.color,
+        fillColor: drawingState.metadata.color,
         fillOpacity: 0.15
       }).addTo(mapInstance);
     } else {
@@ -763,7 +789,7 @@ const updateActiveShape = (mapInstance, drawingState) => {
     // Bind a sticky hover tooltip so the procedure name appears when the user
     // hovers over the drawn line, without needing to look at the sidebar.
     drawingState.activeShape.bindTooltip(drawingState.metadata.name, {
-      sticky:    true,
+      sticky: true,
       className: 'proc-hover-tooltip'
     });
   }
@@ -824,23 +850,23 @@ const filterWaypoints = (waypointLayer, searchTerm, activePoints = [], sequenceC
   // Cache for viewport-change re-renders triggered by map pan / zoom.
   _lastFilterArgs = { searchTerm, activePoints: activePoints.slice(), sequenceColor, suppressMatchLabel };
 
-  const term        = searchTerm.trim().toUpperCase();
+  const term = searchTerm.trim().toUpperCase();
   const isFiltering = term.length > 0;
-  const activeMap   = new Map(activePoints.map((p) => [p.ident.toUpperCase(), p]));
+  const activeMap = new Map(activePoints.map((p) => [p.ident.toUpperCase(), p]));
 
   // Viewport culling: when there is no search term, only render fixes that are
   // inside the current map bounds AND the zoom is high enough to make individual
   // fixes legible. This avoids blank-map syndrome without flooding the DOM.
-  const bounds       = _mapRef?.getBounds();
-  const zoom         = _mapRef?.getZoom() ?? 0;
+  const bounds = _mapRef?.getBounds();
+  const zoom = _mapRef?.getZoom() ?? 0;
   const showViewport = !isFiltering && (!!_snapCallback || !!_ghostSnapCallback) && zoom >= 10 && !!bounds;
 
   // Predicate: should this fix have a visible marker right now?
   const shouldShow = (fix) => {
     const ident = (fix.ident || '').toUpperCase();
     if (activeMap.has(ident)) return true;                           // always show in-sequence
-    if (isFiltering)          return ident.startsWith(term);         // search mode
-    if (showViewport)         return bounds.contains([fix.lat, fix.lon]);  // viewport culling
+    if (isFiltering) return ident.startsWith(term);         // search mode
+    if (showViewport) return bounds.contains([fix.lat, fix.lon]);  // viewport culling
     return false;                                                    // hidden (no search, not in seq)
   };
 
@@ -926,7 +952,7 @@ const addThresholdsToLayer = (waypointLayer, thresholds) => {
     _bindDelayedTooltip(marker, threshold.ident, {
       direction: 'top',
       className: 'fix-tooltip',
-      offset:    [0, -6]
+      offset: [0, -6]
     });
 
     // Same unified click handler as regular waypoint markers.
@@ -1017,12 +1043,12 @@ const updateMeasurementLabels = (mapInstance, drawingState) => {
     const p1 = points[i];
     const p2 = points[i + 1];
 
-    const distNm    = calculateDistance(p1.lat, p1.lon, p2.lat, p2.lon);
-    const trueBrg   = calculateTrueBearing(p1.lat, p1.lon, p2.lat, p2.lon);
-    const magBrg    = trueToMagnetic(trueBrg);
+    const distNm = calculateDistance(p1.lat, p1.lon, p2.lat, p2.lon);
+    const trueBrg = calculateTrueBearing(p1.lat, p1.lon, p2.lat, p2.lon);
+    const magBrg = trueToMagnetic(trueBrg);
 
     // Format: "12.4 NM  245°"  — no "M" suffix, the degree sign is self-explanatory
-    const labelText = `${distNm.toFixed(1)} NM  ${String(Math.round(magBrg)).padStart(3,'0')}°`;
+    const labelText = `${distNm.toFixed(1)} NM  ${String(Math.round(magBrg)).padStart(3, '0')}°`;
 
     // Place the label at the geographic midpoint of this segment
     const midLat = (p1.lat + p2.lat) / 2;
@@ -1030,9 +1056,9 @@ const updateMeasurementLabels = (mapInstance, drawingState) => {
 
     // DivIcon with no default Leaflet decoration — pure floating text
     const icon = L.divIcon({
-      className:  'seg-measurement-label',
-      html:       `<span>${labelText}</span>`,
-      iconSize:   [0, 0],   // zero size so Leaflet doesn't offset or add padding
+      className: 'seg-measurement-label',
+      html: `<span>${labelText}</span>`,
+      iconSize: [0, 0],   // zero size so Leaflet doesn't offset or add padding
       iconAnchor: [0, 0]
     });
 
@@ -1090,8 +1116,8 @@ const renderSavedProcedure = (mapInstance, procedure) => {
 
   // Resolve the main route points — new schema uses 'common_route', old saves use 'points'.
   // ProcedureDatabase.loadAll() normalizes old saves, but we guard here for safety.
-  const mainPoints  = procedure.common_route || procedure.points || [];
-  const transitions = procedure.transitions  || [];
+  const mainPoints = procedure.common_route || procedure.points || [];
+  const transitions = procedure.transitions || [];
 
   if (!mainPoints || mainPoints.length < 2) {
     console.warn(`[MapLayers] renderSavedProcedure: "${procedure.name}" needs ≥2 common-route points. Skipping.`);
@@ -1105,9 +1131,9 @@ const renderSavedProcedure = (mapInstance, procedure) => {
   // Map pattern names to Leaflet dashArray strings (same mapping as updateActiveShape)
   const dashMap = { solid: null, dashed: '10, 8', dotted: '3, 6' };
   const shapeOptions = {
-    color:     procedure.color,
-    weight:    2.5,
-    opacity:   0.9,
+    color: procedure.color,
+    weight: 2.5,
+    opacity: 0.9,
     dashArray: dashMap[procedure.pattern] ?? null
   };
 
@@ -1121,7 +1147,7 @@ const renderSavedProcedure = (mapInstance, procedure) => {
   if (isAreaType) {
     mainShape = L.polygon(mainCoords, {
       ...shapeOptions,
-      fillColor:   procedure.color,
+      fillColor: procedure.color,
       fillOpacity: 0.15
     });
   } else {
@@ -1148,11 +1174,11 @@ const renderSavedProcedure = (mapInstance, procedure) => {
 
       // Colored circle at the waypoint position.
       L.circleMarker([pt.lat, pt.lon], {
-        radius:      4,
-        color:       '#ffffff',
-        fillColor:   procedure.color,
+        radius: 4,
+        color: '#ffffff',
+        fillColor: procedure.color,
         fillOpacity: 0.95,
-        weight:      1.5,
+        weight: 1.5,
         interactive: false
       }).addTo(group);
 
@@ -1160,35 +1186,41 @@ const renderSavedProcedure = (mapInstance, procedure) => {
       if (skipIdents.has((pt.ident || '').toUpperCase())) return;
 
       // Build restriction text using ATC notation.
-      const levelHtml  = _tooltipLevelHtml(pt.levelCondition, pt.levelValue);
-      const speedHtml  = _tooltipSpeedHtml(pt.speedCondition, pt.speedValue);
+      const levelHtml = _tooltipLevelHtml(pt.levelCondition, pt.levelValue);
+      const speedHtml = _tooltipSpeedHtml(pt.speedCondition, pt.speedValue);
       const restrParts = [levelHtml, speedHtml].filter(Boolean);
-      const restrLine  = restrParts.length
+      const restrLine = restrParts.length
         ? `<div class="fix-label-restriction">${restrParts.join(' · ')}</div>`
         : '';
 
       const icon = L.divIcon({
-        className:  'proc-fix-label',
-        html:       `<div class="fix-label-ident">${_safeEscape(pt.ident)}</div>${restrLine}`,
-        iconSize:   [0, 0],
+        className: 'proc-fix-label',
+        html: `${restrLine}`,
+        iconSize: [0, 0],
         iconAnchor: [0, 0]
       });
       L.marker([pt.lat, pt.lon], { icon, interactive: false }).addTo(group);
 
-      // "H" badge for holding fixes.
+      // "H" badge with bearing/side text for holding fixes.
       if (pt.isHolding) {
         const bearingStr = pt.holdingBearing ? `${pt.holdingBearing}°` : '---';
-        const sideStr    = pt.holdingSide    || 'RIGHT';
+        const sideStr = pt.holdingSide || 'RIGHT';
         const holdingIcon = L.divIcon({
-          className:  'holding-badge-marker',
-          html: `<div class="holding-badge-inner">` +
-                `<span class="holding-badge-h">H</span>` +
-                `<span class="holding-badge-info">${_safeEscape(bearingStr)} ${_safeEscape(sideStr)}</span>` +
-                `</div>`,
-          iconSize:   [0, 0],
+          className: 'holding-badge-marker',
+          html: `<div class="holding-badge-inner"><span class="holding-badge-h" style="color:${_safeEscape(procedure.color)};">H</span></div>`,
+          iconSize: [0, 0],
           iconAnchor: [0, 0]
         });
         L.marker([pt.lat, pt.lon], { icon: holdingIcon, interactive: false }).addTo(group);
+
+        // Phase 24: Aeronautical holding pattern diagram (indicative racetrack SVG)
+        const patternIcon = L.divIcon({
+          className: 'holding-pattern-marker',
+          html: _buildHoldingPatternSvg(pt.holdingBearing, pt.holdingSide, procedure.color),
+          iconSize: [0, 0],
+          iconAnchor: [0, 0]
+        });
+        L.marker([pt.lat, pt.lon], { icon: patternIcon, interactive: false }).addTo(group);
       }
     });
   };
@@ -1251,11 +1283,11 @@ const renderSavedProcedure = (mapInstance, procedure) => {
 
     // Use a hue-shifted version of the procedure color for visual distinction.
     const branchColor = _transitionColor(procedure.color, transitionIndex);
-    const branchLine  = L.polyline(branchCoords, {
+    const branchLine = L.polyline(branchCoords, {
       ...shapeOptions,
-      color:     branchColor,
+      color: branchColor,
       dashArray: '8, 5',   // dashed line distinguishes transitions from solid common route
-      opacity:   0.80
+      opacity: 0.80
     });
     branchLine.bindTooltip(
       `${procedure.name} — ${transition.name}`,
@@ -1285,18 +1317,18 @@ const renderSavedProcedure = (mapInstance, procedure) => {
         const p2 = points[i + 1];
         if (p1.lat == null || p1.lon == null || p2.lat == null || p2.lon == null) continue;
 
-        const distNm    = calculateDistance(p1.lat, p1.lon, p2.lat, p2.lon);
-        const trueBrg   = calculateTrueBearing(p1.lat, p1.lon, p2.lat, p2.lon);
-        const magBrg    = trueToMagnetic(trueBrg);
+        const distNm = calculateDistance(p1.lat, p1.lon, p2.lat, p2.lon);
+        const trueBrg = calculateTrueBearing(p1.lat, p1.lon, p2.lat, p2.lon);
+        const magBrg = trueToMagnetic(trueBrg);
         const labelText = `${distNm.toFixed(1)} NM  ${String(Math.round(magBrg)).padStart(3, '0')}°`;
 
-        const midLat    = (p1.lat + p2.lat) / 2;
-        const midLon    = (p1.lon + p2.lon) / 2;
+        const midLat = (p1.lat + p2.lat) / 2;
+        const midLon = (p1.lon + p2.lon) / 2;
 
         const measureIcon = L.divIcon({
-          className:  'seg-measurement-label',
-          html:       `<span>${_safeEscape(labelText)}</span>`,
-          iconSize:   [0, 0],
+          className: 'seg-measurement-label',
+          html: `<span>${_safeEscape(labelText)}</span>`,
+          iconSize: [0, 0],
           iconAnchor: [0, 0]
         });
         L.marker([midLat, midLon], { icon: measureIcon, interactive: false, zIndexOffset: -100 })
@@ -1350,11 +1382,11 @@ const _highlightFix = (marker, active) => {
   if (active) {
     _highlightedFixes.add(id);
     marker.setStyle({
-      color:       '#ffffff',
-      fillColor:   marker.defaultStyle?.fillColor || '#7ec8e3',
+      color: '#ffffff',
+      fillColor: marker.defaultStyle?.fillColor || '#7ec8e3',
       fillOpacity: 1,
-      opacity:     1,
-      weight:      2.5
+      opacity: 1,
+      weight: 2.5
     });
     if (marker.setRadius) marker.setRadius(6);
   } else {
@@ -1392,7 +1424,7 @@ const _getOrCreateContextMenu = () => {
   if (_contextMenuEl) return _contextMenuEl;
 
   _contextMenuEl = document.createElement('div');
-  _contextMenuEl.id        = 'map-context-menu';
+  _contextMenuEl.id = 'map-context-menu';
   _contextMenuEl.className = 'map-context-menu';
   _contextMenuEl.style.display = 'none';
   document.body.appendChild(_contextMenuEl);
@@ -1431,10 +1463,10 @@ const _showContextMenu = (x, y, ident) => {
   // Determine whether to show the "Add Transition" option.
   // We suppress it if the user is already drawing a transition (can't nest transitions).
   const alreadyInTransition = _contextMenuCallbacks?.isInTransitionMode?.() ?? false;
-  const canAddTransition    = !alreadyInTransition && !!_contextMenuCallbacks?.onAddTransition;
+  const canAddTransition = !alreadyInTransition && !!_contextMenuCallbacks?.onAddTransition;
 
   // Derive the procedure type (defaults to 'SID' when unknown).
-  const procType  = _contextMenuCallbacks?.procedureType?.() || 'SID';
+  const procType = _contextMenuCallbacks?.procedureType?.() || 'SID';
   const isArrival = ['STAR', 'IAC'].includes(procType);
   const direction = isArrival ? 'inbound' : 'outbound';
 
@@ -1456,8 +1488,8 @@ const _showContextMenu = (x, y, ident) => {
   // Clamp position so the menu never overflows the viewport edges.
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  menu.style.left    = `${Math.min(x, vw - 210)}px`;
-  menu.style.top     = `${Math.min(y, vh - 110)}px`;
+  menu.style.left = `${Math.min(x, vw - 210)}px`;
+  menu.style.top = `${Math.min(y, vh - 110)}px`;
   menu.style.display = 'block';
 
   // Wire up item clicks.
@@ -1467,7 +1499,7 @@ const _showContextMenu = (x, y, ident) => {
       if (action === 'add-transition' && _contextMenuCallbacks?.onAddTransition) {
         _contextMenuCallbacks.onAddTransition(ident, direction);
       }
-      if (action === 'edit'   && _contextMenuCallbacks?.onEdit)   _contextMenuCallbacks.onEdit(ident);
+      if (action === 'edit' && _contextMenuCallbacks?.onEdit) _contextMenuCallbacks.onEdit(ident);
       if (action === 'remove' && _contextMenuCallbacks?.onRemove) _contextMenuCallbacks.onRemove(ident);
       _hideContextMenu();
     });
@@ -1611,11 +1643,11 @@ const _buildWeatherCard = (data) => {
   const raw = data.raw_metar || '';
 
   // Raw METAR regex parsers (ICAO METAR format).
-  const _rawWind    = () => { const m = raw.match(/\b(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?KT\b/); return m || null; };
-  const _rawVis     = () => { const m = raw.match(/\b(\d{4})\b/);   return m ? m[1] : null; }; // metres
-  const _rawAlt     = () => { const m = raw.match(/\bQ(\d{4})\b/);  return m ? m[1] : null; }; // QNH hPa
-  const _rawTemp    = () => { const m = raw.match(/\bM?(\d{2})\/M?(\d{2})\b/); return m || null; };
-  const _rawClouds  = () => {
+  const _rawWind = () => { const m = raw.match(/\b(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?KT\b/); return m || null; };
+  const _rawVis = () => { const m = raw.match(/\b(\d{4})\b/); return m ? m[1] : null; }; // metres
+  const _rawAlt = () => { const m = raw.match(/\bQ(\d{4})\b/); return m ? m[1] : null; }; // QNH hPa
+  const _rawTemp = () => { const m = raw.match(/\bM?(\d{2})\/M?(\d{2})\b/); return m || null; };
+  const _rawClouds = () => {
     const matches = [...raw.matchAll(/\b(FEW|SCT|BKN|OVC|SKC|CLR|NSC|CAVOK)(\d{3})?\b/g)];
     return matches.length ? matches : null;
   };
@@ -1692,9 +1724,9 @@ const _buildWeatherCard = (data) => {
     cloudsTier = 1;
   } else if (data.clouds && data.clouds.length && !apiCloudsSuspect) {
     // Ceiling-only BKN/OVC in compact METAR format (BKN020). FEW/SCT shown as NIL.
-    const ceilT1 = data.clouds.filter(function(c){ return c.code === 'BKN' || c.code === 'OVC'; });
+    const ceilT1 = data.clouds.filter(function (c) { return c.code === 'BKN' || c.code === 'OVC'; });
     cloudsStr = ceilT1.length
-      ? ceilT1.map(function(c){ return c.code + String(Math.round(c.base_ft / 100)).padStart(3,'0'); }).join(' ')
+      ? ceilT1.map(function (c) { return c.code + String(Math.round(c.base_ft / 100)).padStart(3, '0'); }).join(' ')
       : 'NIL';
     cloudsTier = 1;
   } else {
@@ -1707,16 +1739,16 @@ const _buildWeatherCard = (data) => {
         cloudsTier = 2;
       } else {
         // Ceiling-only, compact METAR format
-        const ceilT2 = rc.filter(function(m){ return m[1] === 'BKN' || m[1] === 'OVC'; });
+        const ceilT2 = rc.filter(function (m) { return m[1] === 'BKN' || m[1] === 'OVC'; });
         cloudsStr = ceilT2.length
-          ? ceilT2.map(function(m){ return m[1] + (m[2] || '///'); }).join(' ')
+          ? ceilT2.map(function (m) { return m[1] + (m[2] || '///'); }).join(' ')
           : 'NIL';
         cloudsTier = 2;
       }
     } else if (tafP0?.clouds?.length) {
-      const ceilT3 = tafP0.clouds.filter(function(c){ return c.code === 'BKN' || c.code === 'OVC'; });
+      const ceilT3 = tafP0.clouds.filter(function (c) { return c.code === 'BKN' || c.code === 'OVC'; });
       cloudsStr = ceilT3.length
-        ? ceilT3.map(function(c){ return c.code + String(Math.round(c.base_ft / 100)).padStart(3,'0'); }).join(' ')
+        ? ceilT3.map(function (c) { return c.code + String(Math.round(c.base_ft / 100)).padStart(3, '0'); }).join(' ')
         : 'NIL';
       cloudsTier = 3;
     } else {
@@ -1729,7 +1761,7 @@ const _buildWeatherCard = (data) => {
   // altimeter_hpa defaults to 0 in _normaliseMetar when missing, so treat 0 as absent.
   let tempStr, tempTier;
   const tempC = data.temperature_c;
-  const dewC  = data.dewpoint_c;
+  const dewC = data.dewpoint_c;
   if (tempC !== 0 || dewC !== 0) {
     tempStr = `${tempC}°C/${dewC}°C`;
     tempTier = 1;
@@ -1779,11 +1811,11 @@ const _buildWeatherCard = (data) => {
   let observedShort = '';
   try {
     if (data.observed) {
-      const d   = new Date(data.observed);
+      const d = new Date(data.observed);
       const day = String(d.getUTCDate()).padStart(2, '0');
       const mon = d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
-      const hh  = String(d.getUTCHours()).padStart(2, '0');
-      const mm  = String(d.getUTCMinutes()).padStart(2, '0');
+      const hh = String(d.getUTCHours()).padStart(2, '0');
+      const mm = String(d.getUTCMinutes()).padStart(2, '0');
       observedShort = `${day} ${mon} ${hh}:${mm}Z`;
     }
   } catch (_) { observedShort = data.observed || ''; }
@@ -1865,10 +1897,10 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
   const _formatRunways = (icao) => {
     const list = rwyMap.get(icao);
     if (!list || list.length === 0) return null;
-    
+
     // Sort them. For VHHH: 07C, 07L, 07R, 25C, 25L, 25R
     list.sort();
-    
+
     // Group by first two digits (the heading)
     const groups = new Map();
     list.forEach(r => {
@@ -1876,7 +1908,7 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
       if (!groups.has(head)) groups.set(head, []);
       groups.get(head).push(r);
     });
-    
+
     // Join groups with ' - '
     const sortedHeads = Array.from(groups.keys()).sort();
     return sortedHeads.map(h => groups.get(h).join('/')).join(' - ');
@@ -1941,11 +1973,11 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
     const popupHtml = _buildAirportPopupHtml(icao, aerodrome.name, aerodrome.lat, aerodrome.lon, null, _formatRunways(icao));
 
     const popup = L.popup({
-      className:    'airport-wx-popup',
-      closeOnClick: false, 
-      autoClose:    false,
-      maxWidth:     340,
-      minWidth:     260,
+      className: 'airport-wx-popup',
+      closeOnClick: false,
+      autoClose: false,
+      maxWidth: 340,
+      minWidth: 260,
     }).setContent(popupHtml);
 
     marker.bindPopup(popup);
@@ -1988,7 +2020,7 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
         clickEvent.stopPropagation();
 
         console.log(`[MapLayers] Weather button clicked for ${icao}`);
-        
+
         const body = container.querySelector('.wx-body');
         if (!body) return;
 
@@ -1997,7 +2029,7 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
             <span class="wx-spinner"></span>
             <span>${i18n.t('map.weather.loading')}</span>
           </div>`;
-        
+
         // Sync Leaflet's internal state so it doesn't overwrite our spinner
         const contentNode = container.querySelector('.leaflet-popup-content');
         if (contentNode) e.popup._content = contentNode.innerHTML;
@@ -2061,21 +2093,21 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
     const icon = L.divIcon({
       className: 'airport-icon-regional',
       html: `<div class="airport-icon-inner-regional">` +
-            `<span class="airport-symbol-regional">&#9992;</span>` +
-            `<span class="airport-label-regional">${_safeEscape(aerodrome.icao)}</span>` +
-            `</div>`,
-      iconSize:   [0, 0],
+        `<span class="airport-symbol-regional">&#9992;</span>` +
+        `<span class="airport-label-regional">${_safeEscape(aerodrome.icao)}</span>` +
+        `</div>`,
+      iconSize: [0, 0],
       iconAnchor: isShifted ? [10, 0] : [0, 0]
     });
 
     const marker = L.marker([aerodrome.lat, aerodrome.lon], { icon });
     marker.fixData = { ident: aerodrome.icao, name: aerodrome.name, lat: aerodrome.lat, lon: aerodrome.lon, tipo: 'AERODROME', isFix: false };
-    
+
     const icao = aerodrome.icao.toUpperCase();
     const rwys = _formatRunways(icao);
     const rwyLine = rwys ? `<div style="color:#ffb547;font-size:10px;margin-top:2px;">RWY ${rwys}</div>` : '';
-    
-    const tooltipHtml = 
+
+    const tooltipHtml =
       `<div style="font-family:'JetBrains Mono';font-size:12px;font-weight:bold;">${_safeEscape(aerodrome.icao)}</div>` +
       `<div style="font-family:Inter;font-size:11px;color:#aaa;">${_safeEscape(aerodrome.name)}</div>` +
       rwyLine;
@@ -2095,15 +2127,15 @@ const renderAerodromes = (mapInstance, aerodromes, thresholds = []) => {
     const icon = L.divIcon({
       className: 'heliport-icon',
       html: `<div class="heliport-icon-inner">` +
-            `<span class="heliport-symbol">H</span>` +
-            `</div>`,
-      iconSize:   [0, 0],
+        `<span class="heliport-symbol">H</span>` +
+        `</div>`,
+      iconSize: [0, 0],
       iconAnchor: [0, 0]
     });
 
     const marker = L.marker([aerodrome.lat, aerodrome.lon], { icon });
     marker.fixData = { ident: aerodrome.icao, name: aerodrome.name, lat: aerodrome.lat, lon: aerodrome.lon, tipo: 'AERODROME', isFix: false };
-    const tooltipHtml = 
+    const tooltipHtml =
       `<div style="font-family:'JetBrains Mono';font-size:12px;font-weight:bold;">${_safeEscape(aerodrome.icao)} <span style="color:#888;font-size:10px">[Heliport]</span></div>` +
       `<div style="font-family:Inter;font-size:11px;color:#ccc;">${_safeEscape(aerodrome.name)}</div>`;
     _bindDelayedTooltip(marker, tooltipHtml, { direction: 'top', offset: [0, -8], className: 'fix-tooltip' });
@@ -2212,14 +2244,14 @@ const renderNavaids = (mapInstance, navaids) => {
     const labelClass = isVor ? 'navaid-label-inline--vor' : 'navaid-label-inline--ndb';
     const finalIconHtml =
       `<div class="navaid-icon-inner">` +
-        `<span class="navaid-label-inline ${labelClass}">${_safeEscape(navaid.ident)}</span>` +
-        iconHtml +
+      `<span class="navaid-label-inline ${labelClass}">${_safeEscape(navaid.ident)}</span>` +
+      iconHtml +
       `</div>`;
 
     const icon = L.divIcon({
-      className:  'navaid-icon',
-      html:       finalIconHtml,
-      iconSize:   [0, 0],
+      className: 'navaid-icon',
+      html: finalIconHtml,
+      iconSize: [0, 0],
       iconAnchor: [0, 0]
     });
 
@@ -2229,25 +2261,27 @@ const renderNavaids = (mapInstance, navaids) => {
     const accentColor = isVor ? '#46a0ff' : '#ff5abe';
     const popupHtml =
       `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7">` +
-        `<b>${_safeEscape(navaid.ident)}</b>` +
-        ` <span style="color:#888;font-size:10px">${_safeEscape(navaid.type)}</span><br>` +
-        `<span style="font-size:11px;color:#ccc">${_safeEscape(navaid.name)}</span>` +
-        (freqStr ? `<br><span style="font-size:11px;color:${accentColor}">${_safeEscape(freqStr)}</span>` : '') +
+      `<b>${_safeEscape(navaid.ident)}</b>` +
+      ` <span style="color:#888;font-size:10px">${_safeEscape(navaid.type)}</span><br>` +
+      `<span style="font-size:11px;color:#ccc">${_safeEscape(navaid.name)}</span>` +
+      (freqStr ? `<br><span style="font-size:11px;color:${accentColor}">${_safeEscape(freqStr)}</span>` : '') +
       `</div>`;
-      
+
     _bindDelayedInfoPopup(marker, [navaid.lat, navaid.lon], popupHtml);
-    
-    // Pass clicks to MV tool or snap mode if active.
+
+    // Pass clicks to MV tool, regular snap mode, or ghost snap mode if active.
+    // Ghost snap mode (route-type builder) previously only responded to clicks on ghost
+    // fix markers, making navaids un-selectable as procedure points. Both callbacks
+    // now share the same ad-hoc fixData object.
     marker.on('click', (e) => {
       L.DomEvent.stop(e);
       if (isMeasuringVectorActive()) {
         handleMVClick(e.latlng, _mapRef);
         return;
       }
-      if (_snapCallback) {
-        // Build an ad-hoc fixData object for the navaid
-        _snapCallback({ ident: navaid.ident, name: navaid.name, lat: navaid.lat, lon: navaid.lon, tipo: 'NAVAID', isFix: false });
-      }
+      const snapData = { ident: navaid.ident, name: navaid.name, lat: navaid.lat, lon: navaid.lon, tipo: 'NAVAID', isFix: false };
+      if (_snapCallback) _snapCallback(snapData);
+      if (_ghostSnapCallback) _ghostSnapCallback(snapData);
     });
 
     navaidLayer.addLayer(marker);
@@ -2290,10 +2324,10 @@ const buildAerodromeLayerControl = (mapInstance, majorLayer, regionalLayer, heli
   // Build the overlays object — only include a layer if it actually exists so
   // the control doesn't show broken entries if one tier loaded zero records.
   const overlays = {};
-  if (majorLayer)    overlays['Major Airports']    = majorLayer;
+  if (majorLayer) overlays['Major Airports'] = majorLayer;
   if (regionalLayer) overlays['Regional Airports'] = regionalLayer;
-  if (heliportLayer) overlays['Heliports']         = heliportLayer;
-  if (navaidLayer)   overlays['NAVAIDs']            = navaidLayer;
+  if (heliportLayer) overlays['Heliports'] = heliportLayer;
+  if (navaidLayer) overlays['NAVAIDs'] = navaidLayer;
 
   // Phase 10.5: The native L.control.layers panel is replaced by the custom
   // right-toolbar sub-panels. This function now only validates its inputs;
@@ -2330,9 +2364,9 @@ const updateCommonRouteGhost = (mapInstance, drawingState) => {
   const dashMap = { solid: null, dashed: '10, 8', dotted: '3, 6' };
 
   _commonRouteGhostLayer = L.polyline(coords, {
-    color:     drawingState.metadata.color,
-    weight:    2,
-    opacity:   0.35,   // faded so the user focuses on the branch they are drawing
+    color: drawingState.metadata.color,
+    weight: 2,
+    opacity: 0.35,   // faded so the user focuses on the branch they are drawing
     dashArray: dashMap[drawingState.metadata.pattern] ?? null,
     interactive: false // ghost is purely visual — no click events
   }).addTo(mapInstance);
@@ -2374,8 +2408,7 @@ const clearCommonRouteGhost = (mapInstance) => {
 // Call this after any sequence change (point add, remove, edit, or reorder).
 //
 // For each point in 'activePoints' where isHolding === true, a small "H" badge
-// DivIcon is placed on the map at that point's coordinates. The badge shows the
-// inbound bearing and turn direction (e.g., "090° RIGHT").
+// DivIcon is placed on the map at that point's coordinates.
 //
 // If no points are holding, the layer is removed from the map to keep it clean.
 //
@@ -2384,6 +2417,15 @@ const clearCommonRouteGhost = (mapInstance) => {
 // 'sequenceColor' — the procedure color; used to tint the badge border
 const updateHoldingMarkers = (mapInstance, activePoints, sequenceColor = '#4ddb8d') => {
   if (!mapInstance) return;
+
+  // Create a dedicated Leaflet pane for holding badges the first time it is needed.
+  // z-index 700 sits above markerPane (600) and tooltipPane (650), so the "H" badge
+  // is always rendered on top of any ghost fix label at the same position.
+  if (!mapInstance.getPane('holdingPane')) {
+    const hp = mapInstance.createPane('holdingPane');
+    hp.style.zIndex = '700';
+    hp.style.pointerEvents = 'none';
+  }
 
   // Create the layer on first call.
   if (!_holdingMarkersLayer) {
@@ -2396,26 +2438,58 @@ const updateHoldingMarkers = (mapInstance, activePoints, sequenceColor = '#4ddb8
 
   // Build a marker for every point that is flagged as a holding fix.
   const holdingPoints = (activePoints || []).filter((pt) => pt.isHolding);
+  const newIdents = new Set(holdingPoints.map((pt) => pt.ident?.toUpperCase()).filter(Boolean));
+
+  // Restore ghost labels for any idents that are no longer holding.
+  let labelsChanged = false;
+  _suppressedGhostIdents.forEach((ident) => {
+    if (!newIdents.has(ident)) {
+      _suppressedGhostIdents.delete(ident);
+      labelsChanged = true;
+    }
+  });
 
   holdingPoints.forEach((pt) => {
     if (pt.lat == null || pt.lon == null) return;
 
     const bearingStr = pt.holdingBearing ? `${pt.holdingBearing}°` : '---';
-    const sideStr    = pt.holdingSide    || 'RIGHT';
+    const sideStr = pt.holdingSide || 'RIGHT';
 
     const icon = L.divIcon({
-      className:  'holding-badge-marker',
-      html: `<div class="holding-badge-inner" style="border-color:${_safeEscape(sequenceColor)};">` +
-            `<span class="holding-badge-h" style="color:${_safeEscape(sequenceColor)};">H</span>` +
-            `<span class="holding-badge-info">${_safeEscape(bearingStr)} ${_safeEscape(sideStr)}</span>` +
-            `</div>`,
-      iconSize:   [0, 0],
+      className: 'holding-badge-marker',
+      html: `<div class="holding-badge-inner"><span class="holding-badge-h" style="color:${_safeEscape(sequenceColor)};">H</span></div>`,
+      iconSize: [0, 0],
       iconAnchor: [0, 0]
     });
 
-    L.marker([pt.lat, pt.lon], { icon, interactive: false })
+    // Use the dedicated holdingPane so the badge always renders above ghost fix labels.
+    L.marker([pt.lat, pt.lon], { icon, interactive: false, pane: 'holdingPane' })
       .addTo(_holdingMarkersLayer);
+
+    // Phase 24: Aeronautical holding pattern diagram (indicative racetrack SVG)
+    const patternIcon = L.divIcon({
+      className: 'holding-pattern-marker',
+      html: _buildHoldingPatternSvg(pt.holdingBearing, pt.holdingSide, sequenceColor),
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    });
+    L.marker([pt.lat, pt.lon], { icon: patternIcon, interactive: false, pane: 'holdingPane' })
+      .addTo(_holdingMarkersLayer);
+
+
+    // Suppress the ghost fix label at this position so the "H" badge is the sole
+    // identifier. _refreshGhostLabels() below will apply the suppression to the DOM.
+    if (pt.ident) {
+      const up = pt.ident.toUpperCase();
+      if (!_suppressedGhostIdents.has(up)) {
+        _suppressedGhostIdents.add(up);
+        labelsChanged = true;
+      }
+    }
   });
+
+  // Re-render ghost labels only if the suppression set changed to avoid unnecessary DOM work.
+  if (labelsChanged) _refreshGhostLabels();
 
   // Add the layer if there are holdings; remove it if the list is empty.
   // This prevents an invisible empty layer from sitting on the map unnecessarily.
@@ -2434,6 +2508,7 @@ const updateHoldingMarkers = (mapInstance, activePoints, sequenceColor = '#4ddb8
 // Removes all holding markers and takes the layer off the map.
 // Called when the drawing session ends (save or cancel) so no stale
 // holding badges are left behind from the previous build session.
+// Also restores any ghost fix labels that were suppressed by the holding badges.
 //
 // 'mapInstance' — the Leaflet map
 const clearHoldingMarkers = (mapInstance) => {
@@ -2442,6 +2517,11 @@ const clearHoldingMarkers = (mapInstance) => {
       mapInstance.removeLayer(_holdingMarkersLayer);
     }
     _holdingMarkersLayer.clearLayers();
+  }
+  // Restore ghost labels for all previously suppressed idents.
+  if (_suppressedGhostIdents.size > 0) {
+    _suppressedGhostIdents.clear();
+    _refreshGhostLabels();
   }
 };
 
@@ -2466,27 +2546,69 @@ const clearHoldingMarkers = (mapInstance) => {
 //                 Use this to refresh the sidebar sequence list with final coordinates.
 //
 // Returns: the Leaflet marker object (main.js stores it in _draggableMarkers[])
-const createDraggableCustomMarker = (mapInstance, lat, lon, color, onDrag, onDragEnd) => {
+// Shows a temporary, non-draggable "pending" marker at the position of a custom
+// drop point while the restriction form is open. This gives the user immediate
+// visual confirmation that the point was registered, before they click "Add Point".
+//
+// The marker uses the same diamond glyph as the real draggable marker but with a
+// dashed border and a gentle pulse animation (.pending modifier class) to signal
+// that the point is still awaiting confirmation.
+//
+// Only one pending marker can exist at a time — call clearPendingCustomMarker before
+// calling this if there is already one on the map.
+const showPendingCustomMarker = (mapInstance, lat, lon, color, ident) => {
+  if (!mapInstance) return;
+  const icon = L.divIcon({
+    className: 'draggable-custom-marker',
+    html: `<div class="draggable-custom-marker-inner pending" style="border-color:${_safeEscape(color)};color:${_safeEscape(color)};">` +
+      `<span class="draggable-diamond">◇</span>` +
+      `</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
+  _pendingCustomMarker = L.marker([lat, lon], { icon, draggable: false, interactive: false, zIndexOffset: 490 });
+  _pendingCustomMarker.addTo(mapInstance);
+  if (ident) {
+    _pendingCustomMarker.bindTooltip(ident, { permanent: true, direction: 'bottom', offset: [0, 12], className: 'custom-point-label' });
+  }
+};
+
+// Removes the pending custom marker from the map if one exists.
+// Called when the point is committed (replaced by the real draggable marker)
+// or when the session is cancelled or cleaned up.
+const clearPendingCustomMarker = (mapInstance) => {
+  if (_pendingCustomMarker) {
+    if (mapInstance && mapInstance.hasLayer(_pendingCustomMarker)) {
+      mapInstance.removeLayer(_pendingCustomMarker);
+    }
+    _pendingCustomMarker = null;
+  }
+};
+
+
+const createDraggableCustomMarker = (mapInstance, lat, lon, color, onDrag, onDragEnd, ident) => {
   if (!mapInstance) {
     console.error('[MapLayers] createDraggableCustomMarker: No map instance provided.');
     return null;
   }
 
   // DivIcon: a small diamond glyph colored to match the procedure.
-  // iconSize [0,0] / iconAnchor [0,0] lets the CSS transform center it precisely.
+  // iconSize [24,24] / iconAnchor [12,12] tells Leaflet to center the 24×24 container
+  // exactly at the coordinate using its own anchor math. This is more stable than
+  // [0,0]/[0,0] + CSS translate(-50%,-50%), which can drift after zoom animations.
   const icon = L.divIcon({
-    className:  'draggable-custom-marker',
+    className: 'draggable-custom-marker',
     html: `<div class="draggable-custom-marker-inner" style="border-color:${color}; color:${color};">` +
-          `<span class="draggable-diamond">◇</span>` +
-          `</div>`,
-    iconSize:   [0, 0],
-    iconAnchor: [0, 0]
+      `<span class="draggable-diamond">◇</span>` +
+      `</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
   });
 
   // draggable: true is the Leaflet built-in option that makes the marker moveable.
   const marker = L.marker([lat, lon], {
     icon,
-    draggable:    true,
+    draggable: true,
     zIndexOffset: 500   // sit above the procedure polyline so it is easy to grab
   });
 
@@ -2507,6 +2629,9 @@ const createDraggableCustomMarker = (mapInstance, lat, lon, color, onDrag, onDra
   });
 
   marker.addTo(mapInstance);
+  if (ident) {
+    marker.bindTooltip(ident, { permanent: true, direction: 'bottom', offset: [0, 12], className: 'custom-point-label' });
+  }
   console.log(`[MapLayers] Draggable custom marker created at (${lat.toFixed(4)}, ${lon.toFixed(4)}).`);
   return marker;
 };
@@ -2589,8 +2714,8 @@ const renderGlobalSearchHighlights = (mapInstance, results, term) => {
 
   const LAYER_COLORS = {
     aerodrome: '#3b9eff',
-    fix:       '#b06bff',
-    navaid:    '#ff8c00'
+    fix: '#b06bff',
+    navaid: '#ff8c00'
   };
 
   // VOR-family types — same set used in renderNavaids() for consistency.
@@ -2604,13 +2729,13 @@ const renderGlobalSearchHighlights = (mapInstance, results, term) => {
   // a fully-escaped plain string — i.e. the same output as `_safeEscape`.
   const _highlightMatch = (rawText) => {
     if (rawText == null || rawText === '') return '';
-    if (!term)                              return _safeEscape(rawText);
+    if (!term) return _safeEscape(rawText);
     const haystack = String(rawText);
     const idx = haystack.toUpperCase().indexOf(term);
     if (idx === -1) return _safeEscape(haystack);
     const before = _safeEscape(haystack.slice(0, idx));
-    const match  = _safeEscape(haystack.slice(idx, idx + term.length));
-    const after  = _safeEscape(haystack.slice(idx + term.length));
+    const match = _safeEscape(haystack.slice(idx, idx + term.length));
+    const after = _safeEscape(haystack.slice(idx + term.length));
     return `${before}<span class="fix-label-highlight">${match}</span>${after}`;
   };
 
@@ -2723,7 +2848,7 @@ const renderGlobalSearchHighlights = (mapInstance, results, term) => {
       // The glow is added via a drop-shadow filter on the SVG itself.
       // Only the ident is shown in the permanent label (same as the base marker);
       // the full name appears in the tooltip on hover.
-      const isVor      = VOR_TYPES.has(result.type);
+      const isVor = VOR_TYPES.has(result.type);
       const labelClass = isVor ? 'navaid-label-inline--vor' : 'navaid-label-inline--ndb';
 
       let svgHtml;
@@ -2777,15 +2902,15 @@ const renderGlobalSearchHighlights = (mapInstance, results, term) => {
     const color = LAYER_COLORS[result.layer] || '#ffffff';
 
     const icon = L.divIcon({
-      className:  'global-search-highlight',
-      html:       _buildHighlightHtml(result, color),
-      iconSize:   [0, 0],
+      className: 'global-search-highlight',
+      html: _buildHighlightHtml(result, color),
+      iconSize: [0, 0],
       iconAnchor: [0, 0]
     });
 
     const marker = L.marker([result.lat, result.lon], {
       icon,
-      interactive:  true,
+      interactive: true,
       zIndexOffset: 1000   // always float above the normal data markers
     });
 
@@ -2809,7 +2934,7 @@ const renderGlobalSearchHighlights = (mapInstance, results, term) => {
 
     marker.bindTooltip(tooltipLines.join('<br>'), {
       direction: 'top',
-      offset:    [0, -14],
+      offset: [0, -14],
       className: 'fix-tooltip',
       permanent: false
     });
@@ -2903,16 +3028,16 @@ const _AIRSPACE_HOVER_DELAY_MS = 2000;
 //   FIR + FIZ + SEC (201) → TMA (202) → CTR (203) → ATZ (204) → UCARA (205)
 const _ensureAirspacePanes = (mapInstance) => {
   const panes = [
-    { name: 'airspaceFIRPane',   z: 201 },  // HK FIR + FIZ + SEC (bottom-most)
-    { name: 'airspaceTMAPane',   z: 202 },  // TMA + outer boundary
-    { name: 'airspaceCTRPane',   z: 203 },  // CTR
-    { name: 'airspaceATZPane',   z: 204 },  // ATZ
+    { name: 'airspaceFIRPane', z: 201 },  // HK FIR + FIZ + SEC (bottom-most)
+    { name: 'airspaceTMAPane', z: 202 },  // TMA + outer boundary
+    { name: 'airspaceCTRPane', z: 203 },  // CTR
+    { name: 'airspaceATZPane', z: 204 },  // ATZ
     { name: 'airspaceUCARAPane', z: 205 },  // UCARA (top of airspace group)
   ];
   panes.forEach(({ name, z }) => {
     if (!mapInstance.getPane(name)) {
       const pane = mapInstance.createPane(name);
-      pane.style.zIndex       = String(z);
+      pane.style.zIndex = String(z);
       pane.style.pointerEvents = 'none';   // visible fills are non-interactive
     }
   });
@@ -2920,9 +3045,9 @@ const _ensureAirspacePanes = (mapInstance) => {
 
 // Returns the correct Leaflet pane name for a given airspace type string.
 const _getAirspacePaneName = (type) => {
-  if (type === 'TMA')   return 'airspaceTMAPane';
-  if (type === 'CTR')   return 'airspaceCTRPane';
-  if (type === 'ATZ')   return 'airspaceATZPane';
+  if (type === 'TMA') return 'airspaceTMAPane';
+  if (type === 'CTR') return 'airspaceCTRPane';
+  if (type === 'ATZ') return 'airspaceATZPane';
   if (type === 'UCARA') return 'airspaceUCARAPane';
   return 'airspaceFIRPane';   // FIR, FIZ, SEC all sit in the bottom tier
 };
@@ -2937,8 +3062,8 @@ const _getAirspacePaneName = (type) => {
 // a future airspace is added without complete metadata.
 const _buildAirspaceTooltipHtml = (name, type, airspaceClass, limits) => {
   const PLACEHOLDER = '—';
-  const classStr  = (airspaceClass && String(airspaceClass).trim()) || PLACEHOLDER;
-  const limitsStr = (limits && String(limits).trim())              || PLACEHOLDER;
+  const classStr = (airspaceClass && String(airspaceClass).trim()) || PLACEHOLDER;
+  const limitsStr = (limits && String(limits).trim()) || PLACEHOLDER;
   return (
     `<span class="ah-name">${name}</span>` +
     `<span class="ah-row"><span class="ah-key">Type:</span>${type}</span>` +
@@ -2962,26 +3087,26 @@ const _attachAirspaceHoverTooltip = (mapInstance, polygon, name, type, coordinat
   const ring = coordinates.slice();
   if (ring.length > 0) {
     const first = ring[0];
-    const last  = ring[ring.length - 1];
+    const last = ring[ring.length - 1];
     if (first[0] !== last[0] || first[1] !== last[1]) ring.push([first[0], first[1]]);
   }
 
   const borderHit = L.polyline(ring, {
-    color:        'rgba(0,0,0,0.001)',  // near-zero paint so SVG hit-tests but nothing shows
-    weight:       8,                     // generous hit area along the stroke
-    opacity:      1,                     // we already use a transparent colour above
-    interactive:  true,
+    color: 'rgba(0,0,0,0.001)',  // near-zero paint so SVG hit-tests but nothing shows
+    weight: 8,                     // generous hit area along the stroke
+    opacity: 1,                     // we already use a transparent colour above
+    interactive: true,
     bubblingMouseEvents: true,           // clicks still bubble to the map (MV tool flow)
-    className:    'airspace-border-hit'
+    className: 'airspace-border-hit'
   });
 
   // Per-airspace state. `_timer` is the dwell handle; `_tooltip` is the
   // currently-open L.tooltip overlay (null when hidden); `_lastLatLng` is the
   // most recent cursor position seen on the border (used both for first show
   // and for follow-the-cursor while visible).
-  let _timer       = null;
-  let _tooltip     = null;
-  let _lastLatLng  = null;
+  let _timer = null;
+  let _tooltip = null;
+  let _lastLatLng = null;
 
   const _hideTooltip = () => {
     if (_tooltip) {
@@ -2997,11 +3122,11 @@ const _attachAirspaceHoverTooltip = (mapInstance, polygon, name, type, coordinat
       _timer = null;
       if (_tooltip) return;   // already open from a previous hover cycle
       _tooltip = L.tooltip({
-        sticky:    false,
+        sticky: false,
         direction: 'top',
-        opacity:   1,
+        opacity: 1,
         className: 'airspace-hover-tooltip',
-        offset:    [0, -8]
+        offset: [0, -8]
       })
         .setLatLng(_lastLatLng)
         .setContent(html)
@@ -3072,13 +3197,13 @@ const renderAirspaces = (mapInstance, airspaces) => {
   // Phase 12: Create dedicated panes for each airspace tier.
   _ensureAirspacePanes(mapInstance);
   // Per-polygon reference maps — keyed by the exact name string from the JSON.
-  const tmaSectors     = {};
-  const ctrPolygons    = {};
-  const fizPolygons    = {};
-  const atzPolygons    = {};
-  const firPolygons    = {};
+  const tmaSectors = {};
+  const ctrPolygons = {};
+  const fizPolygons = {};
+  const atzPolygons = {};
+  const firPolygons = {};
   const sectorPolygons = {};
-  const ucaraPolygons  = {};
+  const ucaraPolygons = {};
 
   // Only sectors 1-8 and 13 define the outer TMA envelope.
   // Sub-sectors 02F, 03F and inner sectors 09-12 are excluded from the hull so the
@@ -3090,7 +3215,7 @@ const renderAirspaces = (mapInstance, airspaces) => {
   // Short display labels used in click popups. Using T-XX keeps labels compact
   // and consistent with ATC sector notation in Brazilian airspace charts.
   const TMA_SHORT_NAMES = {
-    'HK TMA':  'HK-TMA',
+    'HK TMA': 'HK-TMA',
   };
 
 
@@ -3111,60 +3236,60 @@ const renderAirspaces = (mapInstance, airspaces) => {
     let fillColor, strokeColor, fillOpacity, weight, dashArray;
     if (type === 'TMA') {
       // Slate-100 fill / Slate-400 stroke — neutral, doesn't compete with CTR blue.
-      fillColor   = '#f1f5f9';
+      fillColor = '#f1f5f9';
       strokeColor = 'rgba(148,163,184,0.4)';
       fillOpacity = 0.05;
-      weight      = 1.5;
-      dashArray   = '6,4';
+      weight = 1.5;
+      dashArray = '6,4';
     } else if (type === 'CTR') {
       // Light blue — primary visual landmark for controlled terminal areas.
-      fillColor   = '#0ea5e9';
+      fillColor = '#0ea5e9';
       strokeColor = 'rgba(14,165,233,0.5)';
       fillOpacity = 0.08;
-      weight      = 1.5;
-      dashArray   = '4,3';
+      weight = 1.5;
+      dashArray = '4,3';
     } else if (type === 'FIZ') {
       // Purple — kept from Phase 10; doesn't clash with the new blue CTRs.
-      fillColor   = '#a855f7';
+      fillColor = '#a855f7';
       strokeColor = 'rgba(168,85,247,0.5)';
       fillOpacity = 0.07;
-      weight      = 1;
-      dashArray   = '4,4';
+      weight = 1;
+      dashArray = '4,4';
     } else if (type === 'ATZ') {
       // ATZ — orange; retains good contrast against both the gray TMA and blue CTR.
-      fillColor   = '#f97316';
+      fillColor = '#f97316';
       strokeColor = 'rgba(249,115,22,0.55)';
       fillOpacity = 0.07;
-      weight      = 1;
-      dashArray   = '3,3';
+      weight = 1;
+      dashArray = '3,3';
     } else if (type === 'FIR') {
       // Light green, very transparent — background layer for the entire FIR.
-      fillColor   = '#4ade80';
+      fillColor = '#4ade80';
       strokeColor = 'rgba(74,222,128,0.3)';
       fillOpacity = 0.03;
-      weight      = 1;
-      dashArray   = null;
+      weight = 1;
+      dashArray = null;
     } else if (type === 'SEC') {
       // FIR Sectors — dashed border, very light green fill.
-      fillColor   = '#4ade80';
+      fillColor = '#4ade80';
       strokeColor = 'rgba(74,222,128,0.5)';
       fillOpacity = 0.04;
-      weight      = 1.5;
-      dashArray   = '5, 5';
+      weight = 1.5;
+      dashArray = '5, 5';
     } else if (type === 'UCARA') {
       // Uncontrolled Airspace Reporting Areas — Yellowish/Amber, dashed.
-      fillColor   = '#facc15';
+      fillColor = '#facc15';
       strokeColor = 'rgba(250,204,21,0.5)';
       fillOpacity = 0.06;
-      weight      = 1.2;
-      dashArray   = '4, 2';
+      weight = 1.2;
+      dashArray = '4, 2';
     } else {
       // Unknown types - fallback to a neutral gray
-      fillColor   = '#94a3b8';
+      fillColor = '#94a3b8';
       strokeColor = 'rgba(148,163,184,0.5)';
       fillOpacity = 0.05;
-      weight      = 1;
-      dashArray   = '2,2';
+      weight = 1;
+      dashArray = '2,2';
     }
 
     // Phase 7 (border-only follow-up): the visible polygon is back to
@@ -3173,13 +3298,13 @@ const renderAirspaces = (mapInstance, airspaces) => {
     // `_attachAirspaceHoverTooltip`. This eliminates the chaos of multiple
     // overlapping polygons all firing mouseover from the same fill area.
     const polygon = L.polygon(coordinates, {
-      color:       strokeColor,
-      fillColor:   fillColor,
+      color: strokeColor,
+      fillColor: fillColor,
       fillOpacity: fillOpacity,
-      weight:      weight,
-      dashArray:   dashArray,
+      weight: weight,
+      dashArray: dashArray,
       interactive: false,
-      pane:        _getAirspacePaneName(type)
+      pane: _getAirspacePaneName(type)
     });
 
     // Phase 7: hover-tooltip wiring.
@@ -3237,10 +3362,10 @@ const renderAirspaces = (mapInstance, airspaces) => {
     // Phase 26: Outer boundary — white/gray stroke, no fill, clearly delineates
     // the TMA envelope without obscuring the sector fills underneath.
     tmaOuterLayer = L.polygon(finalCoords, {
-      color:       '#cbd5e1',
+      color: '#cbd5e1',
       fillOpacity: 0,
-      opacity:     0.7,
-      weight:      2.5,
+      opacity: 0.7,
+      weight: 2.5,
       interactive: false
     });
     tmaOuterLayer.addTo(mapInstance);
@@ -3287,7 +3412,7 @@ const applySymbolScale = (scale) => {
 // VFR waypoints (gates/positions) are rendered while the layer is active.
 const renderREA = async (mapInstance, visible) => {
   if (!_vfrLayersInitialized) await _initVfrLayers(mapInstance);
-  
+
   if (visible) {
     _reaLayerGroup.addTo(mapInstance);
   } else {
@@ -3302,7 +3427,7 @@ const renderREA = async (mapInstance, visible) => {
 // helicopter-specific waypoints are rendered while the layer is active.
 const renderREH = async (mapInstance, visible) => {
   if (!_vfrLayersInitialized) await _initVfrLayers(mapInstance);
-  
+
   if (visible) {
     _rehLayerGroup.addTo(mapInstance);
   } else {
@@ -3314,16 +3439,16 @@ const renderREH = async (mapInstance, visible) => {
 // Private: Initializes VFR data and LayerGroups.
 const _initVfrLayers = async (mapInstance) => {
   if (_vfrLayersInitialized) return;
-  
+
   const data = await loadVfrData();
   _vfrData = data;
-  
+
   _reaLayerGroup = L.layerGroup();
   _rehLayerGroup = L.layerGroup();
   _vfrWaypointsLayer = L.layerGroup();
-  
+
   _drawVfrCorridors();
-  
+
   _vfrLayersInitialized = true;
 };
 
@@ -3332,7 +3457,7 @@ const _initVfrLayers = async (mapInstance) => {
 const _updateVfrWaypointsVisibility = (mapInstance) => {
   const reaOn = mapInstance.hasLayer(_reaLayerGroup);
   const rehOn = mapInstance.hasLayer(_rehLayerGroup);
-  
+
   if (reaOn || rehOn) {
     if (!mapInstance.hasLayer(_vfrWaypointsLayer)) {
       _vfrWaypointsLayer.addTo(mapInstance);
@@ -3350,7 +3475,7 @@ const _updateVfrWaypointsVisibility = (mapInstance) => {
 // Private: Renders the actual VFR waypoint markers with distinct aesthetics.
 const _drawVfrWaypoints = (reaOn, rehOn) => {
   _vfrWaypointsLayer.clearLayers();
-  
+
   if (reaOn && _vfrData?.reaWaypoints) {
     _vfrData.reaWaypoints.forEach(wp => {
       const icon = L.divIcon({
@@ -3362,7 +3487,7 @@ const _drawVfrWaypoints = (reaOn, rehOn) => {
       L.marker([wp.lat, wp.lon], { icon, interactive: false }).addTo(_vfrWaypointsLayer);
     });
   }
-  
+
   if (rehOn && _vfrData?.rehFixes) {
     _vfrData.rehFixes.forEach(wp => {
       const icon = L.divIcon({
@@ -3379,17 +3504,17 @@ const _drawVfrWaypoints = (reaOn, rehOn) => {
 // Private: Renders VFR corridor segments as parallel 'axis' lines.
 const _drawVfrCorridors = () => {
   if (!_reaLayerGroup || !_rehLayerGroup) return;
-  
+
   _reaLayerGroup.clearLayers();
   _rehLayerGroup.clearLayers();
 
   const NM_TO_KM = 1.852;
   const OFFSET_NM = 1.0;  // 2.0NM total width (1.0NM each side)
-  
+
   const vfrLineStyle = {
-    color:       '#cbd5e1',
-    weight:      1.5,
-    opacity:     0.5,
+    color: '#cbd5e1',
+    weight: 1.5,
+    opacity: 0.5,
     interactive: false
   };
 
@@ -3408,14 +3533,14 @@ const _drawVfrCorridors = () => {
 
         // Invisible hit area
         L.polyline([[seg.pointA.lat, seg.pointA.lon], [seg.pointB.lat, seg.pointB.lon]], {
-          color:       'transparent',
-          weight:      20,
+          color: 'transparent',
+          weight: 20,
           interactive: true
         }).addTo(_reaLayerGroup);
-      } catch (err) {}
+      } catch (err) { }
     });
   }
-  
+
   // ── REH Corridors (Helicopter) ──────────────────────────────────────────────
   if (_vfrData?.rehSegments) {
     const rehStyle = { ...vfrLineStyle, dashArray: '4, 4' };
@@ -3427,9 +3552,9 @@ const _drawVfrCorridors = () => {
         const left = turf.lineOffset(line, OFFSET_NM * NM_TO_KM, { units: 'kilometers' });
         const right = turf.lineOffset(line, -OFFSET_NM * NM_TO_KM, { units: 'kilometers' });
 
-        L.polyline(left.geometry.coordinates.map(c => [c[1], c[0]]),  rehStyle).addTo(_rehLayerGroup);
+        L.polyline(left.geometry.coordinates.map(c => [c[1], c[0]]), rehStyle).addTo(_rehLayerGroup);
         L.polyline(right.geometry.coordinates.map(c => [c[1], c[0]]), rehStyle).addTo(_rehLayerGroup);
-      } catch (err) {}
+      } catch (err) { }
     });
   }
 };
@@ -3483,8 +3608,8 @@ const _showGhostHoverGlow = (fix) => {
   if (!_ghostMapRef) return;
   _removeGhostHoverGlow();
   const color = '#b06bff';
-  const glow  = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
-  const dot   =
+  const glow = `0 0 6px ${color}, 0 0 14px ${color}88, 0 0 22px ${color}44`;
+  const dot =
     `<div style="width:17px;height:17px;border-radius:50%;` +
     `background:${color};border:2px solid #ffffff;` +
     `box-shadow:${glow};pointer-events:none;"></div>`;
@@ -3531,22 +3656,34 @@ const _applyGhostLabels = (quantum) => {
     const fix = marker._fixData;
     if (!fix) continue;
     const key = cellKey(fix.lat, fix.lon);
-    if (!seen.has(key)) {
+    // Skip if already claimed by the dedup grid, OR if suppressed by a holding badge —
+    // the "H" marker is the primary label for holding fixes; showing both clutters the map.
+    if (!seen.has(key) && !_suppressedGhostIdents.has(fix.ident?.toUpperCase())) {
       seen.add(key);
       marker.bindTooltip(fix.ident, {
         permanent: true,
         direction: 'bottom',
         className: 'ghost-fix-label',
-        offset:    [0, 12]
+        offset: [0, 12]
       });
     }
   }
 };
 
+
+// Forces _applyGhostLabels to run again on the next call even if the quantum
+// has not changed. Used after _suppressedGhostIdents is mutated so the DOM
+// immediately reflects the updated suppression state.
+const _refreshGhostLabels = () => {
+  const saved = _currentLabelQuantum;
+  _currentLabelQuantum = null;
+  if (saved !== null) _applyGhostLabels(saved);
+};
+
 const _ensureGhostFixPane = (mapInstance) => {
   if (mapInstance.getPane('ghostFixPane')) return;   // already created — nothing to do
   const pane = mapInstance.createPane('ghostFixPane');
-  pane.style.zIndex       = '390';    // just below overlayPane=400
+  pane.style.zIndex = '390';    // just below overlayPane=400
   pane.style.pointerEvents = 'none';  // purely decorative — no mouse interaction
 };
 
@@ -3614,16 +3751,16 @@ const renderGhostFixes = (mapInstance, waypointData) => {
     const baseColor = '#7ec8e3';
 
     const marker = L.circleMarker([fix.lat, fix.lon], {
-      radius:              3.6,
-      color:               baseColor,
-      fillColor:           baseColor,
-      fillOpacity:         0.45,
-      weight:              1,
-      opacity:             0.45,
-      interactive:         true,   // SVG path responds when pane pointer-events is 'auto'
+      radius: 3.6,
+      color: baseColor,
+      fillColor: baseColor,
+      fillOpacity: 0.45,
+      weight: 1,
+      opacity: 0.45,
+      interactive: true,   // SVG path responds when pane pointer-events is 'auto'
       bubblingMouseEvents: false,
-      pane:                'ghostFixPane',
-      className:           `ghost-fix-marker ghost-fix-t${tier}`
+      pane: 'ghostFixPane',
+      className: `ghost-fix-marker ghost-fix-t${tier}`
     });
 
     // Store fix data for _applyGhostLabels() to rebind tooltips on zoom changes.
@@ -3710,6 +3847,56 @@ const disableGhostSnapMode = () => {
 };
 
 
+
+// ── PHASE 24: AERONAUTICAL HOLDING PATTERN SVG ──────────────────────────────
+// Generates an indicative (non-scaled) racetrack holding pattern diagram styled
+// after aeronautical instrument charts.
+//
+// 'bearingMag' — inbound magnetic bearing (degrees)
+// 'side'       — 'RIGHT' or 'LEFT'
+// 'color'      — hex color string
+const _buildHoldingPatternSvg = (bearingMag, side, color) => {
+  const LEG = 44;
+  const R   = 14;
+  const W   = 1.6;
+  const isRight = (side || 'RIGHT').toUpperCase() !== 'LEFT';
+  const sx = isRight ? R : -R;
+
+  const sw1 = isRight ? 1 : 0;
+  const sw2 = isRight ? 1 : 0;
+
+  const path = `M 0 0 A ${R} ${R} 0 0 ${sw1} ${sx*2} 0 L ${sx*2} ${-LEG} A ${R} ${R} 0 0 ${sw2} 0 ${-LEG} L 0 0`;
+
+  const arrow = (cx, cy, angleDeg) => {
+    const a = angleDeg * Math.PI / 180;
+    const f = 6;
+    const tip_x = cx + Math.sin(a) * f;
+    const tip_y = cy - Math.cos(a) * f;
+    const l_x   = cx - Math.cos(a) * f + Math.sin(a) * -f;
+    const l_y   = cy - Math.sin(a) * f - Math.cos(a) * -f;
+    const r_x   = cx + Math.cos(a) * f + Math.sin(a) * -f;
+    const r_y   = cy + Math.sin(a) * f - Math.cos(a) * -f;
+    return `<polyline points="${l_x.toFixed(1)},${l_y.toFixed(1)} ${tip_x.toFixed(1)},${tip_y.toFixed(1)} ${r_x.toFixed(1)},${r_y.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${W}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  };
+
+  const arrowInbound  = arrow(0, -LEG/2, 0);
+  const arrowOutbound = arrow(sx*2, -LEG/2, 180);
+  const arrowTurn1    = arrow(sx, R, isRight ? 90 : -90);
+  const arrowTurn2    = arrow(sx, -LEG - R, isRight ? -90 : 90);
+
+  const rot = typeof bearingMag === 'number' ? bearingMag : 0;
+  const vbSize = LEG + R * 2 + 10;
+
+  return (
+    `<svg viewBox="${-vbSize/2} ${-vbSize} ${vbSize*1.5} ${vbSize*1.5}" width="80" height="80" xmlns="http://www.w3.org/2000/svg" style="transform:translate(-50%,-50%) rotate(${rot}deg);display:block;overflow:visible;pointer-events:none;opacity:0.85;">` +
+    `<path d="${path}" fill="${color}1a" stroke="${color}" stroke-width="${W}" stroke-linejoin="round" fill-rule="evenodd"/>` +
+    `<circle cx="0" cy="0" r="3" fill="${color}" stroke="#ffffff" stroke-width="0.8"/>` +
+    arrowInbound + arrowOutbound + arrowTurn1 + arrowTurn2 +
+    `</svg>`
+  );
+};
+
+
 export {
   renderAirports,
   renderFixes,
@@ -3749,6 +3936,8 @@ export {
   renderGhostFixes,
   enableGhostSnapMode,
   disableGhostSnapMode,
-  getFilteredFixes
+  getFilteredFixes,
+  showPendingCustomMarker,
+  clearPendingCustomMarker
 };
 
