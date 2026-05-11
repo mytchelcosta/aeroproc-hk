@@ -342,30 +342,345 @@ Establish a professional delivery pipeline.
 
 ---
 
-## Phase 20: Builder Workflow & Interaction Fixes
+## Phase 20: Builder Workflow & Interaction Fixes (Complete)
 
-- [ ] **Navaids as Valid Procedure Points**:
-    - Navaids (VORs, NDBs) are currently not accepted when selected as procedure points. The snap/click callback likely filters results by `isFix: true` and rejects navaid entries.
-    - Fix: extend the snap callback to also accept `isNavaid: true` entries. In `SearchManager.buildSearchIndex`, ensure navaid entries include `lat` and `lon` fields. In `enableSnapMode` / `enableGhostSnapMode`, accept any result with a valid `{ ident, lat, lon }` regardless of type flag.
-- [ ] **"Create Procedure" vs "Save Procedure" Button Text**:
-    - When editing an existing procedure, the finalize button still reads "Create Procedure" — confusing since the user is saving an edit, not creating new.
-    - Rename the button label dynamically: use **"Save Procedure"** when `DrawingState` has an existing procedure ID (edit flow) and **"Create Procedure"** only for new ones. Detect edit mode via a flag set by `loadProcedureForEdit()`.
-- [ ] **Remove "Save" Button from Point Creation Panel**:
-    - While adding/configuring an individual point, the panel shows three buttons: "Add Point", "Erase", and "Save". The "Save" button here is confusing because it implies saving the whole procedure mid-point.
-    - Remove the "Save" button from the point configuration state. The panel should only show **"Add Point"** (confirm this point and move on) and **"Erase"** (clear this point with confirmation). "Save Procedure" / "Create Procedure" should only appear once the user is done adding all points.
-- [ ] **Lock/Unlock Cycle Empties Procedures List**:
-    - Going from View → Builder shows procedures correctly, but clicking the lock/unlock button causes the list to go empty.
-    - Root cause: `showMainMenu()` re-renders the entire builder DOM on every lock state toggle. If `refreshBuilderSavedList()` is called before the DOM is ready (e.g., `#builder-saved-list` doesn't exist yet in the new locked DOM), it silently no-ops and never re-populates. Fix: ensure `refreshBuilderSavedList()` is called **after** the new DOM is fully rendered on each lock state change, and that it reads from the persistent store (`loadAll()`) rather than an in-memory variable that gets cleared on re-render.
-- [ ] **Eye Symbol Not Hiding Procedure in Builder Mode**:
-    - Clicking the 👁 (toggle visibility) icon on a procedure in the builder list does not hide it from the map.
-    - The `renderSavedProcedure` or the visibility toggle handler in `Sidebar.js` / `main.js` likely does not fire or does not correctly call `map.removeLayer()` for the procedure's layer group. Verify the click event reaches the handler, that the layer reference is correctly stored by procedure ID, and that `map.hasLayer()` is used to guard the remove call.
-- [ ] **Delete Procedure Confirmation Prompt**:
-    - Clicking the ✕ button to delete a procedure removes it immediately with no warning.
-    - Wrap the delete action in a confirmation prompt (e.g., `confirm('Delete procedure \"NAME\"? This cannot be undone.')` or a custom styled modal consistent with the existing Manual Point modal pattern). Only proceed with deletion if the user confirms.
+- [x] **Navaids as Valid Procedure Points**:
+    - Root cause: `renderNavaids` click handler only checked `_snapCallback`, not `_ghostSnapCallback`. In ghost snap mode (route-type builder), clicking a VOR/NDB did nothing.
+    - Fix: both `_snapCallback` and `_ghostSnapCallback` are now called with the same `{ ident, lat, lon, tipo: 'NAVAID', isFix: false }` ad-hoc data object in the navaid marker's click handler in `MapLayers.js`.
+- [x] **"Create Procedure" vs "Save Procedure" Button Text**:
+    - Added `_isEditSession` module-level flag in `Sidebar.js`. `showDrawingPanel` accepts a third `options = {}` argument; `options.isEdit` sets the flag. `clearPendingPointRestrictions` derives button text from the same flag. `handleEditProcedure` in `main.js` passes `{ isEdit: true }` as the third argument; `handleStartDrawing` uses the default `{}`.
+- [x] **Remove "Save" Button from Point Creation Panel**:
+    - Removed the `btn-create-proc-pending` button and its click handler from `showPendingPointRestrictions` in `Sidebar.js`. The pending-point panel now shows only "✓ Add Point" and "✕ Erase". The finalize action remains in the idle-state "Create / Save Procedure" button visible above the sequence list.
+- [x] **Lock/Unlock Cycle Empties Procedures List**:
+    - Root cause: `showMainMenu()` re-renders the builder DOM on every lock toggle, but `_refreshBuilderSavedList()` was only called by the tab-change handler (not by the unlock callback). After toggling, `#builder-saved-list` existed in the new DOM but was empty.
+    - Fix: added `_refreshBuilderSavedList()` to the `setBuilderUnlockCallback` handler in `main.js`, so the list is repopulated immediately after each locked→unlocked transition.
+- [x] **Eye Symbol Not Hiding Procedure in Builder Mode**:
+    - Root cause: same as the lock/unlock issue above. After a lock→unlock toggle the list rendered empty, so there was no eye button to click. With `_refreshBuilderSavedList()` now called on unlock, the list is always populated and `handleToggleProcedure` fires correctly.
+- [x] **Delete Procedure Confirmation Prompt**:
+    - `handleDeleteProcedure` in `main.js` now calls `window.confirm('Delete procedure "NAME"?\n\nThis cannot be undone.')` before any destructive action. If the user cancels the prompt, the function returns immediately with no side effects.
+
+---
+
+## Phase 21: Builder Interaction Polish & Tool Integration ✅ COMPLETE
+
+This phase consolidated the point creation tools, refined keyboard ergonomics, and successfully migrated restriction editing into a sidebar-integrated workflow.
+
+- [x] **Unified Side Menu Editing**:
+    - Migrated `handlePointEdit` in `main.js` to use `showPendingPointRestrictions` in the sidebar.
+    - Implemented `initialValues` support in `Sidebar.js:showPendingPointRestrictions`.
+- [x] **Keyboard Workflow Enhancements**:
+    - **Tab Sequence**: Intercepted `Tab` on speed unit to focus holding toggle.
+    - **Global Hotkeys**: Added `keydown` listener for `Enter` (commit) and `Escape` (cancel).
+- [x] **Enhanced Custom Drop Tool**:
+    - **Crosshair & Live Tracking**: Updated `MapLayers.js:enableCustomDropOverlay` for crosshair cursor and `mousemove` tracking.
+    - **Sidebar Integration**: Added live Lat/Lon fields in `Sidebar.js`.
+- [x] **Integrated Manual Input & Auto-Naming**:
+    - **Auto-naming**: `_nextCustomPointName()` in `main.js` generates suffixes (a, b, aa...).
+    - **Manual Entry**: Integrated inline Lat/Lon inputs for direct coordinate entry.
+- [x] **Action Button Refinement**:
+    - Renamed "Erase" to "Cancel Point/Edit".
+    - Added "↺ Clear restrictions" link to reset fields without dismissing the fix.
+- [x] **Holding Point Visual Fixes**:
+    - Dedicated `holdingPane` (z-index: 700) and ghost label suppression for holding points.
+
+## Phase 22: Precision Refinements & Safety Guards ✅ COMPLETE
+
+Final polish to resolve custom point anchor offsets and add a safety check for the cancellation workflow.
+
+- [x] **Precision "Math" Fix (Custom Point Anchor)**:
+    - Updated `MapLayers.js:createDraggableCustomMarker` to use `iconSize: [24, 24]` and `iconAnchor: [12, 12]`.
+    - Removed `transform: translate(-50%, -50%)` from `.draggable-custom-marker-inner` in `main.css`.
+- [x] **Safety Guard: Cancel Confirmation**:
+    - Added `window.confirm` check in `main.js:handleCancel` to prevent accidental data loss.
+- [x] **Permanent Labels for Custom Points**:
+    - Added `ident` support to `createDraggableCustomMarker` and bound permanent tooltips.
+
+## Phase 23: Final Interaction Polish & UI Refinements ✅ COMPLETE
+
+Addressing user feedback on holding point aesthetics, custom point rendering timing, and keyboard accessibility.
+
+- [x] **Holding Point Aesthetic De-cluttering**:
+    - Removed `<span class="holding-badge-info">` (bearing/side white text) from both `updateHoldingMarkers` and the saved-procedure badge in `renderSavedProcedure` (`MapLayers.js`). The "H" glyph alone is sufficient; the amber `fix-label-holding` line in the sequence fix tooltip is the sole restriction display.
+    - Removed dead `.holding-badge-info` CSS rule from `main.css`. Updated `.holding-badge-inner` to `flex` (no column direction) with revised vertical offset `translate(8px, -28px)`.
+- [x] **Custom Point "One Click Lag" Fix**:
+    - Added optional `pendingPreview = null` parameter to `updateActiveShape` (`MapLayers.js`). When provided, the coordinate is appended to `latLngs` before the polyline is drawn, extending the visible path to the unconfirmed position.
+    - In `main.js:_triggerPointAdded`, after `showPendingPointRestrictions`, non-fix (custom drop) points immediately call `updateActiveShape(_map, DrawingState, rawData)` so the preview segment appears without waiting for "Add Point".
+- [x] **Keyboard Focus Visuals**:
+    - Added `.toggle-switch:focus-within .toggle-slider { outline: 2px solid var(--accent-primary); outline-offset: 2px; }` to `main.css`, making the holding-point toggle clearly focused when navigated via Tab.
+
+---
+    - Build verified clean (`vite build` → 269.67 kB JS, 85.84 kB CSS, 0 errors).
+
+---
+
+## Phase 24: Holding Pattern Fixes & Aeronautical Drawing ✅ COMPLETE
+
+Addresses a Phase 23 regression (no visual selection cue on holding points), two rendering artefacts (stale blue H and spurious fix label in saved procedures), a custom-point symbol timing gap, and adds a proper aeronautical holding pattern depiction layer.
+
+### Task 24-A — Holding Point Selected-State Visual Cue (Phase 23 Regression Fix) [x]
+
+**Problem**: Phase 23 removed the "H" bearing/side text from the builder's live `updateHoldingMarkers` call. The H badge still appears once the point is committed, but while the restriction panel is open (pending state) and the user ticks the *Holding Point* toggle, there is now no map feedback that holding is active.
+
+**Fix — `Sidebar.js : showPendingPointRestrictions`**:
+- When the `#inline-hold-chk` `change` event fires and `holdChk.checked === true`, add the CSS class `inline-hold-toggle-active` to the `#inline-hold-toggle-row` wrapper element (remove it when unchecked).
+- Add a new CSS rule in `main.css` for `.inline-hold-toggle-row.inline-hold-toggle-active`: apply a left amber border (`border-left: 2px solid #ffb547`) and a subtle amber background tint (`background: rgba(255,181,71,0.06)`) — same visual language as `.fix-label-holding`. This gives the user a clear in-panel signal that holding is armed before the point is committed.
+- No map-side change required: `updateHoldingMarkers` already fires when the point is committed by `_commitPendingPoint → _afterPointAdded`.
+
+### Task 24-B — Remove Stale Blue "H" and Spurious Fix Label in Saved Procedures [x]
+
+**Root cause A — Blue "H" badge in `renderSavedProcedure`**: The `_renderPointLabels` helper in `MapLayers.js` (~line 1201) renders the holding badge with:
+```html
+<span class="holding-badge-h">H</span>
+```
+Unlike `updateHoldingMarkers` (which injects `style="color:${sequenceColor};"` inline), the saved-procedure path passes no color. The `.holding-badge-h` CSS has no `color` declaration; the browser falls back to the system default — which renders as a dim blue on most platforms. The fix is to add `style="color:${_safeEscape(procedure.color)};"` to the `holding-badge-h` span in `_renderPointLabels`.
+
+**Root cause B — Spurious label text (e.g. "ABBEY")**: The `proc-fix-label` DivIcon is rendered for *every* point including holding fixes. Since Phase 23 removed the "H bearing/side" text from the badge, the bare ident label (e.g. "ABBEY") now appears on the map without any visual distinction. This ident label is correct by design — but the image shows it appearing doubled (once from the ghost layer and once from the saved-procedure label). The saved-procedure label must stay because it shows restrictions. The actual artefact is the **holding badge "H" being offset wrong** after Phase 23's `translate(8px, -28px)` — it overlaps the existing `proc-fix-label` ident text making it look like a doubled label. No label removal is needed; the badge CSS offset should be verified so the "H" sits cleanly above/beside the ident without collision.
+
+**Fix — `MapLayers.js : _renderPointLabels` (~line 1201)**:
+```javascript
+html: `<div class="holding-badge-inner"><span class="holding-badge-h" style="color:${_safeEscape(procedure.color)};">H</span></div>`,
+```
+
+**Verify — `.holding-badge-inner` transform**: The `translate(8px, -28px)` places the badge 8px right and 28px above the anchor. The `proc-fix-label` text also starts at the same anchor, so the badge clears the label text comfortably. If visual testing shows collision, adjust the Y offset to `-34px` to clear the ident line.
+
+### Task 24-C — Custom Point Symbol/Label Timing Fix [x]
+
+**Problem**: When a custom drop or manual-coordinate point is created, the sequence is:
+1. `_triggerPointAdded` stores `_pendingPoint` and calls `showPendingPointRestrictions` → sidebar panel appears.
+2. Phase 23 added `updateActiveShape(_map, DrawingState, rawData)` → the preview polyline extends to the pending coordinate. ✓
+3. **But**: `createDraggableCustomMarker` (which renders the diamond `◇` symbol and the permanent label) is only called inside `_afterPointAdded`, which is called from `_commitPendingPoint` → triggered only when the user clicks "Add Point".
+
+Result: the map shows the polyline extension but no diamond symbol or label for the pending point. This is the "symbol not showing" issue in the screenshot.
+
+**Fix — `MapLayers.js` + `main.js`**:
+
+1. **New function `showPendingCustomMarker(mapInstance, lat, lon, color, ident)`** in `MapLayers.js`:
+   - Creates a non-draggable `L.marker` using a modified `draggable-custom-marker` DivIcon (same diamond HTML as `createDraggableCustomMarker`, but with `opacity: 0.55` and a dashed border via inline style to signal "pending/unconfirmed" status).
+   - Binds a permanent tooltip with `ident` (same as `createDraggableCustomMarker`).
+   - Uses `pane: 'markerPane'` for correct z-ordering.
+   - Stores the marker reference in a module-level `_pendingCustomMarker` variable (only one can exist at a time).
+   - Returns nothing (caller does not need the reference; `clearPendingCustomMarker` removes it).
+
+2. **New function `clearPendingCustomMarker(mapInstance)`** in `MapLayers.js`:
+   - If `_pendingCustomMarker` exists and is on the map, removes it and nulls the reference.
+
+3. **Export both functions** from `MapLayers.js`.
+
+4. **`main.js : _triggerPointAdded`** — after the existing `if (!rawData.isFix) { updateActiveShape(...) }` block, add:
+   ```javascript
+   if (!rawData.isFix) {
+     clearPendingCustomMarker(_map);
+     showPendingCustomMarker(_map, rawData.lat, rawData.lon, DrawingState.metadata.color, rawData.ident);
+   }
+   ```
+
+5. **`main.js : _commitPendingPoint`** — at the top (before `DrawingState.addPoint`), add:
+   ```javascript
+   clearPendingCustomMarker(_map);  // remove temp marker; the real draggable one is created in _afterPointAdded
+   ```
+
+6. **`main.js : _cleanupDrawingMode`** — add `clearPendingCustomMarker(_map)` alongside the existing cleanup calls.
+
+7. **Import `showPendingCustomMarker` and `clearPendingCustomMarker`** in `main.js`.
+
+8. **CSS** — `.draggable-custom-marker-inner.pending` modifier class in `main.css`:
+   - `opacity: 0.6`
+   - `border-style: dashed`
+   - `animation: pending-pulse 1.2s ease-in-out infinite` → `@keyframes pending-pulse { 0%,100% { opacity:0.5 } 50% { opacity:0.85 } }` — a gentle pulse to signal the point is awaiting confirmation.
+
+### Task 24-D — Aeronautical Holding Pattern Drawing Layer [x]
+
+Add a map-rendered holding pattern diagram styled after aeronautical instrument chart conventions: indicative (not to scale), showing the inbound track, outbound leg, and two 180° turns with small directional arrows. The shape is drawn using pure SVG inside a Leaflet `DivIcon`, oriented to the stored `holdingBearing` and `holdingSide`.
+
+**Scope**: Both the live builder session (`updateHoldingMarkers`) and the saved-procedure render (`_renderPointLabels` in `renderSavedProcedure`).
+
+#### Holding Pattern SVG Geometry
+
+The aeronautical holding pattern is an oval ("racetrack") with:
+- **Inbound leg**: a straight line from the holding fix toward `holdingBearing + 180°` (the outbound direction), length ≈ 40 SVG units.
+- **Two semicircles**: radius ≈ 14 SVG units, turning in the `holdingSide` direction.
+- **Outbound leg**: parallel to the inbound leg, returning to the fix end via the second semicircle.
+- **Four directional arrow chevrons**: one on each leg at midpoint (facing direction of travel), and one at the exit of each turn.
+- **Fix dot**: a small filled circle at the holding fix (origin of the inbound track).
+
+SVG viewBox: `"-20 -20 100 60"` (landscape orientation before rotation). The SVG is rotated via `transform: rotate(${bearingDeg}deg)` around its center to align with the actual inbound track. The `holdingSide` flips the semicircle arcs: RIGHT turns use positive arc sweep; LEFT turns use negative.
+
+#### Implementation — `MapLayers.js : _buildHoldingPatternSvg(bearingMag, side, color)`
+
+New private helper function:
+
+```javascript
+// bearingMag: magnetic inbound bearing (number, degrees), e.g. 090
+// side: 'RIGHT' or 'LEFT'
+// color: hex string matching the procedure color
+// Returns: an HTML string containing one self-contained <svg> element.
+const _buildHoldingPatternSvg = (bearingMag, side, color) => {
+  // Geometry constants (SVG units, not NM — the diagram is indicative only)
+  const LEG = 44;          // length of each straight leg
+  const R   = 14;          // radius of the semicircular turns
+  const W   = 1.6;         // stroke width
+  const isRight = (side || 'RIGHT').toUpperCase() !== 'LEFT';
+
+  // Inbound track arrives at origin (0, 0) from the direction of bearingMag.
+  // Pattern is drawn in "standard upward" space then rotated.
+  // Y-axis: inbound track goes UP (−Y). Outbound goes DOWN (+Y).
+  // Offset X: +R for RIGHT-hand pattern; −R for LEFT.
+  const sx = isRight ? R : -R;  // x-offset for the outbound track
+
+  // The four path segments (clockwise for RIGHT, CCW for LEFT):
+  //  1. Inbound leg: from outbound-turn-exit (0, -LEG) → fix (0, 0)
+  //  2. First turn at the fix end: from (0, 0) → (sx, 0), center (sx/2, 0)
+  //     ... actually a 180° arc around (sx, 0) with radius R
+  //  3. Outbound leg: from (sx, 0) → (sx, -LEG)     [going up]
+  //  4. Second turn at outbound end: 180° arc → (0, -LEG)
+
+  // Arc sweep flags: 1 = clockwise, 0 = anticlockwise
+  const sw1 = isRight ? 1 : 0;   // first turn (at fix end)
+  const sw2 = isRight ? 1 : 0;   // second turn (at outbound end)
+
+  // Path for the racetrack outline (full loop)
+  const path =
+    `M 0 0` +
+    ` A ${R} ${R} 0 0 ${sw1} ${sx*2} 0` +   // turn 1: fix-end 180°
+    ` L ${sx*2} ${-LEG}` +                    // outbound leg
+    ` A ${R} ${R} 0 0 ${sw2} 0 ${-LEG}` +    // turn 2: outbound-end 180°
+    ` L 0 0`;                                 // inbound leg (close)
+
+  // Arrow chevron helper: small V-shape at position (cx, cy) pointing in direction `angleDeg`
+  const arrow = (cx, cy, angleDeg) => {
+    const a = angleDeg * Math.PI / 180;
+    const f = 6;  // half-width
+    const tip_x = cx + Math.sin(a) * f;
+    const tip_y = cy - Math.cos(a) * f;
+    const l_x   = cx - Math.cos(a) * f + Math.sin(a) * -f;
+    const l_y   = cy - Math.sin(a) * f - Math.cos(a) * -f;
+    const r_x   = cx + Math.cos(a) * f + Math.sin(a) * -f;
+    const r_y   = cy + Math.sin(a) * f - Math.cos(a) * -f;
+    return `<polyline points="${l_x.toFixed(1)},${l_y.toFixed(1)} ${tip_x.toFixed(1)},${tip_y.toFixed(1)} ${r_x.toFixed(1)},${r_y.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${W}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  };
+
+  // Four arrows: mid-inbound (pointing toward fix), mid-outbound (pointing away),
+  // mid-turn-1 (tangent), mid-turn-2 (tangent).
+  const arrowInbound  = arrow(0, -LEG/2, 0);      // pointing up = toward fix
+  const arrowOutbound = arrow(sx*2, -LEG/2, 180); // pointing down = away from fix
+  // Turn arrows at 90° tangent points:
+  const ta1 = isRight ?  90 : -90;
+  const ta2 = isRight ? -90 :  90;
+  const arrowTurn1    = arrow(sx, R,    ta1);
+  const arrowTurn2    = arrow(sx, -LEG + (-R), ta2);
+
+  // Rotation: the pattern is drawn with inbound track pointing UP (north).
+  // We rotate by bearingMag so the inbound track aligns with the real bearing.
+  // SVG rotation is clockwise, which matches compass bearing convention.
+  const rot = typeof bearingMag === 'number' ? bearingMag : 0;
+
+  // ViewBox is generous so the rotated shape never clips.
+  const vbSize = LEG + R * 2 + 10;
+  const cx = sx;  // approx center-x of pattern
+  const cy = -LEG / 2;  // center-y
+
+  return (
+    `<svg viewBox="${-vbSize/2} ${-vbSize} ${vbSize*1.5} ${vbSize*1.5}"` +
+    ` width="80" height="80" xmlns="http://www.w3.org/2000/svg"` +
+    ` style="transform:translate(-50%,-50%) rotate(${rot}deg);display:block;overflow:visible;pointer-events:none;opacity:0.85;"` +
+    `>` +
+    // Pattern outline
+    `<path d="${path}" fill="${color}1a" stroke="${color}" stroke-width="${W}" stroke-linejoin="round" fill-rule="evenodd"/>` +
+    // Fix dot
+    `<circle cx="0" cy="0" r="3" fill="${color}" stroke="#ffffff" stroke-width="0.8"/>` +
+    // Direction arrows
+    arrowInbound + arrowOutbound + arrowTurn1 + arrowTurn2 +
+    `</svg>`
+  );
+};
+```
+
+#### Integration into `updateHoldingMarkers`
+
+In `updateHoldingMarkers`, replace the current `L.divIcon` for each holding point with an enhanced version that includes the SVG pattern:
+
+```javascript
+const patternSvg = _buildHoldingPatternSvg(
+  pt.holdingBearing ? parseFloat(pt.holdingBearing) : null,
+  pt.holdingSide,
+  sequenceColor
+);
+
+const icon = L.divIcon({
+  className: 'holding-badge-marker',
+  html: `<div class="holding-badge-inner">`
+    + patternSvg
+    + `<span class="holding-badge-h" style="color:${_safeEscape(sequenceColor)};">H</span>`
+    + `</div>`,
+  iconSize: [0, 0],
+  iconAnchor: [0, 0]
+});
+```
+
+Update `.holding-badge-inner` CSS so the SVG and the "H" badge are layered:
+- `.holding-badge-inner` becomes `position: relative` with the SVG as an absolutely positioned background centered on the fix, and the "H" badge as a foreground element offset to `translate(8px, -28px)` as before.
+
+**Alternatively (simpler)**: render the holding pattern SVG as a separate `L.marker` in the `holdingPane` (same layer), placed at the fix coordinates with its own `DivIcon`. This avoids restructuring `.holding-badge-inner`. The "H" badge marker remains as-is; the new pattern marker is a sibling in `_holdingMarkersLayer`.
+
+**Recommended**: use the separate-marker approach for minimum DOM risk:
+
+```javascript
+// Existing H badge marker (unchanged)
+L.marker([pt.lat, pt.lon], { icon: hBadgeIcon, interactive: false, pane: 'holdingPane' })
+  .addTo(_holdingMarkersLayer);
+
+// NEW: holding pattern SVG marker
+if (pt.holdingBearing != null || true) {  // always render, even without bearing data (defaults to 0°)
+  const svgIcon = L.divIcon({
+    className: 'holding-pattern-marker',
+    html: _buildHoldingPatternSvg(pt.holdingBearing, pt.holdingSide, sequenceColor),
+    iconSize: [0, 0],
+    iconAnchor: [0, 0]
+  });
+  L.marker([pt.lat, pt.lon], { icon: svgIcon, interactive: false, pane: 'holdingPane' })
+    .addTo(_holdingMarkersLayer);
+}
+```
+
+#### Integration into `_renderPointLabels` (saved procedures)
+
+Same approach — add the pattern SVG as an additional `L.marker` in the procedure's `group` for each holding point:
+
+```javascript
+if (pt.isHolding) {
+  // Existing H badge (color fix applied in Task 24-B)
+  ...
+  // NEW: pattern diagram
+  const patternIcon = L.divIcon({
+    className: 'holding-pattern-marker',
+    html: _buildHoldingPatternSvg(pt.holdingBearing, pt.holdingSide, procedure.color),
+    iconSize: [0, 0],
+    iconAnchor: [0, 0]
+  });
+  L.marker([pt.lat, pt.lon], { icon: patternIcon, interactive: false }).addTo(group);
+}
+```
+
+#### CSS — `.holding-pattern-marker`
+
+```css
+.holding-pattern-marker {
+  background: transparent !important;
+  border:     none        !important;
+  overflow:   visible     !important;
+  pointer-events: none    !important;
+}
+```
+
+#### Build verification
+- Run `vite build` and confirm 0 errors.
+- Visual test: create a SID/STAR procedure, mark a fix as holding (bearing + RIGHT/LEFT), confirm the pattern SVG appears on the map correctly oriented.
+- Test with no bearing value → pattern defaults to 0° (pointing north) and still renders cleanly.
 
 ---
 
 ## Phase X: Future Enhancements (Post-MVP)
+
 
 - [ ] **Builder Airspaces**: Re-integrate Airspace selection options into the Procedural Builder (hidden during Phase 14).
 - [ ] **Builder Transitions**: Develop the transitions logic and UI for connecting distinct procedure segments in the builder.
@@ -392,6 +707,10 @@ Establish a professional delivery pipeline.
 | **Builder & Ghost Layer Polish** | 100% | Done |
 | **Ghost Fix Label Quantum Fix** | 100% | Done |
 | **Builder Bug Fixes & Label Cleanup** | 100% | Done |
-| **Builder Workflow & Interaction Fixes** | 0% | Pending |
+| **Builder Workflow & Interaction Fixes** | 100% | Done |
+| **Builder Interaction Polish & Tool Integration** | 100% | Done |
+| **Precision Refinements & Safety Guards** | 100% | Done |
+| **Final Interaction Polish & UI Refinements** | 100% | Done |
+| **Holding Pattern Fixes & Aeronautical Drawing** | 100% | Done |
 
-*Last Updated: 2026-05-10 — Phase 20 Planned*
+*Last Updated: 2026-05-11 — Phase 24 Complete*
